@@ -1,0 +1,40 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Model and package caches
+.cache/
+models/
+
+# Generated retrieval artifacts
+artifacts/*
+!artifacts/.gitkeep
+*.faiss
+*.npy
+*.npz
+*.tmp
+
+# Runtime output
+logs/
+eval/output/
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
