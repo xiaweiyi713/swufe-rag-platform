@@ -173,4 +173,6 @@ OK
 - D 模块通过 `swufe_rag.api` 串联 B/C；不要导入内部 pipeline 类作为长期契约。
 - 大型原始文档、模型缓存和索引在确定 Git LFS 或发布附件方案前不提交。
 - 禁止强制推送 `main`。
-- 本轮提交与推送状态将在合并到 `main` 后追加到本节。
+- 功能提交：`dbcc1c0 feat: refine RAG pipeline and add debug workbench`。
+- 本地合并：`79053ba merge: deliver refined RAG and debug workbench`。
+- 远端交付：2026-07-14 已将 `origin/main` 从 `53405f1` 推送到 `79053ba`；本节随紧接的文档提交同步推送。
