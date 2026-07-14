@@ -96,6 +96,7 @@ top_k: 5  chunk_max_len: 500  use_bm25: true  temperature: 0  refuse_th: 0.35
 | D-4 | 契约4 `retrieved` 的"chunk摘要"具体化为 `{chunk_id, doc_title, article, college, cohort, score, snippet}`(snippet=text 前 120 字) | 前端检索详情面板展示需要 |
 | D-5 | 新增 `GET /meta -> {colleges:[...], cohorts:[...]}`,前端身份下拉框数据源;mock 期从 mock 数据统计,real 期从 chunks.jsonl 元数据统计 | 模块D内部接口,不涉及 B/C |
 | D-6 | 拒答时 `refused=true`、`citations=[]`,`answer_md` 为拒答话术;前端"最相关条款"列表取自 `retrieved` | 计划书:拒答需"列出最相关的条款供参考" |
+| D-7 | **提请模块C注意**:计划书的系统提示模板含"当前用户:{college} {cohort}级本科生",但契约3签名 `answer(query, chunks)` 不含用户身份。D 的 server 在调用 answer 时已额外以关键字参数传入 `college/cohort`(适配层默认丢弃)。建议契约3扩展为 `answer(query, chunks, college=None, cohort=None)`;C 若选择从 chunks 元数据推断身份也可,请确认后更新此行 | 计划书 模块C提示词模板 |
 
 ---
 

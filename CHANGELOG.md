@@ -5,6 +5,11 @@
 
 ## [2026-07-14] dev
 
+- feat: providers 切换层与 FastAPI 后端——app/providers.py 定义 Retriever/Generator 抽象基类(签名严格=契约2/3)+ mock/real 工厂(real 为薄适配层,B/C 未就位时报错并给指引);mock/mock_provider.py 实现契约2过滤逻辑+简易字符相似度检索(开方拉伸对齐 refuse_th 语义)与关键词路由生成;app/server.py 实现 POST /ask(含 refuse_th 前置拒答保险、分段计时)、GET /source/{chunk_id}、GET /meta、静态托管、统一 500 错误处理、请求日志落盘 logs/requests.jsonl
+- test: eval/smoke_test.py 37项接口自测全部通过(契约4字段、年级/学院过滤、跨学院零污染、历史版本零泄漏、同题不同院差异化、拒答链路、404/422)
+- 影响文件:app/providers.py、app/server.py、mock/mock_provider.py、eval/smoke_test.py、app/__init__.py、mock/__init__.py、eval/__init__.py
+- 接口注意:server 调用 generator.answer 时额外传 college/cohort(MockGenerator 使用;RealGenerator 适配层丢弃,待模块C确认 README 待对齐项 D-7)
+
 - feat: mock 桩数据——mock_chunks.jsonl 24条知识块(严格契约1字段,覆盖校级/院级、计算机与金融两学院、2022/2023两年级、现行+历史、3个表格块、超长条款)、mock_answers.json 17组问答+拒答模板(严格契约3格式,覆盖单引用/多引用/跨文件/表格引用/范围提醒/同题不同院);mock/README 声明假数据性质与编造原则
 - 影响文件:mock/mock_chunks.jsonl、mock/mock_answers.json、mock/README.md
 - 遗留:mock_provider.py 随后端一起提交
