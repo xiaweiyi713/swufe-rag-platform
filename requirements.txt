@@ -1,0 +1,29 @@
+# ============================================================
+# 全项目依赖(根 requirements.txt 由模块D统一维护)
+# 各模块新增依赖请报给模块D负责人,不要各自另建依赖文件
+# 大陆环境建议镜像安装:
+#   pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# ============================================================
+
+# ---- 模块D(系统与评估)· mock 模式最小运行集 ----
+fastapi>=0.110
+uvicorn>=0.29
+pyyaml>=6.0
+httpx>=0.27          # 接口自测与 run_eval.py 调用 /ask
+
+# ---- 模块A(数据与知识库)· 待A确认版本后解除注释 ----
+# python-docx
+# pdfplumber
+# paddleocr           # 仅扫描件兜底
+
+# ---- 模块B(检索)· 待B确认版本后解除注释 ----
+# sentence-transformers
+# faiss-cpu
+# rank_bm25
+# jieba
+
+# ---- 模块C(生成与溯源)· 待C确认版本后解除注释 ----
+# openai              # OpenAI 兼容调用(DeepSeek/Qwen/Ollama)
+
+# ---- 通用 ----
+tqdm>=4.66

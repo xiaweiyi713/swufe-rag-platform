@@ -1,0 +1,23 @@
+# ============================================================
+# 全局配置(契约5,冻结见 README 7.1)
+# 根目录 config.yaml 由模块D统一维护,改动需先在群里同步
+# ============================================================
+embed_model: BAAI/bge-large-zh-v1.5   # 模块B:向量模型
+llm: deepseek-chat                    # 模块C:deepseek-chat | ollama:qwen2.5-7b
+top_k: 5                              # 检索返回块数
+chunk_max_len: 500                    # 模块A:切分最大长度
+use_bm25: true                        # 模块B:BM25 融合开关
+temperature: 0                        # 模块C:生成温度
+refuse_th: 0.35                       # 拒答阈值(top1 相似度低于此值直接拒答)
+
+# ------------------------------------------------------------
+# 以下为模块D扩展键(不属于契约5,仅 app/ 使用)
+# ------------------------------------------------------------
+provider: mock          # mock = 桩数据(模块B/C未就位) | real = 真实现,集成日只改这一行
+mock_dir: mock          # mock 数据目录
+chunks_path: data/chunks.jsonl   # real 模式下 /source 与 /meta 的数据源(模块A产出)
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  log_dir: logs         # 请求日志(jsonl)落盘目录,已 gitignore
