@@ -185,3 +185,94 @@ OK
 - `handoff/DELIVERY_MANIFEST.md`：定义外部交付 ZIP 的结构和验收要求。
 
 外部交付 ZIP 另外包含当前已提交 HEAD 的 `git archive` 源码快照、原始《西南财大教务RAG问答系统项目计划书.docx》、SHA-256 校验清单和起步说明。计划书保持原样且不提交 Git；正式继续开发始终以 `origin/main` 最新历史为准。
+
+## 2026-07-14：新环境接管审计与正式 HTTP 边界
+
+### 接管审计
+
+- 按 `START_HERE.txt` 校验交付包，9 项 SHA-256 全部匹配。
+- 从 `https://github.com/ZorIgn/swufe-rag.git` 重新 clone；接管时 `origin/main` HEAD 为 `b284de2be51ea88ae93322741bf3c13c65797d5d`，`8007637` 是其祖先。
+- 原始计划书以只读方式提取并逐页检查，共 12 页；接口、模块分工、验收指标与仓库交接文档一致。
+- `shixun.rar` 是包含 `.git`、旧 `.venv`、缓存和交付包的旧工作目录快照；其中 `main` 同样指向 `b284de2`。它只用于审计，没有被当作正式仓库或运行环境。
+- 正式 `data/chunks.jsonl` 仍为空，`data/sources.csv` 只有表头，真实知识库尚未到位。
+
+### B 索引后端隔离修复
+
+完整安装 `requirements-dev.txt` 与 `requirements-web.txt` 后，原有两项索引测试因本机存在 `faiss-cpu` 而失败：测试构建函数意外生成生产 FAISS 后端，无法验证测试专用 NumPy 索引的拒载边界。
+
+修正后：
+
+- `allow_test_backend=True` 明确选择 `numpy-test-only`，不再受当前环境是否安装 FAISS 影响；
+- 测试构建会清理同目录残留的 `index.faiss`；
+- 生产构建仍强制使用 FAISS，测试专用清单仍会被生产加载器拒绝。
+
+### 正式 HTTP 适配层
+
+- 新增 `app.server`：实现计划书契约 4 的 `POST /ask` 和 `GET /source/{chunk_id}`。
+- 生产运行时通过 `swufe_rag.api.retrieve/answer` 复用冻结 B/C 门面，不向 B/C 返回对象增加 HTTP、耗时或调试字段。
+- D 层响应增加 `retrieved` 摘要和 `latency_ms`；正式响应不包含调试 `mode`。
+- 正式请求不接受调试专用 `top_k`；调试 Web 继续使用隔离的 `/api/debug/*`。
+- 生产运行时不回退到 `tests/fixtures`，知识库、索引或 LLM 未就绪时显式失败。
+
+### 验证证据
+
+```text
+python -m unittest discover -s . -p "test*.py" -v
+Ran 67 tests ... OK (skipped=2)
+
+RUN_FAISS_SMOKE=1 python -m unittest tests.retrieval.test_production_smoke -v
+FAISS artifact backend: OK
+BGE download smoke: skipped by design
+
+python -m eval.demo_eval
+Recall@5=1.0, scope_pollution_count=0, refusal_accuracy=1.0
+```
+
+本地受控环境为 Python 3.12.13；GitHub Actions 继续使用 Python 3.10 验证兼容性。FastAPI 测试出现上游 `httpx`/Starlette 弃用警告，但不影响当前结果。
+
+### 仍未完成
+
+- 真实文件采集、解析、切分、人工抽检、BGE 编码和正式索引；
+- 真实检索开发集、阈值校准、B/C 参数调优和独立 30～40 题验收；
+- 正式服务的认证、限流、审计、隐私处理、结构化日志、容器化、部署和监控；
+- 最终学生端前端、团队联调、报告与答辩材料。
+
+本轮开发分支：`feature/production-api-boundary`。本节随本轮本地提交记录；尚未推送或合并到远端。
+
+## 2026-07-15：混合对话、可信路由与 SQLite 来源硬约束
+
+### 需求与边界
+
+按《西南财大混合对话与可信RAG路由改造方案》完成双路由改造：普通聊天、编程、写作和情绪交流走 `general_chat`；任何需要西南财经大学真实制度、培养方案、推免、选课、校内事实或官方网址的问题走 `school_rag`。原有 `retrieve(query, top_k=5, college=None, cohort=None)` 和 `answer(query, chunks)` 签名、字段集合和拒答门保持不变。
+
+学校分支证据不足时不回退通用模型。通用分支不执行检索，也不受 `refuse_th` 影响。路由失败时，明确学校事实仍由确定性安全规则送入 RAG，其余输入默认普通对话。
+
+### 实现
+
+- 新增 `swufe_rag.routing`：严格 `RouteDecision`、仅输出 JSON 的可注入 LLM 分类器、高精度确定性规则和连续追问重写。
+- 新增 `swufe_rag.orchestration.HybridRuntime`：先路由，再且仅再执行一个回答分支；`session_id` 保存上一轮模式、意图、学院、年级和改写问题。
+- 新增 `generation/general_chat.py`：普通提示词与普通历史独立于学校 RAG 提示词，避免两个模式共享约束或学校上下文。
+- 新增 `storage`：SQLite `sources/chunks` 表使用 `CHECK/NOT NULL/UNIQUE/FK`；来源必须处于可信、启用状态，学院、年级、年份、主题在排序前用参数化 SQL 生成 `embedding_row` 候选集。
+- 默认只查现行来源；用户明确询问某政策年份时按该年份选择，允许审阅历史版本，不会同时强制 `status=现行`。
+- 新增 `retrieve_scoped()` 作为混合编排的附加门面；冻结 `retrieve()` 仍调用同一 SQL 过滤层，但签名和返回不变。
+- 新增 `API_REFERENCE.md`，集中列出正式/调试 HTTP、Python 门面、运行时构建器、可信存储、CLI、数据文件、配置、错误映射和兼容性边界，并增加接口清单回归测试。
+- 生成后只接受本次检索集合内的 `chunk_id`，并再次检查 `quote in database_chunk.text`。标题、条款、页面 URL 和附件 URL 全部从 SQLite 重建，模型返回的伪造 URL 被丢弃；学校正文直接包含 URL 时验证失败。
+- 正式 `/ask` 增加 `mode`、`official_links` 和可选 `session_id`；新增 `/options` 和混合对话测试 Web。内部路由置信度、原因和证据门仍不进入正式响应。
+- `data/metadata.sqlite3` 是按来源和知识块 SHA-256 自动重建的本地产物，已加入 Git 忽略。
+
+### 测试与指标
+
+- 新增 `eval/hybrid_route_queries.json` 共 100 题：40 题普通对话、40 题学校事实、20 题连续追问。
+- `python -m eval.hybrid_route_eval`：普通问题误拦截率 `0.0`，学校事实流入通用模型 `0`，连续追问准确率 `1.0`。
+- 正式 BGE/FAISS 专项 20 题：Recall@5 `1.0`、范围污染 `0`、EvidenceGate 拒答准确率 `1.0`、Top-5 关键原文支持率 `1.0`；单纯 `0.35` 分数阈值拒答准确率 `0.85`，说明实体/范围门仍不可删除。
+- SQL 测试覆盖跨学院、跨年级、历史状态、`trusted=0`、`enabled=0`、外键/枚举约束和注入字符串参数化。
+- 编排测试覆盖普通问题零检索、学校无证据零通用回退、恶意 URL 重绑定、连续追问、缺年级澄清和生产 HTTP 字段隔离。
+- 全量 `unittest`：115 项通过，2 项需显式启用的 BGE/FAISS 冒烟测试按设计跳过；Python 编译检查和两份前端 JavaScript 语法检查通过。
+- 未运行真实 LLM 生成质量评估：当前环境仍未配置 `OPENAI_API_KEY`，没有用 Demo 客户端伪装真实生成指标。
+
+### 已知限制
+
+- 当前 `session_id` 状态保存在单进程内存中；多实例部署前需替换为 Redis 或带 TTL 的共享会话存储。
+- 路由 100 题是开发集，不替代独立盲测；新增学院、政策主题和真实学生问法后应扩充评估集。
+- 认证、限流、隐私审计、结构化日志、容器化和监控仍未实现。
+- 本轮只做本地提交，不推送、不合并远端。
