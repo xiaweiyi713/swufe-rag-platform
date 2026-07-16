@@ -66,12 +66,16 @@ class RealReviewServerTests(unittest.TestCase):
         health = self.client.get("/api/debug/health")
         self.assertEqual(health.status_code, 200)
         self.assertEqual(health.json()["mode"], "review")
-        self.assertEqual(health.json()["chunk_count"], 814)
+        root = Path(__file__).parents[2]
+        expected_chunks = sum(
+            1 for line in (root / "data" / "chunks.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()
+        )
+        self.assertEqual(health.json()["chunk_count"], expected_chunks)
 
         response = self.client.post(
             "/api/debug/ask",
             json={
-                "question": "缓考申请最迟什么时候提交？",
+                "question": "2024级本科生最长学习年限是多少年？",
                 "college": "计算机与人工智能学院",
                 "cohort": "2024",
                 "top_k": 5,

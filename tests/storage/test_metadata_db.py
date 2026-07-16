@@ -5,7 +5,7 @@ import sqlite3
 import unittest
 
 from retrieval.index import load_chunks
-from storage.metadata_db import MetadataDB
+from storage.metadata_db import MetadataDB, _chunk_page_url
 
 
 FIXTURE_PATH = Path(__file__).parents[1] / "fixtures" / "chunks.jsonl"
@@ -41,6 +41,31 @@ class MetadataDBTests(unittest.TestCase):
         )
         self.assertNotIn("fixture_fin_recommend_019", {c["chunk_id"] for c in selected})
         self.assertNotIn("fixture_it_recommend_old_014", {c["chunk_id"] for c in selected})
+
+    def test_explicit_cohort_can_select_its_historical_curriculum(self) -> None:
+        historical = {
+            **self.chunks[6],
+            "chunk_id": "fixture_it_py2022_historical",
+            "text": "《计算机科学与技术专业2022级培养方案》毕业最低学分为160学分。",
+            "doc_title": "计算机科学与技术专业2022级培养方案",
+            "cohort": "2022",
+            "year": 2022,
+            "status": "历史",
+        }
+        current_general = self.chunks[0]
+        database = MetadataDB.from_chunks(
+            [current_general, historical], trusted_by_default=True
+        )
+        try:
+            rows = database.candidate_rows(
+                college="计算机与人工智能学院", cohort="2022"
+            )
+            selected = [current_general, historical]
+            ids = {selected[index]["chunk_id"] for index in rows}
+            self.assertIn("fixture_it_py2022_historical", ids)
+            self.assertIn(current_general["chunk_id"], ids)
+        finally:
+            database.close()
 
     def test_explicit_policy_year_can_select_historical_version(self) -> None:
         rows = self.db.candidate_rows(
@@ -93,6 +118,24 @@ class MetadataDBTests(unittest.TestCase):
         self.assertEqual(report["chunks"], len(self.chunks))
         self.assertEqual(report["orphan_chunks"], 0)
         self.assertEqual(report["eligible_untrusted"], 0)
+
+    def test_pdf_page_anchor_is_chunk_local_not_source_identity(self) -> None:
+        chunk = self.chunks[0]
+        anchored = {
+            **chunk,
+            "page_url": chunk["file_url"].split("#", 1)[0] + "#page=12",
+        }
+        self.assertEqual(
+            MetadataDB._signature(chunk), MetadataDB._signature(anchored)
+        )
+        self.assertEqual(
+            _chunk_page_url(
+                chunk["page_url"],
+                "https://jwc.swufe.edu.cn/policy.pdf",
+                "\u6b63\u6587 / \u539f\u6587\u4ef6\u7b2c12\u9875",
+            ),
+            "https://jwc.swufe.edu.cn/policy.pdf#page=12",
+        )
 
     def test_scope_values_are_bound_parameters_not_executable_sql(self) -> None:
         before = self.db.connection.execute(

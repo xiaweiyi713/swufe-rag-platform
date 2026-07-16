@@ -15,7 +15,7 @@ from typing import Any
 from app.runtime import build_review_runtime
 
 
-DEFAULT_CASES = Path(__file__).with_name("real_dev_queries.json")
+DEFAULT_CASES = Path(__file__).with_name("current_corpus_queries.json")
 
 
 def evaluate(
@@ -38,6 +38,8 @@ def evaluate(
             top_k=5,
             college=case.get("college"),
             cohort=case.get("cohort"),
+            policy_year=case.get("policy_year"),
+            topic=case.get("topic"),
         )
         expected_docs = set(case.get("expected_docs", []))
         retrieved_docs = [item["doc_title"] for item in retrieved]
@@ -65,6 +67,8 @@ def evaluate(
             top_k=5,
             college=case.get("college"),
             cohort=case.get("cohort"),
+            policy_year=case.get("policy_year"),
+            topic=case.get("topic"),
         )
         refusal_ok = bool(result["refused"]) == bool(case["should_refuse"])
         refusal_correct += int(refusal_ok)

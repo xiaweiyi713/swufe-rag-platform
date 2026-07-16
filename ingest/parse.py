@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import unicodedata
 from typing import Any, Protocol, Sequence
 
 from ingest.models import DocumentElement, ElementKind, ParsedDocument
@@ -44,42 +45,71 @@ class SidecarOCRProvider:
             payload = json.loads(sidecar.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise ValueError(f"OCR sidecar is unreadable: {sidecar}") from exc
+        page_map = self.page_map(pdf_path, expected_pages=expected_pages, payload=payload)
+        if set(page_map) != set(range(1, expected_pages + 1)):
+            raise ValueError(
+                f"OCR page count mismatch for {pdf_path.name}: "
+                f"found {len(page_map)}, expected {expected_pages}"
+            )
+        return [page_map[page] for page in range(1, expected_pages + 1)]
+
+    def page_map(
+        self,
+        pdf_path: Path,
+        *,
+        expected_pages: int,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[int, str]:
+        sidecar = self.sidecar_path(pdf_path)
+        if payload is None:
+            if not sidecar.is_file():
+                raise OCRRequiredError(
+                    f"OCR sidecar is missing for {pdf_path.name}: expected {sidecar}"
+                )
+            try:
+                payload = json.loads(sidecar.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ValueError(f"OCR sidecar is unreadable: {sidecar}") from exc
         pages = payload.get("pages") if isinstance(payload, dict) else None
         if not isinstance(pages, list) or not pages:
             raise ValueError(f"OCR sidecar must contain a non-empty pages list: {sidecar}")
-        result: list[str] = []
-        for expected_page, item in enumerate(pages, start=1):
-            if not isinstance(item, dict) or item.get("page") != expected_page:
+        result: dict[int, str] = {}
+        for item in pages:
+            page = item.get("page") if isinstance(item, dict) else None
+            if not isinstance(page, int) or not 1 <= page <= expected_pages or page in result:
                 raise ValueError(
-                    f"OCR pages must be consecutive and 1-based: {sidecar}"
+                    f"OCR pages must be unique and within the PDF page range: {sidecar}"
                 )
             text = item.get("text")
             if not isinstance(text, str) or not normalize_text(text):
                 raise ValueError(
-                    f"OCR page {expected_page} is empty or invalid: {sidecar}"
+                    f"OCR page {page} is empty or invalid: {sidecar}"
                 )
-            result.append(text)
-        if len(result) != expected_pages:
-            raise ValueError(
-                f"OCR page count mismatch for {pdf_path.name}: "
-                f"found {len(result)}, expected {expected_pages}"
-            )
+            result[page] = text
         return result
 
 
 _CJK_SPACE_RE = re.compile(r"(?<=[\u3400-\u9fff])[ \t\u3000]+(?=[\u3400-\u9fff])")
 _INLINE_SPACE_RE = re.compile(r"[ \t\u3000]+")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
+_CJK_RADICAL_TRANSLATION = str.maketrans({"⻚": "页"})
 _HEADING_RE = re.compile(
     r"^(?:第[一二三四五六七八九十百千万零〇两0-9]+[章节条]|"
     r"[一二三四五六七八九十百]+、|附(?:表|件)\s*[一二三四五六七八九十0-9]+)"
 )
 _LIST_START_RE = re.compile(r"^(?:\d{1,3}\s*[.·、]|[（(][一二三四五六七八九十0-9]+[）)])")
 _PAGE_MARK_RE = re.compile(r"^[—\-–]?\s*\d+(?:\s*/\s*\d+)?\s*[—\-–]?$")
+_WEB_PRINT_RE = re.compile(r"^\d{4}/\d{1,2}/\d{1,2}\s+\d{1,2}:\d{2}\b")
+_WEB_PRINT_SITE_SUFFIX = "-\u897f\u5357\u8d22\u7ecf\u5927\u5b66\u8ba1\u7b97\u673a\u4e0e\u4eba\u5de5\u667a\u80fd\u5b66\u9662"
+_WEB_PRINT_FOOTER = "\u7248\u6743\u6240\u6709@ \u897f\u5357\u8d22\u7ecf\u5927\u5b66"
+_WEB_PRINT_URL_RE = re.compile(
+    r"https://it\.swufe\.edu\.cn/info/\d+/\d+\.htm\s+\d+/\d+\s*$")
 
 
 def normalize_text(value: str) -> str:
-    text = value.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+    text = unicodedata.normalize("NFKC", value)
+    text = text.translate(_CJK_RADICAL_TRANSLATION)
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
     text = _CJK_SPACE_RE.sub("", text)
     lines = [_INLINE_SPACE_RE.sub(" ", line).strip() for line in text.splitlines()]
     return _BLANK_LINES_RE.sub("\n\n", "\n".join(lines)).strip()
@@ -188,6 +218,24 @@ def _needs_ocr(page_texts: Sequence[str], *, minimum_chars_per_page: int = 80) -
     return meaningful < max(160, len(page_texts) * minimum_chars_per_page)
 
 
+def _is_web_print_page(text: str) -> bool:
+    return bool(_WEB_PRINT_RE.match(text))
+
+
+def _clean_web_print_paragraph(text: str) -> str:
+    cleaned = _WEB_PRINT_RE.sub("", text, count=1).lstrip()
+    if _WEB_PRINT_SITE_SUFFIX in cleaned:
+        cleaned = cleaned.split(_WEB_PRINT_SITE_SUFFIX, 1)[1]
+    if _WEB_PRINT_FOOTER in cleaned:
+        cleaned = cleaned.split(_WEB_PRINT_FOOTER, 1)[0]
+    cleaned = _WEB_PRINT_URL_RE.sub("", cleaned)
+    return normalize_text(cleaned)
+
+
+def _clean_web_print_table(markdown: str) -> str:
+    return markdown.replace("\u5206\u4eab", "")
+
+
 def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
     try:
         import pdfplumber
@@ -198,10 +246,12 @@ def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
 
     page_texts: list[str] = []
     page_tables: list[list[list[list[object]]]] = []
+    page_has_images: list[bool] = []
     with pdfplumber.open(path) as document:
         page_count = len(document.pages)
         for page in document.pages:
             page_texts.append(join_wrapped_lines(page.extract_text() or ""))
+            page_has_images.append(bool(page.images))
             try:
                 page_tables.append(page.extract_tables() or [])
             except Exception:
@@ -219,17 +269,55 @@ def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
         ]
         return ParsedDocument(path, elements, page_count, ["ocr_used"])
 
+    image_only_pages = [
+        page_number
+        for page_number, (text, tables, has_images) in enumerate(
+            zip(page_texts, page_tables, page_has_images), start=1
+        )
+        if not text and not tables and has_images
+    ]
+    partial_ocr: dict[int, str] = {}
+    if image_only_pages:
+        if ocr_provider is None or not hasattr(ocr_provider, "page_map"):
+            raise OCRRequiredError(
+                f"PDF contains image-only pages that require OCR: {path.name} "
+                f"pages {image_only_pages}"
+            )
+        partial_ocr = ocr_provider.page_map(path, expected_pages=page_count)  # type: ignore[attr-defined]
+        missing = sorted(set(image_only_pages) - set(partial_ocr))
+        if missing:
+            raise OCRRequiredError(
+                f"OCR sidecar is missing image-only pages for {path.name}: {missing}"
+            )
+
     elements: list[DocumentElement] = []
+    web_print_cleaned = False
     for page_number, (text, tables) in enumerate(zip(page_texts, page_tables), start=1):
-        if text:
+        web_print_page = _is_web_print_page(text)
+        if text and not web_print_page:
             elements.append(DocumentElement("paragraph", text, page=page_number))
+        elif page_number in partial_ocr:
+            elements.append(
+                DocumentElement("paragraph", join_wrapped_lines(partial_ocr[page_number]), page=page_number)
+            )
+        if web_print_page:
+            web_print_cleaned = True
+            if not tables:
+                cleaned = _clean_web_print_paragraph(text)
+                if cleaned:
+                    elements.append(DocumentElement("paragraph", cleaned, page=page_number))
         for rows in tables:
             markdown = table_to_markdown(rows)
+            if web_print_page:
+                markdown = _clean_web_print_table(markdown)
             if markdown:
                 elements.append(DocumentElement("table", markdown, page=page_number))
     if not elements:
         raise ValueError(f"PDF contains no extractable content: {path}")
-    return ParsedDocument(path, elements, page_count)
+    warnings = ["web_print_noise_removed"] if web_print_cleaned else []
+    if partial_ocr:
+        warnings.append("partial_ocr_used")
+    return ParsedDocument(path, elements, page_count, warnings)
 
 
 def _parse_text(path: Path) -> ParsedDocument:

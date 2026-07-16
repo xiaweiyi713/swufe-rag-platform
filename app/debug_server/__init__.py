@@ -9,7 +9,12 @@ from threading import RLock
 
 from pydantic import BaseModel, Field
 
-from app.runtime import RAGRuntime, build_demo_runtime, build_review_runtime
+from app.runtime import (
+    RAGRuntime,
+    build_demo_runtime,
+    build_local_runtime,
+    build_review_runtime,
+)
 from contracts import GenerationUnavailableError, KnowledgeBaseNotReadyError
 
 
@@ -42,9 +47,18 @@ def get_runtime() -> RAGRuntime:
             elif mode == "review":
                 chunks_path = os.getenv("SWUFE_RAG_CHUNKS", "data/chunks.jsonl")
                 _runtime = build_review_runtime(chunks_path)
+            elif mode == "local":
+                _runtime = build_local_runtime(
+                    os.getenv("SWUFE_RAG_CHUNKS", "data/chunks.jsonl"),
+                    sources_path=os.getenv("SWUFE_RAG_SOURCES", "data/sources.csv"),
+                    metadata_path=os.getenv(
+                        "SWUFE_RAG_METADATA", "data/metadata.sqlite3"
+                    ),
+                    config_path=os.getenv("SWUFE_RAG_CONFIG", "config.advanced.yaml"),
+                )
             else:
                 raise KnowledgeBaseNotReadyError(
-                    "debug server mode must be demo or review; use app.server for production"
+                    "debug server mode must be demo, review or local; use app.server for production"
                 )
         return _runtime
 

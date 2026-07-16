@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from threading import RLock
 import time
 from typing import Any, Callable
 
+from academic_audit.structured_qa import (
+    answer_structured_curriculum,
+    scope_clarification as structured_scope_clarification,
+)
 from contracts import (
     AnswerResult,
     CHUNK_FIELDS,
@@ -111,6 +116,22 @@ def _link(link: OfficialLink) -> dict[str, str]:
     }
 
 
+def _source_appendix(citations: list[dict[str, Any]]) -> str:
+    if not citations:
+        return ""
+    lines = ["来源文件与页码："]
+    for citation in citations:
+        article = str(citation.get("article") or "")
+        page_url = str(citation.get("page_url") or "")
+        match = re.search(r"原文件第(\d+)页", article)
+        if match is None:
+            match = re.search(r"(?:#|[?&])page=(\d+)", page_url)
+        page = f"原文件第{int(match.group(1))}页" if match else "页码未标注"
+        lines.append(
+            f"- [{citation['marker']}]《{citation['doc_title']}》，{page}"
+        )
+    return "\n\n" + "\n".join(lines)
+
 class HybridRuntime:
     """Routes first, then invokes exactly one isolated answer branch."""
 
@@ -124,6 +145,7 @@ class HybridRuntime:
         metadata_db: MetadataDB,
         sessions: InMemorySessionStore | None = None,
         runtime_mode: str = "production-hybrid",
+        runtime_info: dict[str, Any] | None = None,
     ) -> None:
         self.router = router
         self.school_retrieve = school_retrieve
@@ -161,7 +183,10 @@ class HybridRuntime:
                 decision,
                 f"当前可信来源中没有 {decision.cohort} 级对应材料，请确认入学年级。",
             )
-        needs_college = decision.intent in {"curriculum", "promotion"}
+        # School-wide curriculum principles are intentionally published without
+        # a college scope. Major-specific questions are mapped to a college by
+        # the router, so only promotion rules require an explicit college.
+        needs_college = decision.intent == "promotion"
         if needs_college and not decision.college:
             return self._clarification(
                 decision,
@@ -243,16 +268,39 @@ class HybridRuntime:
         if decision.mode == "general_chat":
             payload = self._general(question, decision, state)
         else:
-            clarification = self._scope_clarification(decision)
+            structured_issue = structured_scope_clarification(
+                question, cohort=decision.cohort
+            )
+            clarification = (
+                self._clarification(decision, structured_issue)
+                if structured_issue
+                else self._scope_clarification(decision)
+            )
             if clarification is not None:
                 payload = clarification
             else:
+                structured = answer_structured_curriculum(
+                    question,
+                    cohort=decision.cohort,
+                    metadata_db=self.metadata_db,
+                )
                 retrieval_query = " ".join(
                     dict.fromkeys(
                         [decision.rewritten_query, *decision.search_terms]
                     )
                 )
-                chunks = self.school_retrieve(
+                if structured is not None:
+                    answer, chunks = structured
+                    payload = {
+                        "mode": "school_rag",
+                        **answer,
+                        "retrieved": [_summary(chunk) for chunk in chunks],
+                        "official_links": [],
+                        "route": decision,
+                    }
+                    chunks = []
+                else:
+                    chunks = self.school_retrieve(
                     retrieval_query,
                     top_k=top_k,
                     college=decision.college,
@@ -263,10 +311,10 @@ class HybridRuntime:
                         if decision.intent == "school_general"
                         else decision.intent
                     ),
-                )
-                if not chunks:
+                    )
+                if structured is None and not chunks:
                     payload = self._insufficient(decision, retrieved=[])
-                else:
+                elif structured is None:
                     raw = self.school_answer(decision.rewritten_query, chunks)
                     if raw["refused"] or raw["answer_md"] == REFUSAL_TEXT:
                         payload = self._insufficient(decision, retrieved=chunks)
@@ -291,6 +339,12 @@ class HybridRuntime:
             payload["route"] = decision.to_dict()
         else:
             payload.pop("route", None)
+        if (
+            payload.get("mode") == "school_rag"
+            and not payload.get("refused")
+            and payload.get("citations")
+        ):
+            payload["answer_md"] += _source_appendix(payload["citations"])
         return payload
 
     def ask(
@@ -339,6 +393,7 @@ class HybridRuntime:
             "cohorts": list(self.metadata_db.known_cohorts()),
             "chunk_count": report["chunks"],
             "default_top_k": 8,
+            "runtime": getattr(self, "runtime_info", {}),
         }
 
 

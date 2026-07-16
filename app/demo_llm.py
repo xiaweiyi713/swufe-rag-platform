@@ -50,6 +50,10 @@ class DemoGroundedClient:
             r"%|％|×|=|构成|占比", passage
         ):
             intent += 1.0
+        if re.search(r"综合.*成绩.*(?:怎么计算|怎么算)", question) and re.search(
+            r"综合测评成绩[^。；;]*=", passage
+        ):
+            intent += 2.5
         if re.search(r"进考场|进入考场|迟到", question) and re.search(
             r"未进入考场|取消.*考试资格", passage
         ):
@@ -60,6 +64,28 @@ class DemoGroundedClient:
             intent += 1.2
         if "最长学习年限" in question and re.search(r"最长为|最长学习年限.*\d", passage):
             intent += 1.5
+        if "专业选修" in question and "跨专业" not in question:
+            if re.search(
+                r"(?<!跨)专业选修课?模块[^。；;]{0,40}(?:不低于|至少|修满)\s*\d+(?:\.\d+)?\s*学分",
+                passage,
+            ):
+                intent += 2.2
+            if "跨专业选修" in passage:
+                intent -= 1.0
+        if re.search(r"最低|不低于|至少|多少学分|几学分", question) and re.search(
+            r"(?:不低于|至少|最低|修满)\s*\d+(?:\.\d+)?\s*学分", passage
+        ):
+            intent += 1.0
+        if "跨专业选修" in question:
+            if "跨专业选修" in passage:
+                intent += 2.5
+            if re.search(
+                r"(?:跨专业选修[^。；;]{0,60})?(?:不低于|至少|修满)\s*2(?:\.0)?\s*学分",
+                passage,
+            ):
+                intent += 1.2
+            if "专业选修课模块" in passage and "跨专业选修" not in passage:
+                intent -= 1.5
         header_only = len(passage) < 150 and (
             re.fullmatch(r"《[^》]+》[^。！？；;]*", passage)
             or re.fullmatch(r"下表为.{0,120}的原表[:：]", passage)
@@ -72,6 +98,11 @@ class DemoGroundedClient:
         text = passage.strip()
         if not text:
             return REFUSAL_TEXT
+        if chr(27880) in text:
+            note_positions = [text.rfind(value) for value in ("注：", "注:")]
+            note_start = max(note_positions)
+            if note_start >= 0 and len(text) - note_start >= 15:
+                text = text[note_start:]
         text = re.sub(r"[；;。]\s*\n", "，", text)
         text = re.sub(r"[:：]\s*\n", "：", text)
         text = re.sub(r"\s*\n\s*", "", text)

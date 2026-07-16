@@ -45,10 +45,16 @@ class BGEEncoder:
         *,
         query_prefix: str = DEFAULT_QUERY_PREFIX,
         device: str | None = None,
+        batch_size: int = 64,
+        use_fp16: bool | None = None,
     ) -> None:
+        if batch_size < 1:
+            raise ValueError("batch_size must be positive")
         self._model_name = model_name
         self.query_prefix = query_prefix
         self.device = device
+        self.batch_size = batch_size
+        self.use_fp16 = use_fp16
         self._model = None
 
     @property
@@ -65,7 +71,12 @@ class BGEEncoder:
                     "install requirements.txt"
                 ) from exc
             kwargs = {"device": self.device} if self.device else {}
-            self._model = SentenceTransformer(self.model_name, **kwargs)
+            model = SentenceTransformer(self.model_name, **kwargs)
+            actual_device = str(model.device)
+            should_use_fp16 = self.use_fp16 is True or (
+                self.use_fp16 is None and actual_device.startswith("cuda")
+            )
+            self._model = model.half() if should_use_fp16 else model
         return self._model
 
     @property
@@ -83,6 +94,7 @@ class BGEEncoder:
             convert_to_numpy=True,
             normalize_embeddings=True,
             show_progress_bar=len(texts) > 32,
+            batch_size=self.batch_size,
         )
         return normalize_rows(values)
 

@@ -182,6 +182,12 @@ class StrictGroundingValidator:
             raise CitationValidationError("answer is empty")
         if _plain_refusal(normalized):
             return GroundingResult(REFUSAL_TEXT, [])
+        refusal_core = normalize_query(REFUSAL_TEXT).strip().rstrip("。.!！")
+        normalized_core = normalize_query(normalized).strip().rstrip("。.!！")
+        if refusal_core in normalized_core:
+            raise CitationValidationError(
+                "answer mixes a grounded claim with the evidence-insufficient refusal"
+            )
 
         sentences = _sentences(normalized)
         marker_order: list[int] = []

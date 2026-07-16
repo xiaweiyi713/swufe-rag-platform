@@ -6,6 +6,7 @@ import csv
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+import re
 import sqlite3
 from threading import RLock
 from typing import Iterable, Sequence
@@ -43,6 +44,17 @@ class StoredChunk:
     is_table: bool
     embedding_row: int
 
+# The five 2023 program PDFs are verified extracts from the 673-page official
+# book. Their registry URL points to that complete book, so local extract page
+# numbers must be translated before a citation link is exposed to students.
+EXTRACT_PAGE_OFFSETS = {
+    "信息管理与信息系统专业2023级本科人才培养方案": 428,
+    "电子商务专业2023级本科人才培养方案": 438,
+    "计算机科学与技术专业2023级本科人才培养方案": 447,
+    "人工智能专业2023级本科人才培养方案": 457,
+    "“智能金融”光华实验班2023级本科人才培养方案": 467,
+}
+
 
 def _official_swufe_url(value: str) -> bool:
     parsed = urlparse(value)
@@ -50,6 +62,35 @@ def _official_swufe_url(value: str) -> bool:
     return parsed.scheme in {"http", "https"} and (
         host == "swufe.edu.cn" or host.endswith(".swufe.edu.cn")
     )
+
+
+def _physical_page(doc_title: str, article: str) -> int | None:
+    match = re.search(r"原文件第(\d+)页", article) or re.search(r"第(\d+)页", article)
+    if match is None:
+        return None
+    return int(match.group(1)) + EXTRACT_PAGE_OFFSETS.get(doc_title, 0)
+
+
+def _resolved_article(doc_title: str, article: str) -> str:
+    physical = _physical_page(doc_title, article)
+    if physical is None or doc_title not in EXTRACT_PAGE_OFFSETS:
+        return article
+    resolved = re.sub(r"原文件第\d+页", f"原文件第{physical}页", article)
+    return re.sub(r"第\d+页表格", f"原文件第{physical}页表格", resolved)
+
+
+def _chunk_page_url(
+    page_url: str, file_url: str, doc_title: str, article: str
+) -> str:
+    """Return an exact PDF page URL without changing source identity."""
+
+    physical = _physical_page(doc_title, article)
+    if physical is None:
+        return page_url
+    target = file_url if urlparse(file_url).path.lower().endswith(".pdf") else page_url
+    if not urlparse(target).path.lower().endswith(".pdf"):
+        return page_url
+    return target.split("#", 1)[0] + f"#page={physical}"
 
 
 def infer_topic(title: str, text: str = "") -> str:
@@ -184,6 +225,10 @@ class MetadataDB:
 
     @staticmethod
     def _signature(item: dict[str, object] | KnowledgeChunk) -> tuple[object, ...]:
+        # A PDF is registered once, while its chunks legitimately carry
+        # ``#page=N`` anchors. Trust binds to the immutable file URL and
+        # source metadata; the exact page remains chunk-local presentation
+        # metadata.
         return tuple(
             item[key]
             for key in (
@@ -193,7 +238,6 @@ class MetadataDB:
                 "cohort",
                 "year",
                 "status",
-                "page_url",
                 "file_url",
             )
         )
@@ -383,7 +427,8 @@ class MetadataDB:
             WHERE s.enabled = 1
               AND s.trusted = 1
               AND ((? IS NULL AND s.status = '现行')
-                   OR (? IS NOT NULL AND s.year = ?))
+                   OR (? IS NOT NULL AND s.year = ?)
+                   OR (? IS NULL AND ? IS NOT NULL AND s.cohort = ?))
               AND (? IS NULL OR s.level = '校级' OR s.college = ?)
               AND (? IS NULL OR s.cohort = '不限' OR s.cohort = ?)
               AND (? IS NULL OR s.topic = ?)
@@ -393,6 +438,9 @@ class MetadataDB:
             policy_year,
             policy_year,
             policy_year,
+            policy_year,
+            cohort,
+            cohort,
             college,
             college,
             cohort,
@@ -428,18 +476,52 @@ class MetadataDB:
             source_id=row["source_id"],
             text=row["text"],
             doc_title=row["doc_title"],
-            article=row["article"],
+            article=_resolved_article(row["doc_title"], row["article"]),
             level=row["level"],
             college=row["college"],
             cohort=row["cohort"],
             year=int(row["year"]),
             status=row["status"],
             topic=row["topic"],
-            page_url=row["page_url"],
+            page_url=_chunk_page_url(
+                row["page_url"], row["file_url"], row["doc_title"], row["article"]
+            ),
             file_url=row["file_url"],
             is_table=bool(row["is_table"]),
             embedding_row=int(row["embedding_row"]),
         )
+
+    def adjacent_chunks(
+        self, chunk_id: str, *, radius: int = 1
+    ) -> list[StoredChunk]:
+        if radius < 0 or radius > 4:
+            raise ValueError("radius must be between 0 and 4")
+        with self._lock:
+            base = self.connection.execute(
+                """
+                SELECT source_id, article, embedding_row
+                FROM chunks WHERE chunk_id = ?
+                """,
+                (chunk_id,),
+            ).fetchone()
+            if base is None:
+                return []
+            rows = self.connection.execute(
+                """
+                SELECT chunk_id FROM chunks
+                WHERE source_id = ? AND article = ?
+                  AND embedding_row BETWEEN ? AND ?
+                ORDER BY embedding_row
+                """,
+                (
+                    base["source_id"],
+                    base["article"],
+                    int(base["embedding_row"]) - radius,
+                    int(base["embedding_row"]) + radius,
+                ),
+            ).fetchall()
+        values = [self.chunk(str(row["chunk_id"])) for row in rows]
+        return [value for value in values if value is not None]
 
     def official_links(
         self,

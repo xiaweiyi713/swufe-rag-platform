@@ -42,6 +42,40 @@ class ChunkingTests(unittest.TestCase):
         self.assertEqual(set(table), set(CHUNK_FIELDS))
         self.assertEqual(len({chunk["chunk_id"] for chunk in chunks}), len(chunks))
 
+    def test_large_table_is_split_with_repeated_header(self) -> None:
+        rows = "\n".join(f"| 课程{i} | {i % 5 + 1} |" for i in range(40))
+        parsed = ParsedDocument(
+            Path("policy.txt"),
+            [DocumentElement("table", "| 课程 | 学分 |\n| --- | --- |\n" + rows)],
+        )
+        chunks = build_chunks(parsed, self._source(), chunk_max_len=220)
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(chunk["is_table"] for chunk in chunks))
+        self.assertTrue(all("| 课程 | 学分 |" in chunk["text"] for chunk in chunks))
+        self.assertTrue(all(len(chunk["text"]) <= 220 for chunk in chunks))
+
+    def test_program_heading_is_retained_in_article_scope(self) -> None:
+        parsed = ParsedDocument(
+            Path("plan.pdf"),
+            [DocumentElement("paragraph", "计算机科学与技术专业 2024级本科人才培养方案\n一、培养目标\n培养复合型人才。")],
+        )
+        chunks = build_chunks(parsed, self._source())
+        self.assertIn("计算机科学与技术专业", chunks[0]["article"])
+        self.assertIn("一、培养目标", chunks[0]["article"])
+
+    def test_missing_program_title_is_inferred_from_body_and_applies_to_table(self) -> None:
+        parsed = ParsedDocument(
+            Path("plan.pdf"),
+            [
+                DocumentElement("paragraph", "一、培养目标\n西南财经大学人工智能专业人才培养遵循党的教育方针。", page=1),
+                DocumentElement("table", "| 课程 | 学分 |\n| --- | --- |\n| 机器学习 | 3 |", page=1),
+            ],
+        )
+        chunks = build_chunks(parsed, self._source())
+        self.assertTrue(all("人工智能专业人才培养方案" in item["article"] for item in chunks))
+        table = next(item for item in chunks if item["is_table"])
+        self.assertTrue(table["article"].endswith("第1页表格"))
+
     def test_long_clause_splits_at_budget_with_stable_ids(self) -> None:
         parsed = ParsedDocument(
             Path("policy.txt"),
@@ -78,6 +112,57 @@ class ChunkingTests(unittest.TestCase):
         table = next(item for item in build_chunks(parsed, self._source()) if item["is_table"])
         self.assertEqual(table["article"], "第1页表格")
 
+    def test_original_pdf_pages_are_preserved_in_article_and_url(self) -> None:
+        source = SourceRecord(
+            file="school/23级培养方案.pdf",
+            doc_title="西南财经大学2023级本科人才培养方案（完整总册）",
+            level="校级",
+            college="全校",
+            cohort="2023",
+            year=2023,
+            status="现行",
+            page_url="https://jwc.swufe.edu.cn/2023-plan.pdf?e=.pdf",
+            file_url="https://jwc.swufe.edu.cn/2023-plan.pdf?e=.pdf",
+            collected_at="2026-07-16",
+        )
+        parsed = ParsedDocument(
+            Path("23级培养方案.pdf"),
+            [
+                DocumentElement("paragraph", "计算机科学与技术专业2023级本科人才培养方案\n一、培养目标\n培养复合型人才。", page=448),
+                DocumentElement("paragraph", "本专业毕业最低学分为165学分。", page=449),
+            ],
+        )
+        chunks = build_chunks(parsed, source)
+        self.assertEqual(len(chunks), 2)
+        self.assertIn("第448页", chunks[0]["article"])
+        self.assertIn("第449页", chunks[1]["article"])
+        self.assertTrue(chunks[0]["page_url"].endswith("#page=448"))
+        self.assertTrue(chunks[1]["page_url"].endswith("#page=449"))
+
+
+    def test_pdf_file_url_is_used_when_page_url_is_an_html_landing_page(self) -> None:
+        source = SourceRecord(
+            file="school/principles.pdf",
+            doc_title="本科专业人才培养方案原则性意见",
+            level="校级",
+            college="全校",
+            cohort="2025",
+            year=2025,
+            status="现行",
+            page_url="https://jwc.swufe.edu.cn/info/1032/37201.htm",
+            file_url="https://jwc.swufe.edu.cn/principles.pdf",
+            collected_at="2026-07-16",
+        )
+        parsed = ParsedDocument(
+            Path("principles.pdf"),
+            [DocumentElement("paragraph", "第一条 本意见适用于2025级本科生。", page=3)],
+        )
+        chunk = build_chunks(parsed, source)[0]
+        self.assertEqual(
+            chunk["page_url"],
+            "https://jwc.swufe.edu.cn/principles.pdf#page=3",
+        )
+        self.assertEqual(chunk["file_url"], source.file_url)
 
 if __name__ == "__main__":
     unittest.main()

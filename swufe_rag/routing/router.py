@@ -41,9 +41,10 @@ class LLMRouteClassifier:
         return raw
 
 
-COHORT_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})\s*级")
+COHORT_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})\s*(?:级|届)")
 POLICY_YEAR_RE = re.compile(
-    r"(?<!\d)((?:19|20)\d{2})\s*年(?:的)?(?:政策|规定|办法|通知|推免|保研|细则|方案)"
+    r"(?<!\d)((?:19|20)\d{2})\s*年"
+    r"(?:(?:的)?(?:政策|规定|办法|通知|推免|保研|细则|方案)|版)"
 )
 FOLLOW_UP_RE = re.compile(
     r"^(?:那|那么|然后|还有|还|这个|这种情况|重修通过后|以后|之后)"
@@ -55,9 +56,33 @@ SCHOOL_ENTITY_RE = re.compile(
 SCHOOL_POLICY_RE = re.compile(
     r"培养方案|推免|保研|推荐免试|选课|学分认定|毕业学分|专业选修|必修课|"
     r"修多少学分|多少学分|学分够不够|学分要求|"
+    r"自由选修|自选课|专业方向|实践环节|课程设置|课程代码|课程课号|开课学期|课程学时|"
+    r"计划学制|修业年限|专业准入|专业准出|授予学位|培养目标|"
     r"挂科|不及格|重修|考试|考核|缓考|休学|转学|转专业|专业分流|辅修|免修|学籍|"
-    r"课程代码|教务系统|校内通知|官方通知|教务处通知"
+    r"教务系统|校内通知|官方通知|教务处通知"
     r"|毕业论文|毕业设计|学位授予|奖学金|数字课程"
+)
+MAJOR_ENTITY_RE = re.compile(
+    r"(?:[\u4e00-\u9fff]{2,30}(?:专业|专业类)|计算机科学|计科|"
+    r"(?<![A-Za-z0-9])CS(?:专业)?(?![A-Za-z0-9])|"
+    r"人工智能|(?<![A-Za-z0-9])AI专业(?![A-Za-z0-9])|智能专业)",
+    re.I,
+)
+ACADEMIC_STAGE_RE = re.compile(
+    r"大[一二三四](?:上|下)?|第[一二三四五六七八九十0-9]+学期|暑期学期|春季学期|秋季学期"
+)
+CURRICULUM_FACT_RE = re.compile(
+    r"课程|什么课|啥课|修.*课|学什么|学分|修几分|学制|修业年限|学位|准入|准出|"
+    r"学期|学时|代码|课号|选修|必修|方向课|实践环节|实践课|培养|毕业|教学周|课程模块"
+)
+COURSE_DETAIL_RE = re.compile(
+    r"课程.{0,20}(?:代码|学分|学时|学期|开设|设置|模块|必修|选修|学院|几门)|"
+    r"(?:几门|代码|课号|学分|学时|学期).{0,20}课程|"
+    r"课程.{0,20}(?:选择|有哪些)|在哪些?个?学期开设|哪个学院开设"
+ )
+CURRICULUM_ENTITY_RE = re.compile(
+    r"公共外语|大学英语|专门用途英语|跨文化交际|听说写能力训练|艺术类课程|"
+    r"体育课程|军事教育|思想政治|数学课程|程序设计|专业必修|专业方向"
 )
 CAMPUS_FACT_RE = re.compile(
     r"校园网|食堂|宿舍|校车|图书馆|一卡通|校内邮箱|校内网站|校内网址"
@@ -78,12 +103,20 @@ GENERAL_SWITCH_RE = re.compile(
 
 INTENT_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"推免|保研|推荐免试|竞赛.*加分|比赛.*加分"), "promotion"),
-    (re.compile(r"培养方案|毕业学分|专业选修|必修课|修读|修满"), "curriculum"),
+    (
+        re.compile(
+            r"培养方案|毕业.*学分|总学分|最低学分|专业选修|自由选修|自选课|必修课|"
+            r"选修课|有什么.*课|有哪些.*课|体育课程|修读|修满|修什么课|"
+            r"要修什么课|哪些课程|选修课程|课程设置|学制|修业年限|专业准入|"
+            r"专业准出|实践环节|开课学期|第[一二三四五六七八1-8]学期.*课|大[一二三四].*课"
+        ),
+        "curriculum",
+    ),
     (re.compile(r"选课|应该选|怎么选"), "course_selection"),
     (re.compile(r"转专业|专业分流"), "transfer"),
+    (re.compile(r"学分认定|免修|辅修"), "credit"),
     (re.compile(r"考试|缓考|考核"), "assessment"),
     (re.compile(r"挂科|不及格|重修|休学|学籍|转学"), "academic_status"),
-    (re.compile(r"学分认定|免修|辅修"), "credit"),
     (CAMPUS_FACT_RE, "campus_service"),
 )
 
@@ -133,6 +166,8 @@ class HybridRouter:
         for common in ("计算机与人工智能学院", "金融学院"):
             if common in question:
                 return common
+        if re.search(r"计算机科学与技术|人工智能专业", question):
+            return "计算机与人工智能学院"
         return None
 
     @staticmethod
@@ -162,6 +197,15 @@ class HybridRouter:
     @staticmethod
     def _definite_school_fact(question: str) -> bool:
         if SCHOOL_POLICY_RE.search(question):
+            return True
+        if COURSE_DETAIL_RE.search(question):
+            return True
+        if CURRICULUM_FACT_RE.search(question) and (
+            COHORT_RE.search(question)
+            or MAJOR_ENTITY_RE.search(question)
+            or ACADEMIC_STAGE_RE.search(question)
+            or CURRICULUM_ENTITY_RE.search(question)
+        ):
             return True
         if re.search(r"[A-Za-z]{2,}\d{2,4}", question) and re.search(
             r"学分|课程|什么课|选修|必修", question
@@ -196,6 +240,15 @@ class HybridRouter:
         intent = _intent(question)
         rewritten = question
         inherited = context.last_mode == "school_rag" and FOLLOW_UP_RE.search(question)
+        scope_follow_up = (
+            context.last_mode == "school_rag"
+            and context.last_cohort is not None
+            and COHORT_RE.search(question) is None
+            and CURRICULUM_FACT_RE.search(question) is not None
+            and intent in {"curriculum", "course_selection", "school_general"}
+        )
+        if scope_follow_up:
+            cohort = cohort or context.last_cohort
         if inherited and context.last_rewritten_query:
             rewritten = f"{context.last_rewritten_query}；用户追问：{question}"
             if context.last_intent:
@@ -231,7 +284,9 @@ class HybridRouter:
 
         if self._explicit_general(clean):
             return self._general(clean, 0.99)
-        if self._definite_school_fact(clean):
+        if self._definite_school_fact(clean) or (
+            (resolved_college or resolved_cohort) and CURRICULUM_FACT_RE.search(clean)
+        ):
             return self._school(
                 clean,
                 context,

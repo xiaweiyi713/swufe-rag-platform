@@ -6,12 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
 from typing import Any
+import re
 
 import numpy as np
 
 from contracts import RetrievedChunk
 from retrieval.embed import BGEEncoder, Encoder
-from retrieval.query import analyze_query, chunk_search_text, exact_signal_score, lexical_tokens
+from retrieval.query import analyze_query, chunk_search_text, entity_coverage, exact_signal_score, lexical_tokens, normalize_query
 from retrieval.reranker import BGEReranker, HeuristicReranker, Reranker, rerank_documents
 from retrieval.retriever import HybridRetriever
 
@@ -67,7 +68,11 @@ class AdvancedRetriever:
         *,
         use_reranker: bool = True,
         rerank_model: str = "BAAI/bge-reranker-base",
+        use_bm25: bool = True,
+        rrf_k: int = 60,
         tuning: RetrievalTuning | None = None,
+        sources_path: str | Path = "data/sources.csv",
+        metadata_path: str | Path = "data/metadata.sqlite3",
     ) -> "AdvancedRetriever":
         actual_encoder = encoder or BGEEncoder()
         actual_tuning = tuning or RetrievalTuning()
@@ -76,6 +81,10 @@ class AdvancedRetriever:
             artifacts_dir,
             actual_encoder,
             candidate_k=actual_tuning.candidate_k,
+            rrf_k=rrf_k,
+            use_bm25=use_bm25,
+            sources_path=sources_path,
+            metadata_path=metadata_path,
         )
         reranker = BGEReranker(rerank_model) if use_reranker else None
         return cls(core, reranker=reranker, tuning=actual_tuning)
@@ -86,9 +95,12 @@ class AdvancedRetriever:
         seen_text: set[str] = set()
         unique: list[RetrievedChunk] = []
         for chunk in chunks:
+            text = str(chunk["text"])
+            body = text.split("\n", 1)[-1] if "\n" in text else text
+            body = re.sub(r"原文件第\d+页|第\d+页表格", "", body)
             fingerprint = "".join(
                 character.lower()
-                for character in str(chunk["text"])
+                for character in body
                 if character.isalnum()
             )
             if chunk["chunk_id"] in seen_ids or fingerprint in seen_text:
@@ -180,6 +192,50 @@ class AdvancedRetriever:
         )
         if not candidates:
             return []
+        # When an official program-specific extract exists, it is the
+        # authoritative retrieval record for that major/cohort. The complete
+        # book remains indexed for coverage, but its duplicate passages must
+        # not occupy the same Top-K window or carry stale program scope.
+        cohort_match = re.search(r"(?<!\d)((?:19|20)\d{2})级", analysis.normalized)
+        major_markers = [
+            marker
+            for marker in ("计算机科学与技术专业", "人工智能专业")
+            if marker in analysis.normalized
+        ]
+        if cohort_match and len(major_markers) == 1:
+            marker = major_markers[0]
+            cohort_marker = cohort_match.group(1) + "级"
+            specific = [
+                chunk
+                for chunk in candidates
+                if marker in chunk["doc_title"]
+                and cohort_marker in chunk["doc_title"]
+                and "完整总册" not in chunk["doc_title"]
+            ]
+            if specific:
+                candidates = specific
+        # A school-wide question about the recommended graduation-credit range
+        # asks for the curriculum principle, not the minimum of an arbitrary
+        # individual major. Keep the exact principle clauses when present so
+        # unrelated major totals do not create an artificial conflict for the
+        # fail-closed answer generator.
+        if re.search(r"建议.*毕业.*学分.*范围|毕业.*学分.*范围", analysis.normalized):
+            principle = [
+                chunk
+                for chunk in candidates
+                if "各专业人才培养方案建议毕业学分要求"
+                in normalize_query(chunk_search_text(chunk))
+            ]
+            if principle:
+                candidates = principle
+        # Explicit course codes and named Latin entities are evidence-bearing.
+        # If the candidate window contains exact supporting chunks, prevent a
+        # semantic reranker from pushing all of them out of the returned set.
+        entity_matched = [
+            chunk for chunk in candidates if entity_coverage(analysis, [chunk])
+        ]
+        if analysis.required_entities and entity_matched:
+            candidates = entity_matched
 
         dense = np.asarray(
             [max(0.0, min(1.0, (chunk["score"] + 1.0) / 2.0)) for chunk in candidates],
@@ -200,6 +256,15 @@ class AdvancedRetriever:
             + self.tuning.rerank_weight * reranked
             + self.tuning.rank_prior_weight * prior
         )
+        # A selected college is a strong user constraint. School-level chunks
+        # remain eligible for university-wide rules, but they must not crowd a
+        # matching college plan out of a small result window merely because the
+        # full curriculum book contains many near-identical passages.
+        if college:
+            relevance += np.asarray(
+                [0.12 if chunk["college"] == college else 0.0 for chunk in candidates],
+                dtype=np.float32,
+            )
         stable_order = sorted(
             range(len(candidates)),
             key=lambda index: (
@@ -210,8 +275,48 @@ class AdvancedRetriever:
         )
         ordered_chunks = [candidates[index] for index in stable_order]
         ordered_scores = relevance[stable_order]
-        selected = self._select_mmr(ordered_chunks, ordered_scores, min(top_k, len(ordered_chunks)))
-        return [ordered_chunks[index] for index in selected]
+        selected = self._select_mmr(
+            ordered_chunks, ordered_scores, min(top_k, len(ordered_chunks))
+        )
+        results = [ordered_chunks[index] for index in selected]
+
+        # Keep at least one item from the explicitly selected college whenever
+        # such evidence exists. This prevents dozens of similar school-level
+        # plan passages from occupying the complete Top-K window.
+        if college and results and not any(
+            chunk["college"] == college for chunk in results
+        ):
+            college_evidence = next(
+                (chunk for chunk in ordered_chunks if chunk["college"] == college),
+                None,
+            )
+            if college_evidence is not None:
+                results[-1] = college_evidence
+
+        # Comparison answers need evidence from every explicitly named major.
+        # Dense/MMR ranking can otherwise fill the window with near-duplicate
+        # tables from one plan only.
+        major_markers = [
+            marker
+            for marker in ("计算机科学与技术专业", "人工智能专业")
+            if marker in analysis.normalized
+        ]
+        if len(major_markers) > 1 and results:
+            for marker in major_markers:
+                if any(marker in chunk_search_text(chunk) for chunk in results):
+                    continue
+                replacement = next(
+                    (
+                        chunk
+                        for chunk in ordered_chunks
+                        if marker in chunk_search_text(chunk)
+                        and all(chunk["chunk_id"] != item["chunk_id"] for item in results)
+                    ),
+                    None,
+                )
+                if replacement is not None:
+                    results[-1] = replacement
+        return results
 
 
 _default_retriever: AdvancedRetriever | None = None

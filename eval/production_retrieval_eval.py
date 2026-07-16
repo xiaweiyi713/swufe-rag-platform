@@ -53,12 +53,22 @@ def evaluate(
     false_accept_ids: list[str] = []
     false_refusal_ids: list[str] = []
     for case in cases:
-        results = actual_retriever.retrieve(
-            case["question"],
-            5,
-            case.get("college"),
-            case.get("cohort"),
-        )
+        if hasattr(actual_retriever, "retrieve_scoped"):
+            results = actual_retriever.retrieve_scoped(
+                case["question"],
+                top_k=5,
+                college=case.get("college"),
+                cohort=case.get("cohort"),
+                policy_year=case.get("policy_year"),
+                topic=case.get("topic"),
+            )
+        else:
+            results = actual_retriever.retrieve(
+                case["question"],
+                5,
+                case.get("college"),
+                case.get("cohort"),
+            )
         expected = set(case.get("expected_docs", []))
         docs = [item["doc_title"] for item in results]
         hit = not expected or bool(expected & set(docs))

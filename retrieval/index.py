@@ -256,8 +256,20 @@ def main() -> None:
     parser.add_argument("--chunks", default="data/chunks.jsonl")
     parser.add_argument("--artifacts", default="artifacts")
     parser.add_argument("--model", default="BAAI/bge-large-zh-v1.5")
+    parser.add_argument("--device", default=None)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--fp32", action="store_true")
     args = parser.parse_args()
-    manifest = build_index(args.chunks, args.artifacts, BGEEncoder(args.model))
+    manifest = build_index(
+        args.chunks,
+        args.artifacts,
+        BGEEncoder(
+            args.model,
+            device=args.device,
+            batch_size=args.batch_size,
+            use_fp16=False if args.fp32 else None,
+        ),
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

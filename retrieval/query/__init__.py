@@ -32,6 +32,15 @@ DOMAIN_EXPANSIONS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
     (("换专业",), ("转专业",)),
     (("申请转专业前", "转专业前必须"), ("第一学年", "全部必修课程")),
     (("休学一年",), ("休学", "学籍")),
+    (("计科", "计算机科学"), ("计算机科学与技术专业",)),
+    (("AI专业", "智能专业"), ("人工智能专业",)),
+    (("大一上", "第一学期"), ("第1学期", "开课学期")),
+    (("大一下", "第二学期"), ("第2学期", "开课学期")),
+    (("大一要修", "大一修什么", "大一课程"), ("第一学期", "第二学期", "开课学期", "课程设置")),
+    (("专业方向课", "专业方向课程"), ("专业选修课",)),
+    (("专业选修课", "专业选修课程"), ("专业方向课程",)),
+    (("自选课",), ("自由选修课",)),
+    (("总学分", "修满多少分"), ("毕业最低学分",)),
     (("考试必须带哪些证件", "考试带什么证件", "参加考试带哪些证件"), ("有效身份证件", "准考证")),
 )
 
@@ -55,7 +64,21 @@ REQUIRED_DOMAIN_PHRASES = (
 
 
 def normalize_query(text: str) -> str:
-    normalized = unicodedata.normalize("NFKC", text)
+    normalized = unicodedata.normalize("NFKC", text).replace("学份", "学分")
+    normalized = re.sub(r"(?<!\d)(\d{2})\s*(?:级|届)", lambda m: f"20{m.group(1)}级", normalized)
+    normalized = re.sub(r"(?<!\d)((?:19|20)\d{2})\s*届", r"\1级", normalized)
+    normalized = re.sub(r"(?i)(?<![A-Za-z0-9])CS(?=\d{2}(?!\d))", "计算机科学与技术专业20", normalized)
+    normalized = re.sub(r"(?i)(?<![A-Za-z0-9])CS(?:专业)?(?![A-Za-z0-9])", "计算机科学与技术专业", normalized)
+    normalized = normalized.replace("计科", "计算机科学与技术专业")
+    normalized = normalized.replace("计算机科学专业", "计算机科学与技术专业")
+    normalized = re.sub(
+        r"计算机科学(?=\s*(?:19|20)\d{2}级)",
+        "计算机科学与技术专业",
+        normalized,
+    )
+    normalized = normalized.replace("AI专业", "人工智能专业")
+    normalized = re.sub(r"(?<!人工)智能专业", "人工智能专业", normalized)
+    normalized = normalized.replace("C语言程序设计", "程序设计(C语言)")
     return re.sub(r"\s+", " ", normalized).strip()
 
 
@@ -98,8 +121,11 @@ def required_query_entities(query: str) -> tuple[str, ...]:
         candidate = re.split(r"的", candidate)[-1]
         candidate = re.sub(r"^(请问|想问|那么|这个)", "", candidate)
         candidate = re.sub(r"\d{4}级$", "", candidate)
+        candidate = re.sub(r"(?:还|分别|范围|是否|属于)$", "", candidate)
+        candidate = candidate.strip()
         if 2 <= len(candidate) <= 10 and candidate not in {
             "课程",
+            "课",
             "这门课",
             "要求",
             "条件",

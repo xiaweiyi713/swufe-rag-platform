@@ -1,10 +1,11 @@
-"""Article-aware chunking that preserves tables as atomic evidence."""
+"""Article-aware chunking with bounded, header-preserving table windows."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
 import re
+from urllib.parse import urlsplit, urlunsplit
 
 from contracts import KnowledgeChunk, validate_chunk
 from ingest.models import DocumentElement, ParsedDocument, SourceRecord
@@ -16,6 +17,12 @@ _CHAPTER_RE = re.compile(rf"^\s*(第[{_NUMERALS}]+[章节])\s*(.*?)\s*$")
 _ARTICLE_RE = re.compile(rf"^\s*(第[{_NUMERALS}]+条)\s*(.*?)\s*$")
 _CN_HEADING_RE = re.compile(rf"^\s*([{_NUMERALS}]+、)\s*(.*?)\s*$")
 _LIST_ITEM_RE = re.compile(r"^\s*(\d{1,3})\s*[.·、]\s*(.+)$")
+_PROGRAM_HEADING_RE = re.compile(
+    r"^.{2,100}(?:专业|专业类|计算机类).{0,40}(?:本科)?人才培养方案$"
+)
+_PROGRAM_BODY_START_RE = re.compile(
+    r"^西南财经大学(.{2,80}?(?:专业|专业类))人才培养"
+)
 _INLINE_BOUNDARY_RE = re.compile(
     rf"(?<=[。！？；;])(?=第[{_NUMERALS}]+(?:条|章|节))"
 )
@@ -27,6 +34,7 @@ class _Segment:
     article: str
     text: str
     is_table: bool
+    page: int | None
 
 
 def _logical_lines(text: str) -> list[str]:
@@ -40,6 +48,7 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
     chapter = ""
     article = "正文"
     base_article = "正文"
+    current_page: int | None = None
 
     def label() -> str:
         return " / ".join(item for item in (chapter, article) if item and item != "正文") or "正文"
@@ -47,14 +56,20 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
     def flush() -> None:
         text = join_wrapped_lines("\n".join(buffer))
         if text:
-            result.append(_Segment(label(), text, False))
+            result.append(_Segment(label(), text, False, current_page))
         buffer.clear()
 
     for element in elements:
+        if element.page is not None and element.page != current_page:
+            flush()
+            current_page = element.page
         if element.kind == "table":
             flush()
-            table_article = f"第{element.page}页表格" if element.page else label()
-            result.append(_Segment(table_article, element.text, True))
+            if element.page and chapter:
+                table_article = f"{chapter} / 第{element.page}页表格"
+            else:
+                table_article = f"第{element.page}页表格" if element.page else label()
+            result.append(_Segment(table_article, element.text, True, element.page))
             continue
         for line in _logical_lines(element.text):
             chapter_match = _CHAPTER_RE.match(line)
@@ -72,6 +87,20 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
                 remainder = article_match.group(2).strip()
                 if remainder:
                     buffer.append(remainder)
+                continue
+            if _PROGRAM_HEADING_RE.match(line):
+                flush()
+                chapter = line[:100]
+                article = "正文"
+                base_article = "正文"
+                continue
+            program_body_match = _PROGRAM_BODY_START_RE.match(line)
+            if program_body_match:
+                program = program_body_match.group(1)
+                if program not in chapter:
+                    flush()
+                    chapter = f"{program}人才培养方案"
+                buffer.append(line)
                 continue
             heading_match = _CN_HEADING_RE.match(line)
             if element.kind == "heading" or heading_match:
@@ -119,6 +148,63 @@ def _split_body(text: str, limit: int) -> list[str]:
         parts.append(current)
     return parts
 
+def _split_table(markdown: str, limit: int) -> list[str]:
+    """Split large Markdown tables on row boundaries and repeat the header."""
+
+    intro = "原表：\n"
+    if len(intro) + len(markdown) <= limit:
+        return [intro + markdown]
+    lines = [line for line in markdown.splitlines() if line.strip()]
+    header_lines = (
+        lines[:2]
+        if len(lines) >= 2 and lines[0].lstrip().startswith("|")
+        and lines[1].lstrip().startswith("|")
+        else []
+    )
+    rows = lines[2:] if header_lines else lines
+    header = "\n".join(header_lines)
+    fixed = intro + (header + "\n" if header else "")
+    if len(fixed) >= limit:
+        fixed = intro
+    row_budget = max(1, limit - len(fixed))
+    groups: list[list[str]] = []
+    current: list[str] = []
+    current_len = len(fixed)
+    for row in rows:
+        needed = len(row) + (1 if current else 0)
+        if len(row) > row_budget:
+            if current:
+                groups.append(current)
+                current = []
+                current_len = len(fixed)
+            groups.extend(
+                [[row[start : start + row_budget]]
+                 for start in range(0, len(row), row_budget)]
+            )
+            continue
+        if current and current_len + needed > limit:
+            groups.append(current)
+            current = []
+            current_len = len(fixed)
+        current.append(row)
+        current_len += len(row) + (1 if len(current) > 1 else 0)
+    if current:
+        groups.append(current)
+    if not groups:
+        return _split_body(intro + markdown, limit)
+    return [fixed + "\n".join(group) for group in groups]
+
+def _page_url(source: SourceRecord, page: int | None) -> str:
+    """Return an exact PDF page link when the source is the original file."""
+
+    if page is None or "/training/" in f"/{source.file.replace(chr(92), '/')}":
+        return source.page_url
+    base_url = source.page_url if ".pdf" in source.page_url.lower() else source.file_url
+    if ".pdf" not in base_url.lower():
+        return source.page_url
+    parsed = urlsplit(base_url)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, f"page={page}"))
+
 
 def build_chunks(
     document: ParsedDocument,
@@ -134,10 +220,13 @@ def build_chunks(
 
     for segment in _segments(document.elements):
         article = segment.article or "正文"
+        page_label = f"原文件第{segment.page}页" if segment.page else ""
+        if page_label and f"第{segment.page}页" not in article:
+            article = f"{article} / {page_label}"
+        prefix = f"《{source.doc_title}》{article}\n"
         if segment.is_table:
-            bodies = [f"下表为{source.doc_title}中“{article}”的原表：\n{segment.text}"]
+            bodies = _split_table(segment.text, chunk_max_len - len(prefix))
         else:
-            prefix = f"《{source.doc_title}》{article}\n"
             bodies = _split_body(segment.text, chunk_max_len - len(prefix))
         for body in bodies:
             text = f"《{source.doc_title}》{article}\n{body}".strip()
@@ -151,7 +240,7 @@ def build_chunks(
                 "cohort": source.cohort,
                 "year": source.year,
                 "status": source.status,
-                "page_url": source.page_url,
+                "page_url": _page_url(source, segment.page),
                 "file_url": source.file_url,
                 "is_table": segment.is_table,
             }

@@ -49,6 +49,16 @@ class AdvancedGenerationTests(unittest.TestCase):
         with self.assertRaisesRegex(CitationValidationError, "more than four"):
             validator.validate("申请人应为应届毕业生[1][2][3][4][5]。", chunks)
 
+    def test_grounded_answer_cannot_append_evidence_refusal(self) -> None:
+        validator = StrictGroundingValidator()
+        chunk = retrieved("fixture_it_table_011")
+        answer = (
+            "该课程为3学分[1]。"
+            f"{REFUSAL_TEXT}"
+        )
+        with self.assertRaisesRegex(CitationValidationError, "mixes"):
+            validator.validate(answer, [chunk])
+
     def test_refusal_without_terminal_period_is_canonicalized(self) -> None:
         client = FakeClient([REFUSAL_TEXT.rstrip("。")])
         service = AdvancedGenerationService(client)

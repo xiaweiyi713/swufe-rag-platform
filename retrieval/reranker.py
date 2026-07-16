@@ -34,9 +34,13 @@ class BGEReranker:
         model_name: str = DEFAULT_RERANK_MODEL,
         *,
         device: str | None = None,
-        max_length: int = 1024,
+        max_length: int = 512,
         batch_size: int = 16,
     ) -> None:
+        if max_length < 8:
+            raise ValueError("max_length must be at least 8")
+        if batch_size < 1:
+            raise ValueError("batch_size must be positive")
         self.model_name = model_name
         self.device = device
         self.max_length = max_length
