@@ -455,9 +455,9 @@ def build_full_catalog(
                     "source_title": plan_courses[0]["source_title"],
                 },
             )
-            required = module.get("required_credits") or module.get("listed_credits")
+            required = module.get("required_credits")
             if required is None and module_courses and all("必修" in value["nature"] for value in module_courses):
-                required = catalog_credits
+                required = module.get("listed_credits") or catalog_credits
             plan_modules.append(
                 {
                     **module,

@@ -49,14 +49,22 @@ def audit(
     rows = connection.execute(
         """
         SELECT s.source_id, s.source_key, s.doc_title, s.local_path,
-               count(DISTINCT p.chunk_id) AS chunks,
-               count(DISTINCT CASE WHEN p.is_primary=1 THEN p.chunk_id END) AS primary_chunks,
-               count(DISTINCT p.source_page) AS indexed_pages,
-               count(DISTINCT c.id) AS course_rows
+               COALESCE(p.chunks, 0) AS chunks,
+               COALESCE(p.primary_chunks, 0) AS primary_chunks,
+               COALESCE(p.indexed_pages, 0) AS indexed_pages,
+               COALESCE(c.course_rows, 0) AS course_rows
         FROM document_sources AS s
-        LEFT JOIN policy_chunks AS p ON p.source_id=s.source_id
-        LEFT JOIN course_offerings AS c ON c.source_id=s.source_id
-        GROUP BY s.source_id ORDER BY s.source_key
+        LEFT JOIN (
+            SELECT source_id, count(*) AS chunks,
+                   sum(CASE WHEN is_primary=1 THEN 1 ELSE 0 END) AS primary_chunks,
+                   count(DISTINCT source_page) AS indexed_pages
+            FROM policy_chunks GROUP BY source_id
+        ) AS p ON p.source_id=s.source_id
+        LEFT JOIN (
+            SELECT source_id, count(*) AS course_rows
+            FROM course_offerings GROUP BY source_id
+        ) AS c ON c.source_id=s.source_id
+        ORDER BY s.source_key
         """
     ).fetchall()
     sources: list[dict[str, Any]] = []

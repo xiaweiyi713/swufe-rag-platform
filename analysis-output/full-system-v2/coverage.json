@@ -4,7 +4,7 @@
     "document_sources": 57,
     "policy_chunks": 60827,
     "course_offerings": 35828,
-    "program_requirements": 2974
+    "program_requirements": 5515
   },
   "categories": {
     "full_curriculum": {
@@ -988,6 +988,8 @@
       "course_rows": 0
     }
   ],
+  "missing_substantive_pages": [],
+  "substantive_page_coverage_complete": true,
   "ignored_generated_files": [
     ".gitkeep",
     "it/training/2023级计智相关本科人才培养方案.pdf"

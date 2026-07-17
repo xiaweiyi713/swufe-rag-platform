@@ -107,9 +107,9 @@ def _plans(courses: list[dict[str, Any]], modules: list[dict[str, Any]]) -> list
                     "source_title": plan_courses[0]["source_title"],
                 },
             )
-            required = record.get("required_credits") or record.get("listed_credits")
+            required = record.get("required_credits")
             if required is None and scoped and all("必修" in course["nature"] for course in scoped):
-                required = catalog_credits
+                required = record.get("listed_credits") or catalog_credits
             plan_modules.append(
                 {
                     **record,

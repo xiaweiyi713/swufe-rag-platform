@@ -64,6 +64,18 @@ class DemoGroundedClient:
             intent += 1.2
         if "最长学习年限" in question and re.search(r"最长为|最长学习年限.*\d", passage):
             intent += 1.5
+        if re.search(
+            r"每学期.{0,12}(?:最多|至多|不超过).{0,8}学分|"
+            r"(?:最多|至多|不超过).{0,8}学分.{0,12}每学期",
+            question,
+        ):
+            if "每学期" in passage and re.search(
+                r"每学期.{0,30}(?:不超过|最多|至多)\s*\d+(?:\.\d+)?\s*(?:个)?学分",
+                passage,
+            ):
+                intent += 4.0
+            if "自由选修" in passage and "每学期" not in passage:
+                intent -= 2.5
         if "专业选修" in question and "跨专业" not in question:
             if re.search(
                 r"(?<!跨)专业选修课?模块[^。；;]{0,40}(?:不低于|至少|修满)\s*\d+(?:\.\d+)?\s*学分",

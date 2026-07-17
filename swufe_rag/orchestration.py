@@ -123,12 +123,15 @@ def _source_appendix(citations: list[dict[str, Any]]) -> str:
     for citation in citations:
         article = str(citation.get("article") or "")
         page_url = str(citation.get("page_url") or "")
+        file_url = str(citation.get("file_url") or "")
         match = re.search(r"原文件第(\d+)页", article)
         if match is None:
             match = re.search(r"(?:#|[?&])page=(\d+)", page_url)
         page = f"原文件第{int(match.group(1))}页" if match else "页码未标注"
+        page_link = f"[{page}]({page_url})" if page_url else page
+        file_link = f"[下载原文件]({file_url})" if file_url else "原文件链接未登记"
         lines.append(
-            f"- [{citation['marker']}]《{citation['doc_title']}》，{page}"
+            f"- [{citation['marker']}]《{citation['doc_title']}》，{page_link} · {file_link}"
         )
     return "\n\n" + "\n".join(lines)
 

@@ -53,6 +53,7 @@ EXTRACT_PAGE_OFFSETS = {
     "计算机科学与技术专业2023级本科人才培养方案": 447,
     "人工智能专业2023级本科人才培养方案": 457,
     "“智能金融”光华实验班2023级本科人才培养方案": 467,
+    "计算机与人工智能学院相关本科人才培养方案（2024级）": 373,
 }
 
 
@@ -80,9 +81,18 @@ def _resolved_article(doc_title: str, article: str) -> str:
 
 
 def _chunk_page_url(
-    page_url: str, file_url: str, doc_title: str, article: str
+    page_url: str,
+    file_url: str,
+    doc_title: str,
+    article: str | None = None,
 ) -> str:
     """Return an exact PDF page URL without changing source identity."""
+
+    # Preserve the original public helper contract (page_url, file_url,
+    # article) while supporting extract-aware callers that also pass title.
+    if article is None:
+        article = doc_title
+        doc_title = ""
 
     physical = _physical_page(doc_title, article)
     if physical is None:

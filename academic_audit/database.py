@@ -11,6 +11,7 @@ import csv
 from hashlib import sha256
 import json
 from pathlib import Path
+from threading import RLock
 import re
 import sqlite3
 from typing import Any, Iterable
@@ -20,7 +21,7 @@ from retrieval.index import file_sha256
 from storage.metadata_db import EXTRACT_PAGE_OFFSETS
 
 
-DATABASE_VERSION = "1.0"
+DATABASE_VERSION = "1.1"
 DEFAULT_DATABASE = Path(__file__).parents[1] / "data" / "academic.sqlite3"
 DEFAULT_CATALOG = Path(__file__).parents[1] / "data" / "curriculum_catalog.json"
 DEFAULT_SOURCES = Path(__file__).parents[1] / "data" / "sources.csv"
@@ -379,18 +380,24 @@ def _insert_requirements(
     catalog: dict[str, Any],
     exact: dict[tuple[str, str, str], dict[str, Any]],
     by_title: dict[str, list[dict[str, Any]]],
+    chunks_path: Path,
 ) -> None:
     staged: list[dict[str, Any]] = []
     for plan in catalog.get("plans", []):
-        source = _resolve_source(
-            title=plan["source_title"],
-            cohort=str(plan["cohort"]),
-            file_url=None,
-            exact=exact,
-            by_title=by_title,
-        )
         for module in plan.get("modules", []):
             evidence = module.get("evidence") or {}
+            evidence_title = str(
+                evidence.get("doc_title")
+                or module.get("source_title")
+                or plan["source_title"]
+            )
+            source = _resolve_source(
+                title=evidence_title,
+                cohort=str(plan["cohort"]),
+                file_url=evidence.get("file_url"),
+                exact=exact,
+                by_title=by_title,
+            )
             local_page = _article_page(str(evidence.get("article", "")))
             canonical = "\x1f".join(
                 [str(plan["cohort"]), _compact(plan["major"]), _compact(module["name"])]
@@ -405,12 +412,69 @@ def _insert_requirements(
                     "listed_credits": module.get("listed_credits"),
                     "rule_text": module.get("rule_text", ""),
                     "source_id": source["source_id"],
-                    "source_page": _physical_page(plan["source_title"], local_page),
+                    "source_page": _physical_page(evidence_title, local_page),
                     "evidence_chunk_id": evidence.get("chunk_id"),
                     "canonical_key": canonical,
                     "priority": source["priority"],
                 }
             )
+    # The compact summary table at each program header is authoritative for
+    # module minima.  Detail-table notes can be attached to the wrong plan
+    # when adjacent PDF tables share headings, so they must not win here.
+    module_names = (
+        "\uff08\u4e00\uff09\u901a\u8bc6\u6559\u80b2\u57fa\u7840\u8bfe",
+        "\uff08\u4e8c\uff09\u5927\u5b66\u79d1\u57fa\u7840\u8bfe",
+        "\uff08\u4e09\uff09\u4e13\u4e1a\u5fc5\u4fee\u8bfe",
+        "\uff08\u56db\uff09\u4e13\u4e1a\u65b9\u5411\u8bfe",
+        "\uff08\u4e94\uff09\u901a\u8bc6\u6559\u80b2\u6838\u5fc3\u8bfe",
+        "\u81ea\u7531\u9009\u4fee\u8bfe",
+        "\uff08\u516d\uff09\u5b9e\u8df5\u73af\u8282\u8bfe",
+    )
+    headers: list[dict[str, Any]] = []
+    with chunks_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            chunk = json.loads(line)
+            if "\u6bd5\u4e1a\u6700\u4f4e\u5b66\u5206" in str(chunk.get("text") or ""):
+                headers.append(chunk)
+    for plan in catalog.get("plans", []):
+        stem = str(plan["major"]).removesuffix("\u4e13\u4e1a")
+        candidates = [
+            chunk for chunk in headers
+            if str(chunk.get("cohort")) == str(plan["cohort"])
+            and stem in str(chunk.get("article") or "")
+        ]
+        for chunk in candidates:
+            score_match = re.search(
+                r"\u5b66\u5206\s+((?:\d+(?:\.\d+)?\s+){7}\d+(?:\.\d+)?)",
+                str(chunk.get("text") or ""),
+            )
+            if score_match is None:
+                continue
+            scores = [float(value) for value in re.findall(r"\d+(?:\.\d+)?", score_match.group(1))]
+            if len(scores) < 8 or abs(sum(scores[:7]) - scores[7]) > 0.01:
+                continue
+            source = _resolve_source(
+                title=chunk["doc_title"], cohort=str(chunk["cohort"]),
+                file_url=chunk.get("file_url"), exact=exact, by_title=by_title,
+            )
+            local_page = _article_page(str(chunk.get("article") or ""))
+            for module_name, credit in zip(module_names, scores[:7]):
+                canonical = "\x1f".join(
+                    [str(plan["cohort"]), _compact(plan["major"]), _compact(module_name)]
+                )
+                staged.append({
+                    "cohort": int(plan["cohort"]), "college": plan["college"],
+                    "major": plan["major"], "module": module_name,
+                    "required_credits": credit, "listed_credits": None,
+                    "rule_text": "\u6bd5\u4e1a\u6700\u4f4e\u5b66\u5206\u6784\u6210\u8868\uff08\u6743\u5a01\u8868\u5934\uff09",
+                    "source_id": source["source_id"],
+                    "source_page": _physical_page(chunk["doc_title"], local_page),
+                    "evidence_chunk_id": chunk["chunk_id"], "canonical_key": canonical,
+                    "priority": source["priority"] + 1000,
+                })
+            break
     best = {
         key: max(values, key=lambda item: (item["priority"], item["source_id"]))
         for key, values in _group(staged, "canonical_key").items()
@@ -534,7 +598,7 @@ def build_database(
         _insert_sources(connection, sources)
         _insert_aliases(connection, catalog)
         _insert_courses(connection, catalog, exact, by_title)
-        _insert_requirements(connection, catalog, exact, by_title)
+        _insert_requirements(connection, catalog, exact, by_title, chunks_file)
         _insert_policy_chunks(connection, chunks_file, exact, by_title)
         meta = {
             "database_version": DATABASE_VERSION,
@@ -612,32 +676,53 @@ class AcademicDatabase:
             check_same_thread=False,
         )
         self.connection.row_factory = sqlite3.Row
+        self._lock = RLock()
 
     def close(self) -> None:
-        self.connection.close()
+        with self._lock:
+            self.connection.close()
+
+    def _fetchall(self, statement: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
+        with self._lock:
+            return self.connection.execute(statement, tuple(params)).fetchall()
+
+    def _fetchone(self, statement: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:
+        with self._lock:
+            return self.connection.execute(statement, tuple(params)).fetchone()
+
+    def _report(self) -> dict[str, Any]:
+        with self._lock:
+            return database_report(self.connection)
 
     def options(self) -> dict[str, Any]:
-        report = database_report(self.connection)
-        rows = self.connection.execute(
+        report = self._report()
+        rows = self._fetchall(
             """
             SELECT cohort, major FROM course_offerings
             WHERE is_primary = 1 GROUP BY cohort, major ORDER BY cohort, major
             """
-        ).fetchall()
+        )
+        colleges = [
+            str(row["college"])
+            for row in self._fetchall(
+                "SELECT DISTINCT college FROM course_offerings "
+                "WHERE is_primary = 1 AND college <> '' ORDER BY college"
+            )
+        ]
         majors_by_cohort: dict[str, list[str]] = {}
         for row in rows:
             majors_by_cohort.setdefault(str(row["cohort"]), []).append(row["major"])
-        return {**report, "majors_by_cohort": majors_by_cohort}
+        return {**report, "colleges": colleges, "majors_by_cohort": majors_by_cohort}
 
     def resolve_major(self, text: str, cohort: int | None = None) -> str | None:
-        aliases = self.connection.execute(
+        aliases = self._fetchall(
             """
             SELECT alias, canonical_major FROM major_aliases
             WHERE cohort IS NULL OR cohort = ?
             ORDER BY length(alias) DESC
             """,
             (str(cohort) if cohort is not None else None,),
-        ).fetchall()
+        )
         compact = _compact(text)
         for row in aliases:
             if _compact(row["alias"]) in compact:
@@ -647,27 +732,30 @@ class AcademicDatabase:
 
     def has_plan(self, cohort: int, major: str) -> bool:
         return bool(
-            self.connection.execute(
+            self._fetchone(
                 """
                 SELECT 1 FROM course_offerings
                 WHERE is_primary = 1 AND cohort = ? AND major = ? LIMIT 1
                 """,
                 (cohort, major),
-            ).fetchone()
+            )
         )
 
     def courses(
         self,
         *,
         cohort: int,
-        major: str,
+        major: str | None,
         semesters: Iterable[str] | None = None,
         elective: bool | None = None,
         name: str | None = None,
         code: str | None = None,
     ) -> list[dict[str, Any]]:
-        clauses = ["c.is_primary = 1", "c.cohort = ?", "c.major = ?"]
-        params: list[Any] = [cohort, major]
+        clauses = ["c.is_primary = 1", "c.cohort = ?"]
+        params: list[Any] = [cohort]
+        if major is not None:
+            clauses.append("c.major = ?")
+            params.append(major)
         semester_values = tuple(str(value).upper() for value in (semesters or ()))
         if semester_values:
             placeholders = ",".join("?" for _ in semester_values)
@@ -682,7 +770,7 @@ class AcademicDatabase:
         if code:
             clauses.append("upper(c.course_code) = ?")
             params.append(code.upper())
-        rows = self.connection.execute(
+        rows = self._fetchall(
             f"""
             SELECT c.*, s.doc_title, s.file_url, s.page_url
             FROM course_offerings AS c
@@ -692,7 +780,7 @@ class AcademicDatabase:
                      c.module, c.course_code, c.course_name
             """,
             params,
-        ).fetchall()
+        )
         values = [dict(row) for row in rows]
         if name:
             target = _compact(name)
@@ -708,7 +796,7 @@ class AcademicDatabase:
     def requirements(
         self, *, cohort: int, major: str, module_term: str | None = None
     ) -> list[dict[str, Any]]:
-        rows = self.connection.execute(
+        rows = self._fetchall(
             """
             SELECT r.*, s.doc_title, s.file_url, s.page_url
             FROM program_requirements AS r
@@ -717,7 +805,7 @@ class AcademicDatabase:
             ORDER BY r.module
             """,
             (cohort, major),
-        ).fetchall()
+        )
         values = [dict(row) for row in rows]
         if module_term:
             target = _compact(module_term)

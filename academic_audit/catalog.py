@@ -24,7 +24,7 @@ MAJOR_HEADING_RE = re.compile(
 )
 SEMESTER_RE = re.compile(r"(?:[1-8](?:\s*-\s*[1-8])?|S[1-4])", re.I)
 REQUIRED_CREDITS_RE = re.compile(
-    r"(?:不低于|至少(?:修读|修满|选修)?|必须修满|需要修满|修读不低于)"
+    r"(?:不低于|至少(?:修读|修满|选修)?|必须修满|需要修满|修读不低于|选修不低于)"
     r"\s*(\d+(?:\.\d+)?)\s*(?:个)?学分"
 )
 
@@ -471,12 +471,10 @@ def build_catalog(
                 sum(course["credits"] for course in module_courses), 2
             )
             required = module["required_credits"]
-            if required is None and module["listed_credits"] is not None:
-                required = module["listed_credits"]
             if required is None and module_courses and all(
                 "必修" in course["nature"] for course in module_courses
             ):
-                required = catalog_credits
+                required = module["listed_credits"] or catalog_credits
             plan_modules.append(
                 {
                     **module,
