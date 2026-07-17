@@ -87,7 +87,7 @@ python -m pip install -r requirements-dev.txt
 Git 仓库保存知识块、来源登记和结构化培养方案目录。SQLite 运行库、FAISS 索引与向量矩阵属于可再生产物，不直接提交到 GitHub：
 
 ```powershell
-python scripts/rebuild_academic_database_v2.py
+python -m scripts.rebuild_academic_database_v2
 python -m retrieval.index --chunks data/chunks.jsonl --artifacts artifacts
 ```
 
@@ -168,10 +168,10 @@ python -m ingest --sources data/sources.csv --raw-dir data/raw `
 更新培养方案结构化数据后，依次重建学业数据库和向量索引：
 
 ```powershell
-python scripts/repair_requirement_metadata.py
-python scripts/rebuild_academic_database_v2.py
+python -m scripts.repair_requirement_metadata
+python -m scripts.rebuild_academic_database_v2
 python -m retrieval.index --chunks data/chunks.jsonl --artifacts artifacts
-python scripts/audit_requirement_notes.py
+python -m scripts.audit_requirement_notes
 ```
 
 新增最低学分、课程约束或表格脚注时，应同时保留原文、`evidence_chunk_id` 和物理页码，不能只写入一个无法追溯的数字。

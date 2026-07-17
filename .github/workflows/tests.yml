@@ -20,7 +20,7 @@ jobs:
       - name: Compile sources
         run: python -m compileall -q contracts.py retrieval generation app eval swufe_rag academic_audit storage tests
       - name: Build generated academic database
-        run: python scripts/rebuild_academic_database_v2.py
+        run: python -m scripts.rebuild_academic_database_v2
       - name: Run offline test suite
         env:
           PYTHONUTF8: "1"
