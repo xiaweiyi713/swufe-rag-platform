@@ -103,5 +103,6 @@ python -m app.server
 - [API_REFERENCE.md](API_REFERENCE.md)：全部正式、调试、Python、CLI、数据和配置接口。
 - [RUNBOOK.md](RUNBOOK.md)：安装、索引构建、调试 Web 和团队对接命令。
 - [INTERFACES.md](INTERFACES.md)：冻结的知识块、B、C 接口契约。
+- `python -m scripts.verify_migration_bundle`：验证部署数据包的逐文件 SHA-256、SQLite 完整性和 FAISS/向量一致性；正式部署前必须通过。
 - [ENGINEERING_LOG.md](ENGINEERING_LOG.md)：研究依据、实现决策、测试证据、限制与真实数据补齐步骤。
 - [REPOSITORY.md](REPOSITORY.md)：主仓和协作约定。

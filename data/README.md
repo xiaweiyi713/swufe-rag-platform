@@ -1,5 +1,21 @@
 # 数据目录
 
+## 正式运行数据交付
+
+Git 中的源码和轻量登记文件不足以恢复正式运行环境。被 `.gitignore` 排除的
+`metadata.sqlite3`、`academic_v2.sqlite3` 以及 `../artifacts/` 必须通过带
+SHA-256 清单的运行数据包交付。发布与验收命令：
+
+```bash
+python -m scripts.build_data_bundle_manifest \
+  --archive release/swufe-rag-runtime-data-YYYYMMDD.tar.gz
+python -m scripts.verify_migration_bundle
+```
+
+权威文件列表和逐文件摘要保存在 `deploy/data-bundle.manifest.json`。部署机解包
+后先运行 `python -m scripts.verify_migration_bundle --checksums-only`，依赖安装
+完成后再运行完整验证。不要从不同提交或不同日期的包里拼接数据库与索引。
+
 - `raw/`：审核通过的官网原始文件；只保存在本地并被 Git 忽略。
 - `ocr/`：扫描 PDF 的逐页 OCR 旁车 JSON；只保存在本地并被 Git 忽略。
 - `sources.csv`：已审核并允许进入知识库的来源登记表，路径均相对 `data/raw/`。

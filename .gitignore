@@ -41,6 +41,7 @@ data/*.sqlite3-wal
 logs/
 eval/output/
 tmp/
+release/
 *.log
 
 # Editors and operating systems
@@ -48,4 +49,3 @@ tmp/
 .vscode/
 .DS_Store
 Thumbs.db
-

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "bundle_name": "swufe-rag-runtime-data",
+  "generated_at": "2026-07-20T15:34:01.374475+00:00",
+  "artifact_contract": {
+    "model_name": "BAAI/bge-large-zh-v1.5",
+    "dimension": 1024,
+    "chunk_count": 69583,
+    "chunks_sha256": "9e1981104eba2de2e9429ccf8035cd3ed15d0b12aabaf6ab1abf35f43057a788"
+  },
+  "files": [
+    {
+      "path": "data/sources.csv",
+      "size": 23965,
+      "sha256": "74749a7bd78ab420a13afe77332dde0c69aceaa1a3b38d71f82aeecc4dd01b60"
+    },
+    {
+      "path": "data/chunks.jsonl",
+      "size": 80179965,
+      "sha256": "9e1981104eba2de2e9429ccf8035cd3ed15d0b12aabaf6ab1abf35f43057a788"
+    },
+    {
+      "path": "data/metadata.sqlite3",
+      "size": 64409600,
+      "sha256": "de89b171a997a3345963e38b4281f9c0d622ed418a7935474e324311fba14bd7"
+    },
+    {
+      "path": "data/curriculum_catalog_v2.json",
+      "size": 78834769,
+      "sha256": "9d4cf21c9286f7727ec9c4042b211085daa135a8ec3618f52932be47af3731bf"
+    },
+    {
+      "path": "data/academic_v2.sqlite3",
+      "size": 105893888,
+      "sha256": "9b92518ad382204cabeb25f2555baf3dd129e76c43d4f2997529cffaa0a8b43d"
+    },
+    {
+      "path": "artifacts/index.faiss",
+      "size": 285012013,
+      "sha256": "2424b5f0ae4624483bd7e5398eedb98804f0f1aef3c8d23efe9033490531ec67"
+    },
+    {
+      "path": "artifacts/vectors.npy",
+      "size": 285012096,
+      "sha256": "7e53bb26e3c7e4b9ef05517b42f80ca5af3b82ad5de94f420001652e3b4dbd4d"
+    },
+    {
+      "path": "artifacts/chunks.json",
+      "size": 80179967,
+      "sha256": "b565271979dfc5c168eb5e8341f616764bb11b5c2611f8569b5671dd5fc6523d"
+    },
+    {
+      "path": "artifacts/chunk_ids.json",
+      "size": 1809247,
+      "sha256": "3dd00fcc8ccc2c86234751337dab283988bfede2cd0fa827551d0e77f4b09f40"
+    },
+    {
+      "path": "artifacts/manifest.json",
+      "size": 325,
+      "sha256": "7c57bd7ba78ae7d04586a9df48c9b489e8c7189e655614a1fd2b42d67bb81895"
+    }
+  ]
+}

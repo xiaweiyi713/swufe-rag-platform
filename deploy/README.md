@@ -34,8 +34,37 @@
 
 ## 二、Docker Compose 部署
 
+### 2.1 准备运行数据包
+
+`data/metadata.sqlite3`、`data/academic_v2.sqlite3` 和 `artifacts/` 不进入
+Git；单纯克隆仓库不能启动正式服务。发布者在已验证的构建机执行：
+
 ```bash
-# 1. 准备配置
+python -m scripts.build_data_bundle_manifest \
+  --archive release/swufe-rag-runtime-data-20260720.tar.gz
+python -m scripts.verify_migration_bundle
+```
+
+命令会生成归档、同名 `.sha256` 文件，以及提交到代码仓库的
+`deploy/data-bundle.manifest.json`。归档和 `.sha256` 应上传到受控对象存储或
+Release 附件，不能提交进 Git。
+
+新服务器克隆代码后，先下载与当前提交配套的两个文件，再执行：
+
+```bash
+sha256sum -c swufe-rag-runtime-data-20260720.tar.gz.sha256
+tar -xzf swufe-rag-runtime-data-20260720.tar.gz -C .
+python -m scripts.verify_migration_bundle --checksums-only
+```
+
+安装项目依赖后再运行一次不带 `--checksums-only` 的完整验证；它会额外执行
+SQLite `quick_check`、表行数与关键培养方案事实检查，并读取 NumPy/FAISS
+验证向量维度和索引行数。任一步失败都不要启动或重启生产容器。
+
+### 2.2 启动服务
+
+```bash
+# 1. 准备配置(运行数据包必须已通过上面的两层验证)
 cp deploy/.env.example .env
 vim .env                      # 至少确认 SWUFE_RAG_WORKERS 与 HF_CACHE_DIR
 
