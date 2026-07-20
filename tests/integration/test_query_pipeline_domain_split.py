@@ -110,6 +110,37 @@ def test_general_task_calls_general_model_once_and_never_retrieves() -> None:
     assert retriever.calls == []
 
 
+def test_sync_general_client_emits_only_a_final_event() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
+    client = RecordingGeneralClient()
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(general_llm=True, model="test-chat"),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=RecordingRetriever(),
+        school_answer=lambda *_: (_ for _ in ()).throw(
+            AssertionError("school answer called")
+        ),
+        general_chat=GeneralChatService(client),
+        metadata_db=metadata,
+        runtime_mode="sync-general-stream-test",
+    )
+    try:
+        events = list(runtime.stream_general_question("帮我写一段生日祝福"))
+    finally:
+        metadata.close()
+
+    assert events[0]["type"] == "meta"
+    assert events[0]["answer_streaming"] is False
+    assert not [event for event in events if event["type"] == "delta"]
+    assert events[-1]["type"] == "final"
+    assert events[-1]["response"]["answer_md"] == "这是通用大模型的回答。"
+    assert len(client.calls) == 1
+
+
 def test_school_fact_never_falls_back_to_general_model() -> None:
     chunks = load_chunks(FIXTURE_PATH)
     metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)

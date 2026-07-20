@@ -33,6 +33,12 @@ class GeneralChatService:
         self.client = client
         self.max_history_messages = max_history_messages
 
+    @property
+    def supports_streaming(self) -> bool:
+        """Whether the configured provider exposes real incremental output."""
+
+        return callable(getattr(self.client, "stream_generate", None))
+
     def _prompt(
         self,
         question: str,

@@ -660,33 +660,40 @@ class QueryPipelineRuntime(HybridRuntime):
         normalization_ms = round((time.perf_counter() - started) * 1000, 2)
         plan = build_execution_plan(normalized)
         decision = _decision(normalized)
+        answer_streaming = self.general_chat.supports_streaming
         yield {
             "type": "meta",
             "mode": "general_chat",
             "execution_path": "general_llm",
-            "answer_streaming": True,
+            "answer_streaming": answer_streaming,
         }
         yield {
             "type": "status",
             "stage": "generating",
             "message": "正在生成回复",
         }
-
-        fragments: list[str] = []
-        if web_context:
-            stream = self.general_chat.stream_answer(
+        if answer_streaming:
+            fragments: list[str] = []
+            if web_context:
+                stream = self.general_chat.stream_answer(
+                    question, state.general_history, web_context=web_context
+                )
+            else:
+                stream = self.general_chat.stream_answer(question, state.general_history)
+            for fragment in stream:
+                if not isinstance(fragment, str) or not fragment:
+                    continue
+                fragments.append(fragment)
+                yield {"type": "delta", "text": fragment}
+            answer = "".join(fragments).strip()
+        elif web_context:
+            answer = self.general_chat.answer(
                 question, state.general_history, web_context=web_context
             )
         else:
-            stream = self.general_chat.stream_answer(question, state.general_history)
-        for fragment in stream:
-            if not isinstance(fragment, str) or not fragment:
-                continue
-            fragments.append(fragment)
-            yield {"type": "delta", "text": fragment}
-        answer = "".join(fragments).strip()
+            answer = self.general_chat.answer(question, state.general_history)
         if not answer:
-            raise GenerationUnavailableError("general model returned an empty stream")
+            raise GenerationUnavailableError("general model returned an empty response")
 
         state.general_history.extend(
             [("user", question), ("assistant", answer)]
