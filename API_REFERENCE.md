@@ -478,6 +478,10 @@ python -m app.server
 
 正式请求禁止额外字段。
 
+BYOK 请求可使用 `X-LLM-API-Key`、`X-LLM-Base-URL` 和 `X-LLM-Model`。
+自定义端点必须是端口 443 的 HTTPS 地址、命中服务端精确域名白名单，且 DNS
+解析结果全部为公网地址；私网、回环、链路本地和云元数据地址会返回 HTTP 400。
+
 请求示例：
 
 ```http
@@ -837,6 +841,7 @@ original_title,corrected_title,decision,reason
 |---|---|---|
 | `OPENAI_API_KEY` | 空 | DeepSeek/其他 OpenAI 兼容服务密钥 |
 | `OPENAI_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容服务地址 |
+| `SWUFE_RAG_LLM_ALLOWED_HOSTS` | 空 | 追加允许的 BYOK 厂商精确域名，逗号分隔 |
 | `OLLAMA_API_KEY` | `ollama` | Ollama 占位密钥 |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | 本地 Ollama OpenAI 兼容地址 |
 | `SWUFE_RAG_MODE` | `demo` | 调试服务模式：`demo` 或 `review` |

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from academic_audit.database import AcademicDatabase
+from app.llm_url_policy import validate_request_llm_base_url
 from app.runtime import _load_config, build_local_hybrid_runtime
 from generation.answer_presenter import AnswerPresenter
 from generation.context import ContextBuilder
@@ -50,10 +51,11 @@ def build_request_query_runtime(
 ) -> QueryPipelineRuntime:
     """BYOK per-request runtime.
 
-    ``base_url``/``model_override`` let the caller pick any OpenAI-compatible
-    provider per request (X-LLM-Base-URL / X-LLM-Model headers); both default
-    to the configured DeepSeek setup when omitted.
+    ``base_url``/``model_override`` let the caller select an approved
+    OpenAI-compatible provider per request. Request-supplied endpoints are
+    validated before any provider client is created.
     """
+    request_base_url = validate_request_llm_base_url(base_url)
     if not isinstance(base_runtime, QueryPipelineRuntime):
         raise ValueError("request API keys require a QueryPipelineRuntime")
     if not isinstance(api_key, str) or not api_key.strip():
@@ -65,7 +67,6 @@ def build_request_query_runtime(
     model = str(generation.get("llm", "deepseek-chat"))
     if isinstance(model_override, str) and model_override.strip():
         model = model_override.strip()
-    request_base_url = base_url.strip() if isinstance(base_url, str) and base_url.strip() else None
     retries = int(generation.get("max_retries", 2))
     timeout = float(generation.get("request_timeout_seconds", 60))
     key = api_key.strip()

@@ -4,7 +4,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 from threading import Thread
+from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from academic_audit.database import AcademicDatabase
@@ -19,6 +21,17 @@ from swufe_rag.routing.router import HybridRouter
 
 
 FIXTURE_PATH = Path(__file__).parents[1] / "fixtures" / "chunks.jsonl"
+
+
+@pytest.fixture(autouse=True)
+def allow_module_local_fake_provider():
+    """These transport tests use an in-process HTTP provider by design."""
+
+    with patch(
+        "app.production_runtime.validate_request_llm_base_url",
+        side_effect=lambda value: value.strip() if value else None,
+    ):
+        yield
 
 
 class LocalFallbackClient:

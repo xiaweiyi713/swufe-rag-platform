@@ -2,10 +2,12 @@
 
 ## 使用方式
 
-正式问答接口为 `POST /ask`；流式客户端使用 `POST /ask/stream`。两个端点的 JSON 请求体和 BYOK 请求头一致。需要使用真实 DeepSeek 生成时，在同源请求中增加可选请求头：
+正式问答接口为 `POST /ask`；流式客户端使用 `POST /ask/stream`。两个端点的 JSON 请求体和 BYOK 请求头一致。需要使用真实模型生成时，在同源请求中增加可选请求头：
 
 ```http
 X-LLM-API-Key: <临时密钥>
+X-LLM-Base-URL: https://api.deepseek.com
+X-LLM-Model: deepseek-chat
 ```
 
 请求示例：
@@ -38,6 +40,7 @@ X-LLM-API-Key: <临时密钥>
 - 一次性运行时复用已加载的 BGE、FAISS、reranker 和可信 SQLite，避免每次请求重复加载 GPU 模型。
 - 密钥只替换路由、普通对话和有依据生成客户端，不会关闭检索范围、证据门、引用验证或拒答策略。
 - 提供方错误只返回异常类型，不回显请求头、密钥或上游响应正文。
+- 自定义端点必须使用 HTTPS、端口 443 和精确域名白名单；DNS 解析到回环、私网、链路本地、保留地址或云元数据地址时直接返回 HTTP 400。
 
 ## 模型配置
 
@@ -53,7 +56,7 @@ generation:
   request_timeout_seconds: 60
 ```
 
-OpenAI 兼容客户端默认端点为 `https://api.deepseek.com`。API Key 不应添加到该配置文件。
+OpenAI 兼容客户端默认端点为 `https://api.deepseek.com`。内置白名单覆盖客户端预设厂商；额外厂商必须由运维通过 `SWUFE_RAG_LLM_ALLOWED_HOSTS` 添加精确域名。API Key 不应添加到配置文件。
 
 ## 无密钥行为
 
