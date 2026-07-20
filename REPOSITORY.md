@@ -15,7 +15,7 @@ https://github.com/ZorIgn/swufe-rag.git
 mkdir -p "back-end engineer"
 git clone https://github.com/ZorIgn/swufe-rag.git "back-end engineer/swufe-rag"
 git -C "back-end engineer/swufe-rag" fetch origin codex/rag-v16-repair
-git -C "back-end engineer/swufe-rag" checkout ba5c2c6
+git -C "back-end engineer/swufe-rag" checkout da38007
 ```
 
 后端提交变化后必须同步更新 `BACKEND_REVISION`。后端远端写权限稳定后，可以把

@@ -34,10 +34,9 @@ struct MessageRow: View {
                         AssistantThinkingBubble()
                     } else {
                         HStack(alignment: .bottom, spacing: 3) {
-                            // 后端增量只包含可直接阅读的正文预览；这里仍走
-                            // Markdown 渲染，避免通用模型输出标题或强调符号时
-                            // 把语法字符直接暴露给用户。表格在结构确定后逐字
-                            // 更新，来源与下载链接仍随 final 一次性落地。
+                            // 通用模型增量仍走 Markdown 渲染，避免标题或强调
+                            // 语法直接暴露。学校事实不会进入此分支；它在证据
+                            // 与引用校验完成后随 final 一次性落地。
                             if isStreaming {
                                 AnswerMarkdownView(
                                     source: message.text,
