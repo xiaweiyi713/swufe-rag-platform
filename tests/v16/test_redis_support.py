@@ -10,13 +10,17 @@ from threading import Condition, Event, Thread
 import time
 from unittest import mock
 
+import pytest
+
 from swufe_rag.orchestration import InMemorySessionStore, SessionState
 from swufe_rag.redis_support import (
     RedisAnswerCache,
     RedisSessionStore,
+    RedisUnavailableError,
     build_answer_cache,
     build_session_store,
     cacheable_answer,
+    redis_required,
     session_has_history,
 )
 
@@ -340,13 +344,27 @@ def test_cacheable_answer_requires_valid_self_contained_school_answer() -> None:
 
 
 def test_factories_fall_back_without_redis() -> None:
-    with mock.patch.dict(os.environ, {"SWUFE_RAG_REDIS_URL": ""}):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "SWUFE_RAG_REDIS_URL": "",
+            "SWUFE_RAG_WORKERS": "1",
+            "SWUFE_RAG_REQUIRE_REDIS": "0",
+        },
+        clear=True,
+    ):
         assert isinstance(build_session_store(), InMemorySessionStore)
         assert build_answer_cache() is None
 
     with (
         mock.patch.dict(
-            os.environ, {"SWUFE_RAG_REDIS_URL": "redis://127.0.0.1:1/0"}
+            os.environ,
+            {
+                "SWUFE_RAG_REDIS_URL": "redis://127.0.0.1:1/0",
+                "SWUFE_RAG_WORKERS": "1",
+                "SWUFE_RAG_REQUIRE_REDIS": "0",
+            },
+            clear=True,
         ),
         mock.patch(
             "swufe_rag.redis_support._connect",
@@ -356,6 +374,45 @@ def test_factories_fall_back_without_redis() -> None:
         assert isinstance(build_session_store(), InMemorySessionStore)
         assert build_answer_cache() is None
 
+
+def test_multi_worker_or_explicit_policy_requires_redis() -> None:
+    with mock.patch.dict(
+        os.environ,
+        {"SWUFE_RAG_WORKERS": "2", "SWUFE_RAG_REDIS_URL": ""},
+        clear=True,
+    ):
+        assert redis_required() is True
+        with pytest.raises(RedisUnavailableError, match="more than one"):
+            build_session_store()
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "SWUFE_RAG_WORKERS": "1",
+            "SWUFE_RAG_REQUIRE_REDIS": "1",
+            "SWUFE_RAG_REDIS_URL": "redis://cache:6379/0",
+        },
+        clear=True,
+    ), mock.patch(
+        "swufe_rag.redis_support._connect",
+        side_effect=ConnectionError("down"),
+    ):
+        assert redis_required() is True
+        with pytest.raises(RedisUnavailableError, match="required Redis"):
+            build_session_store()
+
+
+def test_required_session_store_never_bypasses_distributed_lock() -> None:
+    backend = FakeRedisBackend()
+    store = RedisSessionStore(FakeRedis(backend), required=True)
+    backend.fail = True
+
+    with pytest.raises(RedisUnavailableError, match="session lock"):
+        with store.guard("shared-session"):
+            pass
+
+    with pytest.raises(RedisUnavailableError, match="session store"):
+        store.get("shared-session")
 
 def test_redis_credentials_are_never_logged(caplog) -> None:
     with (

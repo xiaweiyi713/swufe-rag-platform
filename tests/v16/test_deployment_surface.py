@@ -163,12 +163,27 @@ def test_readiness_report_flags_missing_assets(tmp_path):
     assert report["redis"]["configured"] is False
 
 
+def _write_ready_artifacts(path):
+    import json
+
+    path.mkdir()
+    files = {
+        "vectors": "vectors.npy",
+        "chunks": "chunks.json",
+        "chunk_ids": "chunk_ids.json",
+        "faiss": "index.faiss",
+    }
+    (path / "manifest.json").write_text(json.dumps({"files": files}), encoding="utf-8")
+    for filename in files.values():
+        (path / filename).write_text("x", encoding="utf-8")
+
+
 def test_readiness_report_ready_when_assets_present(tmp_path):
     from app.server.health import readiness_report
 
     for name in ("c.jsonl", "s.csv", "m.sqlite3", "a.sqlite3"):
         (tmp_path / name).write_text("x", encoding="utf-8")
-    (tmp_path / "artifacts").mkdir()
+    _write_ready_artifacts(tmp_path / "artifacts")
     env = {
         "SWUFE_RAG_CHUNKS": str(tmp_path / "c.jsonl"),
         "SWUFE_RAG_SOURCES": str(tmp_path / "s.csv"),
@@ -188,7 +203,7 @@ def test_readiness_report_surfaces_warmup_failure(tmp_path):
 
     for name in ("c.jsonl", "s.csv", "m.sqlite3", "a.sqlite3"):
         (tmp_path / name).write_text("x", encoding="utf-8")
-    (tmp_path / "artifacts").mkdir()
+    _write_ready_artifacts(tmp_path / "artifacts")
     env = {
         "SWUFE_RAG_CHUNKS": str(tmp_path / "c.jsonl"),
         "SWUFE_RAG_SOURCES": str(tmp_path / "s.csv"),

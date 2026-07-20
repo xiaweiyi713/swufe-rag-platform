@@ -9,7 +9,7 @@ import logging
 import os
 from pathlib import Path
 import re
-from threading import RLock, Thread
+from threading import Lock, RLock, Thread
 import time
 from typing import Any
 
@@ -18,17 +18,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from academic_audit import CurriculumAuditService
 from app.runtime_factory import build_local_query_runtime, build_request_query_runtime
 from app.server.capacity import QueryCapacityError, QueryCapacityLimiter
-from app.server.health import readiness_report
+from app.server.health import readiness_report, redis_status
 from app.server.ratelimit import EXEMPT_PATHS, RateLimiter, client_identity
 from app.server.web_search import format_web_context, search_web
 from contracts import ContractError, GenerationUnavailableError, KnowledgeBaseNotReadyError
 from swufe_rag.redis_support import (
+    RedisUnavailableError,
     SessionLockTimeoutError,
     build_answer_cache,
     build_session_store,
     cacheable_answer,
     component_info,
     runtime_cache_namespace,
+    redis_required,
     session_guard,
     session_has_history,
 )
@@ -167,8 +169,10 @@ def create_app(
         "rate_limiter": rate_limiter or RateLimiter.from_env(),
         # 预热由启动钩子在后台线程完成;/ready 据此决定是否接流量。
         "warmup_error": None,
+        "redis_probe": {"checked_at": 0.0, "status": None},
     }
     lock = RLock()
+    runtime_build_lock = Lock()
 
     def get_answer_cache():
         with lock:
@@ -179,41 +183,54 @@ def create_app(
 
     def get_runtime():
         with lock:
-            if state["runtime"] is None:
-                _sanitize_no_proxy()
-                if os.getenv("SWUFE_RAG_ALLOW_MODEL_DOWNLOAD") != "1":
-                    os.environ.setdefault("HF_HUB_OFFLINE", "1")
-                    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-                local_runtime = build_local_query_runtime(
-                    os.getenv("SWUFE_RAG_CHUNKS", "data/chunks.jsonl"),
-                    sources_path=os.getenv("SWUFE_RAG_SOURCES", "data/sources.csv"),
-                    metadata_path=os.getenv("SWUFE_RAG_METADATA", "data/metadata.sqlite3"),
-                    config_path=os.getenv("SWUFE_RAG_CONFIG", "config.advanced.yaml"),
-                    academic_database=os.getenv("SWUFE_RAG_ACADEMIC_DB", "data/academic_v2.sqlite3"),
+            existing = state["runtime"]
+        if existing is not None:
+            return existing
+
+        # Model/index loading may take seconds. Keep it outside the state lock so
+        # /readyz can continue returning a prompt 503 during warmup.
+        with runtime_build_lock:
+            with lock:
+                existing = state["runtime"]
+            if existing is not None:
+                return existing
+            _sanitize_no_proxy()
+            if os.getenv("SWUFE_RAG_ALLOW_MODEL_DOWNLOAD") != "1":
+                os.environ.setdefault("HF_HUB_OFFLINE", "1")
+                os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+            local_runtime = build_local_query_runtime(
+                os.getenv("SWUFE_RAG_CHUNKS", "data/chunks.jsonl"),
+                sources_path=os.getenv("SWUFE_RAG_SOURCES", "data/sources.csv"),
+                metadata_path=os.getenv("SWUFE_RAG_METADATA", "data/metadata.sqlite3"),
+                config_path=os.getenv("SWUFE_RAG_CONFIG", "config.advanced.yaml"),
+                academic_database=os.getenv(
+                    "SWUFE_RAG_ACADEMIC_DB", "data/academic_v2.sqlite3"
+                ),
+            )
+            local_runtime.sessions = build_session_store()
+            server_key = (
+                os.getenv("SWUFE_RAG_LLM_API_KEY")
+                or os.getenv("OPENAI_API_KEY")
+                or ""
+            ).strip()
+            if server_key:
+                built = build_request_query_runtime(
+                    local_runtime,
+                    server_key,
+                    config_path=os.getenv(
+                        "SWUFE_RAG_CONFIG", "config.advanced.yaml"
+                    ),
+                    base_url=(
+                        os.getenv("SWUFE_RAG_LLM_BASE_URL")
+                        or os.getenv("OPENAI_BASE_URL")
+                    ),
+                    model_override=os.getenv("SWUFE_RAG_LLM_MODEL"),
                 )
-                # 会话存储双轨:SWUFE_RAG_REDIS_URL 可用时外置 Redis,
-                # 重启/多进程后多轮范围记忆不丢;否则保持进程内存行为。
-                # BYOK 请求运行时复用同一 sessions,所以只需替换这一处。
-                local_runtime.sessions = build_session_store()
-                server_key = (
-                    os.getenv("SWUFE_RAG_LLM_API_KEY")
-                    or os.getenv("OPENAI_API_KEY")
-                    or ""
-                ).strip()
-                if server_key:
-                    state["runtime"] = build_request_query_runtime(
-                        local_runtime,
-                        server_key,
-                        config_path=os.getenv("SWUFE_RAG_CONFIG", "config.advanced.yaml"),
-                        base_url=(
-                            os.getenv("SWUFE_RAG_LLM_BASE_URL")
-                            or os.getenv("OPENAI_BASE_URL")
-                        ),
-                        model_override=os.getenv("SWUFE_RAG_LLM_MODEL"),
-                    )
-                else:
-                    state["runtime"] = local_runtime
-            return state["runtime"]
+            else:
+                built = local_runtime
+            with lock:
+                state["runtime"] = built
+            return built
 
     def get_cache_namespace(runtime: Any) -> str:
         with lock:
@@ -223,6 +240,19 @@ def create_app(
 
     def get_query_capacity() -> QueryCapacityLimiter:
         return state["query_capacity"]
+
+    def required_redis_health() -> dict[str, Any]:
+        """Bound Redis gating overhead while still failing closed quickly."""
+
+        now = time.monotonic()
+        with lock:
+            cached = state["redis_probe"]
+            if cached["status"] is not None and now - cached["checked_at"] < 1.0:
+                return cached["status"]
+        status = redis_status()
+        with lock:
+            state["redis_probe"] = {"checked_at": now, "status": status}
+        return status
 
     def add_school_web_fallback(
         selected: Any,
@@ -357,6 +387,45 @@ def create_app(
     product = FastAPI(title="swufe-rag typed query API", version="0.4.0", redoc_url=None)
 
     @product.middleware("http")
+    async def dependency_gate(request: Request, call_next):
+        path = request.url.path
+        workload = (
+            path in {"/ask", "/ask/stream", "/academic-audit", "/options"}
+            or path.startswith("/source/")
+        )
+        if workload and redis_required():
+            redis = required_redis_health()
+            if redis.get("reachable") is not True:
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": {
+                            "code": "redis_required_unavailable",
+                            "message": "共享会话服务暂时不可用，请稍后重试。",
+                        }
+                    },
+                    headers={"Retry-After": "2"},
+                )
+        eager = (os.getenv("SWUFE_RAG_EAGER_WARMUP") or "").strip() == "1"
+        if workload and eager:
+            with lock:
+                runtime_loaded = state["runtime"] is not None
+                warmup_error = state["warmup_error"]
+            if not runtime_loaded:
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": {
+                            "code": "runtime_not_ready",
+                            "message": "知识库运行时仍在预热，请稍后重试。",
+                            "warmup_failed": warmup_error is not None,
+                        }
+                    },
+                    headers={"Retry-After": "2"},
+                )
+        return await call_next(request)
+
+    @product.middleware("http")
     async def throttle(request: Request, call_next):
         """Per-client 限流。BYOK 下别人花的是自己的 Key,但检索烧的是本机
         算力,公网暴露必须有闸门。探针豁免,超限返回 429 + Retry-After。"""
@@ -387,7 +456,8 @@ def create_app(
                 get_runtime()
             except Exception as exc:
                 # 预热失败必须让 /readyz 明确暴露,而不是留到首个用户请求才炸。
-                state["warmup_error"] = f"{type(exc).__name__}: {exc}"
+                with lock:
+                    state["warmup_error"] = f"{type(exc).__name__}: {exc}"
                 logging.getLogger(__name__).exception("eager warmup failed")
 
         Thread(target=load, name="swufe-warmup", daemon=True).start()
@@ -571,6 +641,7 @@ def create_app(
             KnowledgeBaseNotReadyError,
             GenerationUnavailableError,
             SessionLockTimeoutError,
+            RedisUnavailableError,
             FileNotFoundError,
         ) as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -803,6 +874,7 @@ def create_app(
                 KnowledgeBaseNotReadyError,
                 GenerationUnavailableError,
                 SessionLockTimeoutError,
+                RedisUnavailableError,
                 FileNotFoundError,
                 ValueError,
             ) as exc:

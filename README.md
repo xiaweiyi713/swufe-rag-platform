@@ -86,7 +86,7 @@ python -m eval.hybrid_route_eval
 
 ### Redis 会话与可信答案缓存
 
-生产环境建议设置 `SWUFE_RAG_REDIS_URL`。启用后，完整会话范围、结构化问题上下文和普通聊天历史会跨进程保存；同一 `session_id` 的请求由分布式锁串行处理。仅“无历史会话、学校分支、非拒答且通过事实校验”的完整答案会进入共享缓存，`/ask` 与 `/ask/stream` 使用同一缓存规则。缓存命中仍会回填会话，因此后续省略式追问不会丢失上下文。
+生产环境必须设置 `SWUFE_RAG_REDIS_URL`。启用后，完整会话范围、结构化问题上下文和普通聊天历史会跨进程保存；同一 `session_id` 的请求由分布式锁串行处理。仅“无历史会话、学校分支、非拒答且通过事实校验”的完整答案会进入共享缓存，`/ask` 与 `/ask/stream` 使用同一缓存规则。缓存命中仍会回填会话，因此后续省略式追问不会丢失上下文。
 
 ```bash
 export SWUFE_RAG_REDIS_URL='redis://127.0.0.1:6379/0'
@@ -94,7 +94,7 @@ export SWUFE_RAG_CACHE_VERSION='2026-07-18'
 python -m app.server
 ```
 
-未配置或启动时连接失败会自动使用进程内会话并关闭答案缓存；运行中短暂故障则使用有容量上限的本地镜像和熔断降级。生产凭据不要写入仓库，远程 Redis 应使用 ACL 与 `rediss://`。详细参数和故障检查见 [RUNBOOK.md](RUNBOOK.md)。
+单 worker 开发环境未配置 Redis 时会使用进程内会话并关闭答案缓存。只要 `SWUFE_RAG_WORKERS>1` 或 `SWUFE_RAG_REQUIRE_REDIS=1`，Redis 就是强依赖：连接失败会让 `/readyz` 与问答入口返回 503，绝不退回相互隔离的进程内会话。生产凭据不要写入仓库，远程 Redis 应使用 ACL 与 `rediss://`。详细参数和故障检查见 [RUNBOOK.md](RUNBOOK.md)。
 
 学校 RAG 的默认 admission 是每进程 `2` 个 MPS/CPU 检索槽、`8` 个等待位和 `8` 秒队列超时；SQL 快路径与答案缓存不占用检索槽。相同检索键在进程内使用 TTL 缓存和 singleflight 合并，跨进程答案缓存仍由 Redis 提供。
 
@@ -105,4 +105,3 @@ python -m app.server
 - [INTERFACES.md](INTERFACES.md)：冻结的知识块、B、C 接口契约。
 - [ENGINEERING_LOG.md](ENGINEERING_LOG.md)：研究依据、实现决策、测试证据、限制与真实数据补齐步骤。
 - [REPOSITORY.md](REPOSITORY.md)：主仓和协作约定。
-

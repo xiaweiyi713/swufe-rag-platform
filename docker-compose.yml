@@ -53,6 +53,7 @@ services:
 
       # --- Redis(会话外置 + 答案缓存 + 限流计数)---
       SWUFE_RAG_REDIS_URL: "redis://redis:6379/0"
+      SWUFE_RAG_REQUIRE_REDIS: "1"
       SWUFE_RAG_SESSION_TTL: "${SWUFE_RAG_SESSION_TTL:-259200}"
       SWUFE_RAG_ANSWER_CACHE_TTL: "${SWUFE_RAG_ANSWER_CACHE_TTL:-86400}"
 
@@ -83,12 +84,20 @@ services:
       --workers ${SWUFE_RAG_WORKERS:-2}
       --proxy-headers --forwarded-allow-ips=*
       --timeout-keep-alive 75
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
     networks: [swufe]
 
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    depends_on: [app]
+    depends_on:
+      app:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"

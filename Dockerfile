@@ -34,10 +34,9 @@ ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 EXPOSE 8000
 
-# 存活探针走 /healthz(不触碰模型,毫秒级)。slim 镜像没装 curl,
-# 因此用 stdlib urllib;start-period 给足冷启动加载模型索引的时间,
-# 否则首次探测会在模型还没加载完时误判失败并触发重启循环。
+# 容器健康状态代表能否接流量,因此使用 /readyz。/healthz 仍保留给
+# Kubernetes liveness 等独立存活探针;slim 镜像没有 curl,这里使用 stdlib。
 HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
-    CMD ["python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status == 200 else 1)"]
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4)"]
 
 CMD ["uvicorn", "app.server.application:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -177,8 +177,8 @@ curl -s https://your-domain/readyz | jq
 - `query_capacity` — `timed_out`/`rejected` 持续增长说明检索并发不够,
   调大 `SWUFE_RAG_QUERY_MAX_CONCURRENCY`(云服务器纯 CPU,默认 4 偏保守)。
 - `rate_limit.rejected` — 增长快说明限流过严或有人在刷。
-- `redis.reachable` — 为 false 时服务仍能跑(自动降级为进程内存),
-  但多 worker 之间的会话就不共享了,要尽快修。
+- `redis.reachable` — 生产配置下为 false 时 `/readyz` 和问答入口均返回
+  503；先恢复 Redis，不能用多 worker 进程内降级冒充正常服务。
 
 ### 调参经验
 

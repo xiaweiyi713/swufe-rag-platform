@@ -136,6 +136,8 @@ python -m app.server
 | 变量 | 默认值 | 说明 |
 |---|---:|---|
 | `SWUFE_RAG_REDIS_URL` | 空 | 空时使用进程内会话且禁用答案缓存；支持 `redis://`/`rediss://` |
+| `SWUFE_RAG_REQUIRE_REDIS` | `0` | 设为 `1` 时 Redis 故障阻止就绪和问答；workers>1 时自动强制 |
+| `SWUFE_RAG_WORKERS` | `1` | HTTP worker 数；大于 1 时必须使用 Redis |
 | `SWUFE_RAG_SESSION_TTL` | `259200` | 会话 TTL，秒 |
 | `SWUFE_RAG_ANSWER_CACHE_TTL` | `86400` | 已验证学校答案 TTL，秒 |
 | `SWUFE_RAG_SESSION_LOCK_TTL` | `180` | 同一会话分布式锁租期，秒；应长于最慢请求 |
@@ -152,7 +154,7 @@ python -m app.server
 | `SWUFE_RAG_RETRIEVAL_CACHE_SIZE` | `512` | 单进程检索结果缓存条目上限；只缓存已加载运行时内的结果 |
 | `SWUFE_RAG_RETRIEVAL_CACHE_TTL` | `300` | 单进程检索结果缓存 TTL，秒 |
 
-`GET /options` 的 `redis.sessions.backend` 和 `redis.answer_cache.backend` 均应为 `redis`。启动时无法连接会安全降级；运行中断线会继续使用本地会话镜像，恢复后的下一次访问会把较新的脏会话回写 Redis。多实例在 Redis 故障期间只能保证各实例内一致，因此生产监控仍应对降级日志告警。
+`GET /options` 的 `redis.sessions.backend` 和 `redis.answer_cache.backend` 均应为 `redis`。单 worker 开发模式允许在故障时使用本地会话镜像；多 worker 或强依赖模式不会降级，启动失败、锁失败和会话读写失败都会返回 503，`/readyz` 同时变为未就绪。
 
 安全要求：远程 Redis 使用 ACL 独立账号与 `rediss://`，限制网络来源，不在 `.env`、日志或 Git 中暴露完整 URL。应用日志只输出脱敏后的主机、端口和数据库编号。
 

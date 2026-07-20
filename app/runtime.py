@@ -43,6 +43,12 @@ def _load_config(path: str | Path) -> dict[str, Any]:
     return value
 
 
+def _artifacts_path(config: dict[str, Any]) -> str:
+    paths = config.get("paths", {})
+    configured = paths.get("artifacts", "artifacts") if isinstance(paths, dict) else "artifacts"
+    return (os.getenv("SWUFE_RAG_ARTIFACTS") or str(configured)).strip()
+
+
 def _runtime_fingerprint(
     retriever: AdvancedRetriever,
     *,
@@ -138,7 +144,7 @@ def _build_production_pipelines(
     )
     retriever = AdvancedRetriever.from_artifacts(
         chunks_path,
-        str(paths.get("artifacts", "artifacts")),
+        _artifacts_path(config),
         encoder,
         use_reranker=bool(retrieval.get("use_reranker", True)),
         rerank_model=str(retrieval.get("rerank_model", "BAAI/bge-reranker-base")),
@@ -446,7 +452,7 @@ def build_local_hybrid_runtime(
         sources_path=sources_path,
         metadata_path=metadata_path,
         config_path=config_path,
-        artifacts_path=config.get("paths", {}).get("artifacts", "artifacts"),
+        artifacts_path=_artifacts_path(config),
     )
     runtime = HybridRuntime(
         router=HybridRouter(known_colleges=metadata_db.known_colleges()),
@@ -573,7 +579,7 @@ def build_production_hybrid_runtime(
         sources_path=sources_path,
         metadata_path=metadata_path,
         config_path=config_path,
-        artifacts_path=config.get("paths", {}).get("artifacts", "artifacts"),
+        artifacts_path=_artifacts_path(config),
     )
     runtime = HybridRuntime(
         router=router,

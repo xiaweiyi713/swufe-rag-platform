@@ -41,6 +41,10 @@ class SessionLockTimeoutError(RuntimeError):
     """Raised when another request keeps the same session busy too long."""
 
 
+class RedisUnavailableError(RuntimeError):
+    """Raised when Redis is required for correctness but cannot be used."""
+
+
 class _RedisCircuitOpen(RuntimeError):
     pass
 
@@ -81,6 +85,26 @@ def _redacted_target(url: str) -> str:
         return f"{parsed.scheme or 'redis'}://{host}{port}{database}"
     except (TypeError, ValueError):
         return "configured Redis"
+
+
+def configured_worker_count() -> int:
+    """Return the declared HTTP worker count, defaulting safely to one."""
+
+    raw = (
+        os.getenv("SWUFE_RAG_WORKERS")
+        or os.getenv("WEB_CONCURRENCY")
+        or "1"
+    ).strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        logger.warning("invalid worker count %r; assuming one worker", raw)
+        return 1
+
+
+def redis_required() -> bool:
+    explicit = (os.getenv("SWUFE_RAG_REQUIRE_REDIS") or "").strip().lower()
+    return explicit in {"1", "true", "yes", "on"} or configured_worker_count() > 1
 
 
 def _connect(url: str):
@@ -304,12 +328,14 @@ class RedisSessionStore(_ResilientRedisComponent):
         lock_wait_seconds: int = _DEFAULT_LOCK_WAIT,
         circuit_seconds: float = _DEFAULT_CIRCUIT_SECONDS,
         mirror_max_sessions: int = _DEFAULT_MIRROR_MAX_SESSIONS,
+        required: bool = False,
     ) -> None:
         self._client = client
         self._ttl = ttl_seconds
         self._lock_ttl = lock_ttl_seconds
         self._lock_wait = lock_wait_seconds
         self._mirror_max = max(1, mirror_max_sessions)
+        self._required = bool(required)
         self._mirror: dict[str, tuple[float, dict[str, Any]]] = {}
         self._dirty: set[str] = set()
         self._mirror_lock = RLock()
@@ -392,7 +418,11 @@ class RedisSessionStore(_ResilientRedisComponent):
             return bool(
                 self._redis_call("session exists", lambda: self._client.exists(key))
             )
-        except Exception:
+        except Exception as exc:
+            if self._required:
+                raise RedisUnavailableError(
+                    "required Redis session store is unavailable"
+                ) from exc
             return False
 
     def get(self, session_id: str | None) -> SessionState:
@@ -411,7 +441,11 @@ class RedisSessionStore(_ResilientRedisComponent):
                 self._write_payload(key, dirty_payload)
                 self._mark_dirty(key, False)
                 payload = dirty_payload
-            except Exception:
+            except Exception as exc:
+                if self._required:
+                    raise RedisUnavailableError(
+                        "required Redis session store is unavailable"
+                    ) from exc
                 payload = dirty_payload
 
         if payload is None:
@@ -423,7 +457,11 @@ class RedisSessionStore(_ResilientRedisComponent):
                         raise ValueError("session payload must be an object")
                     payload = decoded
                     self._mirror_put(key, payload)
-            except Exception:
+            except Exception as exc:
+                if self._required:
+                    raise RedisUnavailableError(
+                        "required Redis session store is unavailable"
+                    ) from exc
                 payload = self._mirror_get(key)
 
         if payload is None:
@@ -435,7 +473,11 @@ class RedisSessionStore(_ResilientRedisComponent):
             try:
                 self._write_payload(key, snapshot)
                 self._mark_dirty(key, False)
-            except Exception:
+            except Exception as exc:
+                if self._required:
+                    raise RedisUnavailableError(
+                        "required Redis session store is unavailable"
+                    ) from exc
                 # The mirror is authoritative for this process until Redis
                 # recovers; the next successful mutation re-synchronizes it.
                 self._mark_dirty(key, True)
@@ -454,6 +496,10 @@ class RedisSessionStore(_ResilientRedisComponent):
         local_guard = self._guards[hash(clean_id) % len(self._guards)]
         with local_guard:
             if self._circuit_open():
+                if self._required:
+                    raise RedisUnavailableError(
+                        "required Redis session lock is unavailable"
+                    )
                 yield
                 return
 
@@ -467,7 +513,11 @@ class RedisSessionStore(_ResilientRedisComponent):
                 acquired = self._redis_call(
                     "session lock", lambda: distributed.acquire(blocking=True)
                 )
-            except Exception:
+            except Exception as exc:
+                if self._required:
+                    raise RedisUnavailableError(
+                        "required Redis session lock is unavailable"
+                    ) from exc
                 yield
                 return
 
@@ -492,6 +542,7 @@ class RedisSessionStore(_ResilientRedisComponent):
             "local_mirror_sessions": len(self._mirror),
             "dirty_sessions": len(self._dirty),
             "mirror_max_sessions": self._mirror_max,
+            "required": self._required,
         }
 
 
@@ -508,12 +559,21 @@ def session_guard(store, session_id: str | None):
 
 def build_session_store():
     url = (os.getenv("SWUFE_RAG_REDIS_URL") or "").strip()
+    required = redis_required()
     if not url:
+        if required:
+            raise RedisUnavailableError(
+                "Redis is required when more than one HTTP worker is configured"
+            )
         return InMemorySessionStore()
     target = _redacted_target(url)
     try:
         client = _connect(url)
     except Exception as exc:
+        if required:
+            raise RedisUnavailableError(
+                f"required Redis is unavailable at {target}"
+            ) from exc
         logger.warning(
             "Redis unavailable at %s; sessions use memory: %s",
             target,
@@ -536,6 +596,7 @@ def build_session_store():
         mirror_max_sessions=_int_env(
             "SWUFE_RAG_SESSION_MIRROR_MAX", _DEFAULT_MIRROR_MAX_SESSIONS
         ),
+        required=required,
     )
     logger.info("session store backed by Redis at %s (ttl=%ss)", target, ttl)
     return store
@@ -719,11 +780,14 @@ def component_info(component: Any) -> dict[str, Any]:
 __all__ = [
     "RedisAnswerCache",
     "RedisSessionStore",
+    "RedisUnavailableError",
     "SessionLockTimeoutError",
     "build_answer_cache",
     "build_session_store",
     "cacheable_answer",
     "component_info",
+    "configured_worker_count",
+    "redis_required",
     "runtime_cache_namespace",
     "session_guard",
     "session_has_history",

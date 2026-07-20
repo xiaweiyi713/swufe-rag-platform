@@ -643,7 +643,7 @@ Content-Type: application/json
 | `400` | 非 Schema 类运行时参数错误 |
 | `404` | `/source/{chunk_id}` 不存在 |
 | `422` | Pydantic 请求验证失败、缺少 `question`、字段过长或包含额外字段 |
-| `503` | 数据契约错误、知识库/索引未就绪、LLM 不可用 |
+| `503` | 数据契约错误、知识库/索引未就绪、必需 Redis 不可用、LLM 不可用 |
 
 错误体使用 FastAPI 标准格式：
 
@@ -846,7 +846,9 @@ original_title,corrected_title,decision,reason
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | 本地 Ollama OpenAI 兼容地址 |
 | `SWUFE_RAG_MODE` | `demo` | 调试服务模式：`demo` 或 `review` |
 | `SWUFE_RAG_CHUNKS` | `data/chunks.jsonl` | review 调试知识块路径 |
-| `SWUFE_RAG_REDIS_URL` | 空 | Redis 会话与可信答案缓存；空时安全降级 |
+| `SWUFE_RAG_REDIS_URL` | 空 | Redis 会话与可信答案缓存；多 worker 时必须配置 |
+| `SWUFE_RAG_REQUIRE_REDIS` | `0` | 强制 Redis 作为 readiness 和问答依赖；workers>1 自动启用 |
+| `SWUFE_RAG_WORKERS` | `1` | HTTP worker 数；大于 1 时自动要求 Redis |
 | `SWUFE_RAG_SESSION_TTL` | `259200` | Redis 会话 TTL，秒 |
 | `SWUFE_RAG_ANSWER_CACHE_TTL` | `86400` | 已验证学校答案缓存 TTL，秒 |
 | `SWUFE_RAG_SESSION_LOCK_TTL` | `180` | 同一会话分布式锁租期，秒 |
