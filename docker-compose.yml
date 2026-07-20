@@ -35,6 +35,9 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      # 本机/iOS 模拟器联调入口；生产公网只开放 nginx 的 80/443。
+      - "127.0.0.1:${SWUFE_RAG_PORT:-8000}:8000"
     depends_on:
       redis:
         condition: service_healthy
@@ -46,10 +49,9 @@ services:
       # 按内存预算设置:8G 机器建议 2,16G 建议 4。
       SWUFE_RAG_WORKERS: "${SWUFE_RAG_WORKERS:-2}"
       # 启动即在后台预热,加载完成前 /readyz 返回 503,nginx 不会打流量进来。
-      SWUFE_RAG_EAGER_WARMUP: "1"
+      SWUFE_RAG_EAGER_WARMUP: "${SWUFE_RAG_EAGER_WARMUP:-1}"
       # 在 nginx 后面:信任代理头,限流才能拿到真实客户端 IP。
-      SWUFE_RAG_TRUST_PROXY: "1"
-      SWUFE_RAG_FORWARDED_ALLOW_IPS: "*"
+      SWUFE_RAG_TRUST_PROXY: "${SWUFE_RAG_TRUST_PROXY:-0}"
 
       # --- Redis(会话外置 + 答案缓存 + 限流计数)---
       SWUFE_RAG_REDIS_URL: "redis://redis:6379/0"
@@ -65,15 +67,16 @@ services:
       SWUFE_RAG_QUERY_QUEUE_SIZE: "${SWUFE_RAG_QUERY_QUEUE_SIZE:-16}"
 
       # --- 模型离线加载(镜像内不联网)---
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
+      SWUFE_RAG_ALLOW_MODEL_DOWNLOAD: "${SWUFE_RAG_ALLOW_MODEL_DOWNLOAD:-0}"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+      TRANSFORMERS_OFFLINE: "${TRANSFORMERS_OFFLINE:-1}"
       # CPU 线程数:避免多 worker 之间争抢导致上下文切换开销。
       OMP_NUM_THREADS: "${OMP_NUM_THREADS:-2}"
     volumes:
       - ./data:/app/data:ro
       - ./artifacts:/app/artifacts:ro
       # 宿主机已下载好的模型缓存,容器只读复用。
-      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/home/swufe/.cache/huggingface:ro
+      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/home/swufe/.cache/huggingface
       # 注意:不要给 /tmp/swufe-rag 挂命名卷。该路径在镜像里不存在,Docker
       # 会以 root 创建卷,而容器跑在 uid 10001,entrypoint 的 cp 会 Permission
       # denied 导致重启循环。这份 metadata 副本每次启动都从只读源重新生成,
@@ -82,7 +85,7 @@ services:
       uvicorn app.server.application:app
       --host 0.0.0.0 --port 8000
       --workers ${SWUFE_RAG_WORKERS:-2}
-      --proxy-headers --forwarded-allow-ips=*
+      --proxy-headers --forwarded-allow-ips=${SWUFE_RAG_FORWARDED_ALLOW_IPS:-127.0.0.1}
       --timeout-keep-alive 75
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4)"]
@@ -93,6 +96,7 @@ services:
     networks: [swufe]
 
   nginx:
+    profiles: ["production"]
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:

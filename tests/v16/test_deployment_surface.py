@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from unittest import mock
 
+import yaml
+
 from app.server.ratelimit import RateLimiter, client_identity
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class _Headers(dict):
@@ -137,6 +143,18 @@ def test_probe_paths_are_exempt_from_throttling():
     for probe in ("/healthz", "/readyz"):
         assert probe in registered, f"{probe} 未注册"
         assert probe in EXEMPT_PATHS, f"{probe} 未加入限流豁免"
+
+
+def test_canonical_compose_gates_traffic_and_separates_production_proxy():
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    app = compose["services"]["app"]
+    nginx = compose["services"]["nginx"]
+
+    assert app["environment"]["SWUFE_RAG_REQUIRE_REDIS"] == "1"
+    assert any("127.0.0.1:" in port for port in app["ports"])
+    assert "readyz" in " ".join(app["healthcheck"]["test"])
+    assert nginx["profiles"] == ["production"]
+    assert nginx["depends_on"]["app"]["condition"] == "service_healthy"
 
 
 def test_readiness_report_flags_missing_assets(tmp_path):

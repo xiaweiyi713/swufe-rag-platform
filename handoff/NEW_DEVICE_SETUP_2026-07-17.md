@@ -1,10 +1,10 @@
 # 新设备继续开发流程
 
-以下流程以 Windows PowerShell、Python 3.11 和 NVIDIA GPU（可选）为例。项目本身包含原始资料、处理后数据库和索引，不需要先重新跑全量入库。
+以下流程以 Windows PowerShell、Python 3.12 和 NVIDIA GPU（可选）为例。Git 仓库不包含被忽略的运行数据库和索引，必须同时取得与提交配套的运行数据包。
 
 ## 1. 解压与静态验收
 
-将交付包解压到一个路径，例如：
+克隆代码并将运行数据包解压到仓库根目录，例如：
 
 ```text
 E:\school\shixun
@@ -13,16 +13,16 @@ E:\school\shixun
 进入目录后先执行：
 
 ```powershell
-python scripts/verify_migration_bundle.py
+python -m scripts.verify_migration_bundle --checksums-only
 git status --short
 ```
 
-第一个命令应通过关键数据、数据库规模和 2024 网安最低 8 学分规则检查。`git status` 可能显示本轮尚未提交的开发文件，这是交付时工作树状态的一部分，不要使用 `git reset --hard`。
+第一个命令应验证 `deploy/data-bundle.manifest.json` 中 10 个运行文件的大小和 SHA-256。依赖安装后再运行不带 `--checksums-only` 的命令，验证数据库、索引和 2024 网安最低 8 学分规则。
 
 ## 2. 创建 Python 环境
 
 ```powershell
-py -3.11 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
@@ -48,10 +48,11 @@ Remove-Item Env:SWUFE_RAG_ALLOW_MODEL_DOWNLOAD
 python -m pytest tests/academic_audit/test_requirement_overlay.py tests/academic_audit/test_program_header.py tests/academic_audit/test_service.py tests/v16 -q
 ```
 
-预期当前基线为 40 项通过。然后执行一个不含真实 Key 的后端静态检查：
+应运行完整 pytest 门禁。然后执行一个不含真实 Key 的后端数据与索引检查：
 
 ```powershell
-python scripts/verify_migration_bundle.py
+python -m pytest -q
+python -m scripts.verify_migration_bundle
 ```
 
 ## 5. 启动服务

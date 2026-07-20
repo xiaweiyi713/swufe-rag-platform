@@ -72,12 +72,12 @@ vim .env                      # 至少确认 SWUFE_RAG_WORKERS 与 HF_CACHE_DIR
 mkdir -p deploy/certs
 
 # 3. 起服务
-docker compose up -d --build
+docker compose --profile production up -d --build
 
 # 4. 确认就绪(首次要加载模型,约 1~3 分钟)
 curl -s http://127.0.0.1/healthz          # 立即 200
 curl -s http://127.0.0.1/readyz | jq      # ready:true 才算能接流量
-docker compose logs -f app
+docker compose --profile production logs -f app
 ```
 
 ### 数据与模型如何进入容器
@@ -118,22 +118,24 @@ RUN python -c "from sentence_transformers import SentenceTransformer; \
 局域网调试时用的 `NSAllowsLocalNetworking` 在公网无效。
 
 ```bash
-# Let's Encrypt(需要域名已解析到本机)
+# 首次签发：需要域名已解析到本机，且 80 端口尚未被 nginx 占用
+mkdir -p deploy/letsencrypt deploy/certs
 docker run --rm -it \
-  -v "$PWD/deploy/certs:/etc/letsencrypt/live/out" \
-  -v swufe-rag_certbot-webroot:/var/www/certbot \
-  certbot/certbot certonly --webroot -w /var/www/certbot \
+  -p 80:80 \
+  -v "$PWD/deploy/letsencrypt:/etc/letsencrypt" \
+  certbot/certbot certonly --standalone \
   -d your-domain.edu.cn --email you@example.com --agree-tos
 
 # 把签发结果放到 nginx 读取的位置
-cp /etc/letsencrypt/live/your-domain.edu.cn/{fullchain,privkey}.pem deploy/certs/
-docker compose restart nginx
+install -m 644 deploy/letsencrypt/live/your-domain.edu.cn/fullchain.pem deploy/certs/fullchain.pem
+install -m 600 deploy/letsencrypt/live/your-domain.edu.cn/privkey.pem deploy/certs/privkey.pem
+docker compose --profile production restart nginx
 ```
 
 续签加进 crontab(证书 90 天有效):
 
 ```cron
-0 3 * * 1 cd /opt/swufe-rag && docker compose run --rm certbot renew && docker compose restart nginx
+0 3 * * 1 cd /opt/swufe-rag && docker run --rm -v "$PWD/deploy/letsencrypt:/etc/letsencrypt" -v swufe-rag_certbot-webroot:/var/www/certbot certbot/certbot renew --webroot -w /var/www/certbot && install -m 644 deploy/letsencrypt/live/your-domain.edu.cn/fullchain.pem deploy/certs/fullchain.pem && install -m 600 deploy/letsencrypt/live/your-domain.edu.cn/privkey.pem deploy/certs/privkey.pem && docker compose --profile production restart nginx
 ```
 
 ---
@@ -172,14 +174,14 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
   -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 
 cp deploy/.env.example .env
-docker compose up -d --build          # 首次构建约 10 分钟(装 PyTorch CPU)
-docker compose ps                     # 三个服务都要 healthy
+docker compose --profile production up -d --build  # 首次构建约 10 分钟
+docker compose --profile production ps             # 三个服务都要 healthy
 
 curl -sk https://127.0.0.1/readyz | jq          # ready:true
 curl -sk -X POST https://127.0.0.1/ask -H 'Content-Type: application/json' \
   -d '{"question":"毕业需要修满多少学分？","cohort":"2024","major":"网络空间安全专业"}' | jq -r .answer_md
 
-docker compose down                   # 清理(加 -v 连数据卷一起删)
+docker compose --profile production down           # 清理(加 -v 连数据卷一起删)
 ```
 
 ### 已知坑(都已在配置里修好,供排查参考)

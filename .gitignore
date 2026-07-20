@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 deploy/certs/*.pem
+deploy/letsencrypt/
 
 # Python
 __pycache__/

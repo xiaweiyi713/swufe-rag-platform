@@ -29,3 +29,13 @@ jobs:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
         run: python -m pytest -q
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate canonical Compose configuration
+        run: docker compose --env-file deploy/.env.example --profile production config --quiet
+      - name: Build production image
+        run: docker build --tag swufe-rag:ci .
