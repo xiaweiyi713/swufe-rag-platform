@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 import tempfile
+from threading import Lock, Thread
+import time
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -133,6 +136,34 @@ class AdvancedRetrieverTests(unittest.TestCase):
             self.assertNotEqual(result["college"], "金融学院")
             self.assertEqual(result["status"], "现行")
             self.assertIn(result["cohort"], {"不限", "2023"})
+
+    def test_same_key_retrieval_uses_singleflight(self) -> None:
+        calls = 0
+        calls_lock = Lock()
+        def uncached(*args, **kwargs):
+            nonlocal calls
+            with calls_lock:
+                calls += 1
+            time.sleep(0.04)
+            return []
+
+        with patch.object(
+            self.pipeline, "_retrieve_scoped_uncached", side_effect=uncached
+        ):
+            threads = [
+                Thread(
+                    target=self.pipeline.retrieve_scoped,
+                    kwargs={"query": "singleflight-unique", "top_k": 5},
+                )
+                for _ in range(4)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=3)
+                self.assertFalse(thread.is_alive())
+
+        self.assertEqual(calls, 1)
 
 
 if __name__ == "__main__":

@@ -196,21 +196,38 @@ def _requirement_fact(row: dict[str, Any], evidence_id: str | None) -> Requireme
 
 
 def _graduation_minimum(
-    metadata: MetadataDB, rows: list[dict[str, Any]], registry: EvidenceRegistry
+    metadata: MetadataDB,
+    rows: list[dict[str, Any]],
+    registry: EvidenceRegistry,
+    *,
+    major: str,
 ) -> dict[str, Any] | None:
+    stem = major.removesuffix("专业")
     titles = list(dict.fromkeys(str(row.get("doc_title") or "") for row in rows if row.get("doc_title")))
     for title in titles:
         candidates = metadata.connection.execute(
             """
-            SELECT c.chunk_id, c.text
+            SELECT c.chunk_id, c.text, c.article
             FROM chunks AS c JOIN sources AS s ON s.source_id = c.source_id
-            WHERE s.enabled = 1 AND s.doc_title = ? AND c.text LIKE '%毕业最低学分%'
+            WHERE s.enabled = 1 AND s.doc_title = ?
+              AND c.text LIKE '%毕业最低学分%'
+              AND (c.article LIKE ? OR c.text LIKE ?)
             ORDER BY c.is_table DESC, c.embedding_row
             """,
-            (title,),
+            (title, f"%{stem}%", f"%{stem}%"),
         ).fetchall()
         for candidate in candidates:
-            match = re.search(r"毕业最低学分(?:要求)?(?:为|[:：]|.*?)(\d{2,3}(?:\.\d+)?)\s*学分", candidate["text"])
+            text = str(candidate["text"])
+            article = str(candidate["article"])
+            match = re.search(
+                rf"{re.escape(stem)}(?:专业)?\s*(\d{{2,3}}(?:\.\d+)?)\s*个?\s*学分",
+                text,
+            )
+            if match is None and stem in article:
+                match = re.search(
+                    r"毕业最低学分(?:要求)?(?:为|[:：]|.{0,24}?)(\d{2,3}(?:\.\d+)?)\s*个?\s*学分",
+                    text,
+                )
             if not match:
                 continue
             evidence_id = registry.add(str(candidate["chunk_id"]))
@@ -276,7 +293,12 @@ def execute_plan(
         result: dict[str, Any] = {"operation": name, "status": "ok"}
         if name == "get_graduation_requirements":
             result["requirement_ids"] = add_requirements(requirement_rows)
-            minimum = _graduation_minimum(metadata, [*requirement_rows, *all_rows[:1]], registry)
+            minimum = _graduation_minimum(
+                metadata,
+                [*requirement_rows, *all_rows[:1]],
+                registry,
+                major=query.major,
+            )
             if minimum:
                 packet.facts.append(minimum)
                 result["graduation_min_credits"] = minimum["value"]

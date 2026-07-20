@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
+import re
 import sqlite3
 
 import scripts.audit_full_coverage_v2 as base
@@ -12,7 +14,9 @@ import scripts.audit_full_coverage_v2 as base
 IGNORED_GENERATED = {
     ".gitkeep",
     "it/training/2023级计智相关本科人才培养方案.pdf",
+    "school/25级培养方案.pdf.sections.json",
 }
+PAGE_NUMBER_ONLY_RE = re.compile(r"^[—\-–]?\s*\d+(?:\s*/\s*\d+)?\s*[—\-–]?$")
 
 
 def _substantive_missing_pages(report: dict) -> list[dict]:
@@ -59,7 +63,8 @@ def _substantive_missing_pages(report: dict) -> list[dict]:
                         and "Address:" in text
                         and len(compact) < 600
                     )
-                    if compact and not footer_only:
+                    page_number_only = bool(PAGE_NUMBER_ONLY_RE.fullmatch(text))
+                    if compact and not footer_only and not page_number_only:
                         missing.append(
                             {
                                 "source_id": source["source_id"],
@@ -89,8 +94,13 @@ def pdf_pages(path: Path) -> int | None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--database", default="data/academic_v2.sqlite3")
+    parser.add_argument("--raw-dir", default="data/raw")
+    parser.add_argument("--output", default="analysis-output/full-system-v2")
+    args = parser.parse_args()
     base._pdf_pages = pdf_pages
-    report = base.audit()
+    report = base.audit(args.database, raw_dir=args.raw_dir)
     report["missing_substantive_pages"] = _substantive_missing_pages(report)
     report["substantive_page_coverage_complete"] = not report[
         "missing_substantive_pages"
@@ -98,7 +108,7 @@ def main() -> None:
     found = set(report["unregistered_raw_files"])
     report["ignored_generated_files"] = sorted(found & IGNORED_GENERATED)
     report["unregistered_raw_files"] = sorted(found - IGNORED_GENERATED)
-    output = Path("analysis-output/full-system-v2")
+    output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     (output / "coverage.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

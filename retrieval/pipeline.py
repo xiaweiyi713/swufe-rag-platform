@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import OrderedDict
 from pathlib import Path
-from threading import RLock
+from threading import Event, RLock
 from typing import Any
+import os
 import re
+import time
 
 import numpy as np
 
@@ -58,6 +61,64 @@ class AdvancedRetriever:
             chunk["chunk_id"]: core.bundle.embeddings[index]
             for index, chunk in enumerate(core.bundle.chunks)
         }
+        self._retrieval_cache_lock = RLock()
+        self._retrieval_cache: OrderedDict[
+            tuple[Any, ...], tuple[float, list[RetrievedChunk]]
+        ] = OrderedDict()
+        self._retrieval_inflight: dict[tuple[Any, ...], Event] = {}
+        self._retrieval_cache_size = self._positive_env_int(
+            "SWUFE_RAG_RETRIEVAL_CACHE_SIZE", 512
+        )
+        self._retrieval_cache_ttl = self._positive_env_float(
+            "SWUFE_RAG_RETRIEVAL_CACHE_TTL", 300.0
+        )
+
+    @staticmethod
+    def _positive_env_int(name: str, default: int) -> int:
+        try:
+            value = int((os.getenv(name) or "").strip())
+        except ValueError:
+            return default
+        return value if value > 0 else default
+
+    @staticmethod
+    def _positive_env_float(name: str, default: float) -> float:
+        try:
+            value = float((os.getenv(name) or "").strip())
+        except ValueError:
+            return default
+        return value if value > 0 else default
+
+    @staticmethod
+    def _copy_chunks(chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        # Runtime stages only read retrieved chunks.  Returning fresh dicts
+        # keeps cached evidence isolated from payload enrichment.
+        return [dict(chunk) for chunk in chunks]
+
+    def _cached_retrieval(self, key: tuple[Any, ...]) -> list[RetrievedChunk] | None:
+        now = time.monotonic()
+        with self._retrieval_cache_lock:
+            item = self._retrieval_cache.get(key)
+            if item is None:
+                return None
+            expires_at, chunks = item
+            if expires_at <= now:
+                self._retrieval_cache.pop(key, None)
+                return None
+            self._retrieval_cache.move_to_end(key)
+            return self._copy_chunks(chunks)
+
+    def _store_retrieval(
+        self, key: tuple[Any, ...], chunks: list[RetrievedChunk]
+    ) -> None:
+        with self._retrieval_cache_lock:
+            self._retrieval_cache[key] = (
+                time.monotonic() + self._retrieval_cache_ttl,
+                self._copy_chunks(chunks),
+            )
+            self._retrieval_cache.move_to_end(key)
+            while len(self._retrieval_cache) > self._retrieval_cache_size:
+                self._retrieval_cache.popitem(last=False)
 
     @classmethod
     def from_artifacts(
@@ -168,7 +229,7 @@ class AdvancedRetriever:
             cohort=cohort,
         )
 
-    def retrieve_scoped(
+    def _retrieve_scoped_uncached(
         self,
         query: str,
         top_k: int = 5,
@@ -317,6 +378,68 @@ class AdvancedRetriever:
                 if replacement is not None:
                     results[-1] = replacement
         return results
+
+    def retrieve_scoped(
+        self,
+        query: str,
+        top_k: int = 5,
+        college: str | None = None,
+        cohort: str | None = None,
+        *,
+        policy_year: int | None = None,
+        topic: str | None = None,
+    ) -> list[RetrievedChunk]:
+        """Retrieve with a bounded TTL cache and same-key singleflight.
+
+        The cache is deliberately local to a loaded runtime: embeddings and
+        metadata are immutable for that runtime, while Redis remains the
+        cross-process answer-cache layer.  Singleflight prevents identical
+        misses from concurrently invoking MPS/CPU model inference.
+        """
+        key = (
+            query.strip() if isinstance(query, str) else query,
+            int(top_k),
+            college.strip() if isinstance(college, str) else college,
+            cohort.strip() if isinstance(cohort, str) else cohort,
+            policy_year,
+            topic.strip() if isinstance(topic, str) else topic,
+        )
+        cached = self._cached_retrieval(key)
+        if cached is not None:
+            return cached
+
+        with self._retrieval_cache_lock:
+            event = self._retrieval_inflight.get(key)
+            owner = event is None
+            if owner:
+                event = Event()
+                self._retrieval_inflight[key] = event
+        assert event is not None
+        if not owner:
+            event.wait(timeout=max(30.0, self._retrieval_cache_ttl))
+            cached = self._cached_retrieval(key)
+            if cached is not None:
+                return cached
+            # The owner failed or timed out.  Falling through keeps the request
+            # functional instead of turning a cache coordination issue into a
+            # user-visible error.
+
+        try:
+            result = self._retrieve_scoped_uncached(
+                query,
+                top_k=top_k,
+                college=college,
+                cohort=cohort,
+                policy_year=policy_year,
+                topic=topic,
+            )
+            self._store_retrieval(key, result)
+            return self._copy_chunks(result)
+        finally:
+            if owner:
+                with self._retrieval_cache_lock:
+                    self._retrieval_inflight.pop(key, None)
+                    event.set()
 
 
 _default_retriever: AdvancedRetriever | None = None

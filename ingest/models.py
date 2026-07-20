@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 
-ElementKind = Literal["heading", "paragraph", "table"]
+ElementKind = Literal["section", "heading", "paragraph", "table"]
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class SourceRecord:
 
 @dataclass(frozen=True)
 class DocumentElement:
-    """A paragraph, heading, or whole table in source-document order."""
+    """A section boundary, paragraph, heading, or table in source order."""
 
     kind: ElementKind
     text: str

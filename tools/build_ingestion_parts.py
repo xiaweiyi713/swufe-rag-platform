@@ -26,6 +26,10 @@ def signature(
     if ocr_sidecar.is_file():
         digest.update(ocr_sidecar.name.encode("utf-8"))
         digest.update(ocr_sidecar.read_bytes())
+    section_sidecar = source_path.with_suffix(source_path.suffix + ".sections.json")
+    if section_sidecar.is_file():
+        digest.update(section_sidecar.name.encode("utf-8"))
+        digest.update(section_sidecar.read_bytes())
     return digest.hexdigest()
 
 

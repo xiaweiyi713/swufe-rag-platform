@@ -1,0 +1,15 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "generated_at": "2026-07-19T12:02:14+0800",
+  "case_count": 100,
+  "passed": 99,
+  "failed": 1,
+  "pass_rate": 0.99,
+  "failure_checks": {
+    "page_accurate": 1
+  },
+  "failed_ids": [
+    5
+  ],
+  "wall_seconds": 63.98
+}

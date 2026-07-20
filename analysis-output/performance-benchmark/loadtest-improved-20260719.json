@@ -1,0 +1,763 @@
+{
+  "generated_at": "2026-07-19T11:44:42+0800",
+  "base_url": "http://127.0.0.1:8001",
+  "methodology": {
+    "cold_requests": 12,
+    "mixed_requests": 16,
+    "cold_cache_bypassed_with_deep_thinking": true,
+    "hot_requests": 40
+  },
+  "cold_rag": [
+    {
+      "name": "cold-rag",
+      "concurrency": 1,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 1.08,
+      "wall_ms": 11096.41,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 924.66,
+        "p50": 1155.13,
+        "p95": 1574.91,
+        "max": 1664.02
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 921.04,
+        "p50": 1152.05,
+        "p95": 1568.11,
+        "max": 1653.07
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 1223.26,
+        "p50": 1284.77,
+        "p95": 1586.3,
+        "max": 1646.94
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 2,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 1.21,
+      "wall_ms": 9909.07,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1560.52,
+        "p50": 1802.91,
+        "p95": 2602.11,
+        "max": 2665.4
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 1557.46,
+        "p50": 1799.43,
+        "p95": 2599.32,
+        "max": 2662.45
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 2071.88,
+        "p50": 2027.4,
+        "p95": 2613.46,
+        "max": 2658.84
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 4,
+      "requests": 12,
+      "successes": 9,
+      "error_rate": 0.25,
+      "throughput_rps": 1.28,
+      "wall_ms": 7037.3,
+      "status_counts": {
+        "200": 9,
+        "429": 3
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1882.43,
+        "p50": 2013.93,
+        "p95": 3566.52,
+        "max": 4255.61
+      },
+      "server_ms": {
+        "count": 9,
+        "mean": 1834.93,
+        "p50": 2050.13,
+        "p95": 3749.04,
+        "max": 4249.1
+      },
+      "retrieval_ms": {
+        "count": 6,
+        "mean": 2746.09,
+        "p50": 2667.51,
+        "p95": 3928.03,
+        "max": 4239.63
+      },
+      "capacity_wait_ms": {
+        "count": 6,
+        "mean": 404.45,
+        "p50": 177.0,
+        "p95": 1448.02,
+        "max": 1859.71
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 8,
+      "requests": 12,
+      "successes": 7,
+      "error_rate": 0.4167,
+      "throughput_rps": 1.51,
+      "wall_ms": 4637.61,
+      "status_counts": {
+        "200": 7,
+        "429": 5
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1427.88,
+        "p50": 917.04,
+        "p95": 4600.82,
+        "max": 4637.27
+      },
+      "server_ms": {
+        "count": 7,
+        "mean": 1858.15,
+        "p50": 1816.15,
+        "p95": 4611.63,
+        "max": 4631.75
+      },
+      "retrieval_ms": {
+        "count": 4,
+        "mean": 3242.06,
+        "p50": 3267.81,
+        "p95": 4612.56,
+        "max": 4622.33
+      },
+      "capacity_wait_ms": {
+        "count": 4,
+        "mean": 944.5,
+        "p50": 903.44,
+        "p95": 1946.48,
+        "max": 1971.12
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 1
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 12,
+      "requests": 12,
+      "successes": 6,
+      "error_rate": 0.5,
+      "throughput_rps": 1.82,
+      "wall_ms": 3289.99,
+      "status_counts": {
+        "429": 6,
+        "200": 6
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1067.4,
+        "p50": 422.0,
+        "p95": 2850.54,
+        "max": 3289.69
+      },
+      "server_ms": {
+        "count": 6,
+        "mean": 1101.05,
+        "p50": 414.04,
+        "p95": 3082.43,
+        "max": 3282.21
+      },
+      "retrieval_ms": {
+        "count": 3,
+        "mean": 2189.19,
+        "p50": 2478.78,
+        "p95": 3196.22,
+        "max": 3275.94
+      },
+      "capacity_wait_ms": {
+        "count": 3,
+        "mean": 269.97,
+        "p50": 0.0,
+        "p95": 728.91,
+        "max": 809.9
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 1
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 3
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        }
+      ]
+    }
+  ],
+  "mixed": [
+    {
+      "name": "mixed",
+      "concurrency": 4,
+      "requests": 16,
+      "successes": 14,
+      "error_rate": 0.125,
+      "throughput_rps": 3.21,
+      "wall_ms": 4362.33,
+      "status_counts": {
+        "200": 14,
+        "429": 2
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 775.37,
+        "p50": 38.89,
+        "p95": 2334.85,
+        "max": 2479.01
+      },
+      "server_ms": {
+        "count": 14,
+        "mean": 584.14,
+        "p50": 13.19,
+        "p95": 2348.62,
+        "max": 2475.54
+      },
+      "retrieval_ms": {
+        "count": 5,
+        "mean": 1593.72,
+        "p50": 2068.81,
+        "p95": 2431.91,
+        "max": 2471.18
+      },
+      "capacity_wait_ms": {
+        "count": 5,
+        "mean": 86.43,
+        "p50": 0.0,
+        "p95": 225.31,
+        "max": 231.47
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed",
+      "concurrency": 8,
+      "requests": 16,
+      "successes": 12,
+      "error_rate": 0.25,
+      "throughput_rps": 4.42,
+      "wall_ms": 2715.64,
+      "status_counts": {
+        "200": 12,
+        "429": 4
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 868.07,
+        "p50": 65.91,
+        "p95": 2714.59,
+        "max": 2715.01
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 479.07,
+        "p50": 35.09,
+        "p95": 2707.7,
+        "max": 2707.83
+      },
+      "retrieval_ms": {
+        "count": 3,
+        "mean": 1801.06,
+        "p50": 2700.84,
+        "p95": 2702.17,
+        "max": 2702.32
+      },
+      "capacity_wait_ms": {
+        "count": 3,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 3
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed",
+      "concurrency": 16,
+      "requests": 16,
+      "successes": 11,
+      "error_rate": 0.3125,
+      "throughput_rps": 4.91,
+      "wall_ms": 2240.85,
+      "status_counts": {
+        "200": 11,
+        "429": 5
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 854.31,
+        "p50": 207.52,
+        "p95": 2205.44,
+        "max": 2240.26
+      },
+      "server_ms": {
+        "count": 11,
+        "mean": 492.87,
+        "p50": 140.73,
+        "p95": 2207.77,
+        "max": 2230.11
+      },
+      "retrieval_ms": {
+        "count": 2,
+        "mean": 2201.69,
+        "p50": 2201.69,
+        "p95": 2223.55,
+        "max": 2225.98
+      },
+      "capacity_wait_ms": {
+        "count": 2,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 3
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_full",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 4
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 1
+          }
+        }
+      ]
+    }
+  ],
+  "hot_warm": {
+    "name": "hot-warm",
+    "concurrency": 1,
+    "requests": 1,
+    "successes": 1,
+    "error_rate": 0.0,
+    "throughput_rps": 127.59,
+    "wall_ms": 7.84,
+    "status_counts": {
+      "200": 1
+    },
+    "cache_hits": 1,
+    "client_ms": {
+      "count": 1,
+      "mean": 7.75,
+      "p50": 7.75,
+      "p95": 7.75,
+      "max": 7.75
+    },
+    "server_ms": {
+      "count": 1,
+      "mean": 5.45,
+      "p50": 5.45,
+      "p95": 5.45,
+      "max": 5.45
+    },
+    "retrieval_ms": {
+      "count": 1,
+      "mean": 0.01,
+      "p50": 0.01,
+      "p95": 0.01,
+      "max": 0.01
+    },
+    "capacity_wait_ms": {
+      "count": 1,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  },
+  "hot_cache": {
+    "name": "hot-cache",
+    "concurrency": 32,
+    "requests": 40,
+    "successes": 40,
+    "error_rate": 0.0,
+    "throughput_rps": 834.6,
+    "wall_ms": 47.93,
+    "status_counts": {
+      "200": 40
+    },
+    "cache_hits": 40,
+    "client_ms": {
+      "count": 40,
+      "mean": 29.14,
+      "p50": 29.57,
+      "p95": 39.48,
+      "max": 41.67
+    },
+    "server_ms": {
+      "count": 40,
+      "mean": 14.79,
+      "p50": 15.02,
+      "p95": 28.49,
+      "max": 32.12
+    },
+    "retrieval_ms": {
+      "count": 40,
+      "mean": 0.01,
+      "p50": 0.01,
+      "p95": 0.01,
+      "max": 0.01
+    },
+    "capacity_wait_ms": {
+      "count": 40,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  },
+  "stream_cache": {
+    "name": "stream-cache",
+    "concurrency": 16,
+    "requests": 16,
+    "successes": 16,
+    "error_rate": 0.0,
+    "throughput_rps": 342.73,
+    "wall_ms": 46.68,
+    "status_counts": {
+      "200": 16
+    },
+    "cache_hits": 16,
+    "client_ms": {
+      "count": 16,
+      "mean": 41.6,
+      "p50": 41.98,
+      "p95": 45.78,
+      "max": 46.33
+    },
+    "server_ms": {
+      "count": 16,
+      "mean": 10.83,
+      "p50": 10.71,
+      "p95": 11.78,
+      "max": 12.02
+    },
+    "retrieval_ms": {
+      "count": 16,
+      "mean": 0.01,
+      "p50": 0.01,
+      "p95": 0.01,
+      "max": 0.01
+    },
+    "capacity_wait_ms": {
+      "count": 16,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  }
+}

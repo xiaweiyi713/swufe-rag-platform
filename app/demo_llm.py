@@ -155,6 +155,20 @@ class DemoGeneralClient:
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         question = user_prompt.rsplit("【当前问题】", 1)[-1].strip()
+        greeting = re.sub(r"[\s，,。.!！?？~～]+", "", question).lower()
+        if greeting in {
+            "你好",
+            "您好",
+            "嗨",
+            "在吗",
+            "早上好",
+            "下午好",
+            "晚上好",
+            "hello",
+            "hi",
+            "hey",
+        }:
+            return "你好！有什么我可以帮你的吗？"
         if "注意力机制" in question:
             return "注意力机制会根据当前任务，为输入中的不同信息分配不同权重。"
         if "快速排序" in question:

@@ -1,0 +1,15 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "case_count": 100,
+  "passed": 99,
+  "failed": 1,
+  "pass_rate": 0.99,
+  "failure_checks": {
+    "page_accurate": 1
+  },
+  "failed_ids": [
+    5
+  ],
+  "elapsed_seconds": 73.66,
+  "mode": "HTTP final candidate_k=50"
+}

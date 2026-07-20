@@ -22,6 +22,20 @@ class LLMAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             OpenAICompatibleClient("deepseek-chat", max_retries=3)
 
+    def test_provider_does_not_inherit_ambient_proxy_by_default(self) -> None:
+        client = OpenAICompatibleClient("deepseek-chat", api_key="test")
+
+        self.assertFalse(client.trust_environment_proxy)
+
+    def test_environment_proxy_requires_explicit_opt_in(self) -> None:
+        client = OpenAICompatibleClient(
+            "deepseek-chat",
+            api_key="test",
+            trust_environment_proxy=True,
+        )
+
+        self.assertTrue(client.trust_environment_proxy)
+
 
 if __name__ == "__main__":
     unittest.main()

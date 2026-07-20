@@ -18,7 +18,8 @@ _ARTICLE_RE = re.compile(rf"^\s*(第[{_NUMERALS}]+条)\s*(.*?)\s*$")
 _CN_HEADING_RE = re.compile(rf"^\s*([{_NUMERALS}]+、)\s*(.*?)\s*$")
 _LIST_ITEM_RE = re.compile(r"^\s*(\d{1,3})\s*[.·、]\s*(.+)$")
 _PROGRAM_HEADING_RE = re.compile(
-    r"^.{2,100}(?:专业|专业类|计算机类).{0,40}(?:本科)?人才培养方案$"
+    r"^[^。；;：:]{2,160}(?:本科)?人才培养方案"
+    r"(?:\s*[（(]\s*20\d{2}\s*年版\s*[）)])?$"
 )
 _PROGRAM_BODY_START_RE = re.compile(
     r"^西南财经大学(.{2,80}?(?:专业|专业类))人才培养"
@@ -49,6 +50,7 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
     article = "正文"
     base_article = "正文"
     current_page: int | None = None
+    section_chapter: str | None = None
 
     def label() -> str:
         return " / ".join(item for item in (chapter, article) if item and item != "正文") or "正文"
@@ -63,6 +65,13 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
         if element.page is not None and element.page != current_page:
             flush()
             current_page = element.page
+        if element.kind == "section":
+            flush()
+            section_chapter = normalize_text(element.text)[:160]
+            chapter = section_chapter
+            article = "正文"
+            base_article = "正文"
+            continue
         if element.kind == "table":
             flush()
             if element.page and chapter:
@@ -89,6 +98,8 @@ def _segments(elements: list[DocumentElement]) -> list[_Segment]:
                     buffer.append(remainder)
                 continue
             if _PROGRAM_HEADING_RE.match(line):
+                if section_chapter is not None:
+                    continue
                 flush()
                 chapter = line[:100]
                 article = "正文"

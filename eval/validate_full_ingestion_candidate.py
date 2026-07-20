@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from collections import Counter, defaultdict
 from hashlib import sha256
 import json
@@ -17,8 +18,9 @@ from retrieval.index import load_chunks
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
-OUT = ROOT / "analysis-output" / "curriculum-2023-rag-audit"
+DEFAULT_OUT = ROOT / "analysis-output" / "curriculum-2023-rag-audit"
 PAGE_RE = re.compile(r"(?:\u539f\u6587\u4ef6)?\u7b2c(\d+)\u9875")
+PAGE_NUMBER_ONLY_RE = re.compile(r"^[—\-–]?\s*\d+(?:\s*/\s*\d+)?\s*[—\-–]?$")
 FULL_PLAN_RE = re.compile(r"^school/(\d{2})\u7ea7\u57f9\u517b\u65b9\u6848\.pdf$")
 DERIVED_RAW_FILES = {"it/training/2023\u7ea7\u8ba1\u667a\u76f8\u5173\u672c\u79d1\u4eba\u624d\u57f9\u517b\u65b9\u6848.pdf"}
 
@@ -32,8 +34,14 @@ def digest(path: Path) -> str:
 
 
 def main() -> None:
-    candidate_path = ROOT / "tmp" / "full_chunks_candidate.jsonl"
-    report_path = ROOT / "tmp" / "full_ingest_report_candidate.json"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--candidate", default="tmp/full_chunks_candidate.jsonl")
+    parser.add_argument("--report", default="tmp/full_ingest_report_candidate.json")
+    parser.add_argument("--output", default=str(DEFAULT_OUT.relative_to(ROOT)))
+    args = parser.parse_args()
+    candidate_path = ROOT / args.candidate
+    report_path = ROOT / args.report
+    output_dir = ROOT / args.output
     sources = load_sources(ROOT / "data" / "sources.csv", raw_dir=RAW)
     chunks = load_chunks(candidate_path)
     report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -49,7 +57,8 @@ def main() -> None:
     physical = {
         path.relative_to(RAW).as_posix()
         for path in RAW.rglob("*")
-        if path.is_file() and path.suffix.lower() in {".pdf", ".doc", ".docx"}
+        if path.is_file()
+        and path.suffix.lower() in {".pdf", ".docx", ".txt", ".md"}
     }
     unregistered = sorted(physical - registered)
     unexpected_unregistered = sorted(set(unregistered) - DERIVED_RAW_FILES)
@@ -104,15 +113,17 @@ def main() -> None:
                     marker in normalized_page
                     for marker in ("\u7248\u6743\u6240\u6709@", "Postal Code", "it.swufe.edu.cn/info/")
                 )
+                page_number_only = bool(PAGE_NUMBER_ONLY_RE.fullmatch(normalized_page))
                 has_content = (
                     bool(re.search(r"[\u3400-\u9fffA-Za-z0-9]", text)) or image_count > 0
-                ) and not boilerplate_only
+                ) and not boilerplate_only and not page_number_only
                 detail = {
                     "page": page_number,
                     "extractable_chars": len(re.findall(r"[\u3400-\u9fffA-Za-z0-9]", text)),
                     "image_count": image_count,
                     "has_detectable_content": has_content,
                     "boilerplate_only": boilerplate_only,
+                    "page_number_only": page_number_only,
                 }
                 missing_page_details.append(detail)
                 if has_content:
@@ -145,9 +156,13 @@ def main() -> None:
             }
         )
         missing_pages = sorted(set(range(1, expected_pages + 1)) - set(observed_pages))
+        exact_page_links_supported = any(
+            ".pdf" in value.lower() for value in (source.page_url, source.file_url)
+        )
         bad_page_links = [
             chunk["chunk_id"]
             for chunk in plan_chunks
+            if exact_page_links_supported
             if (pages := PAGE_RE.findall(chunk["article"]))
             and f"#page={pages[-1]}" not in chunk["page_url"]
         ]
@@ -231,8 +246,8 @@ def main() -> None:
         )
     )
 
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "full-candidate-validation.json").write_text(
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "full-candidate-validation.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     lines = [
@@ -263,7 +278,7 @@ def main() -> None:
             "",
         ]
     )
-    (OUT / "full-candidate-validation.md").write_text(
+    (output_dir / "full-candidate-validation.md").write_text(
         "\n".join(lines), encoding="utf-8"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))

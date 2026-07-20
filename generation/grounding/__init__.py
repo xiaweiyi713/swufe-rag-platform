@@ -20,7 +20,11 @@ SOURCE_MARKER_RE = re.compile(
 NUMBER_RE = re.compile(
     r"(?<![A-Za-z])\d+(?:\.\d+)?%?|[A-Za-z]{2,}\d{2,4}", re.I
 )
-SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？!?；;])\s*|\n+")
+# Some official PDFs encode the visible decimal point with a supplementary
+# private-use glyph. Normalize only that known glyph for numeric comparison;
+# the stored quote remains byte-for-byte unchanged.
+OCR_DECIMAL_POINT = "\U001001b0"
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？!?])\s*|\n+")
 PASSAGE_SPLIT_RE = re.compile(r"(?<=[。！？!?；;])|\n+")
 
 
@@ -155,7 +159,9 @@ class StrictGroundingValidator:
         claim = MARKER_RE.sub("", sentence)
         claim_numbers = set(NUMBER_RE.findall(normalize_query(claim)))
         sources = [chunks[marker - 1]["text"] for marker in unique_markers]
-        combined = normalize_query("\n".join(sources))
+        combined = normalize_query(
+            "\n".join(sources).replace(OCR_DECIMAL_POINT, ".")
+        )
         missing = sorted(number for number in claim_numbers if number not in combined)
         if missing:
             raise CitationValidationError(

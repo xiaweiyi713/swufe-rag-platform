@@ -6,7 +6,7 @@ import unittest
 from generation.general_chat import GeneralChatService
 from retrieval.index import load_chunks
 from storage.metadata_db import MetadataDB
-from swufe_rag.orchestration import HybridRuntime, SCHOOL_NOT_FOUND_TEXT
+from swufe_rag.orchestration import HybridRuntime, SCHOOL_NOT_FOUND_TEXT, _summary
 from swufe_rag.routing.router import HybridRouter
 
 
@@ -142,6 +142,13 @@ class HybridOrchestrationTests(unittest.TestCase):
         self.assertIn("入学年级", result["answer_md"])
         self.assertEqual(self.retriever.calls, [])
         self.assertEqual(self.general_client.calls, [])
+
+    def test_retrieved_summary_serializes_sqlite_boolean_as_json_boolean(self) -> None:
+        chunk = {**self.chunks[0], "score": 1.0, "is_table": 0}
+
+        value = _summary(chunk)
+
+        self.assertIs(value["is_table"], False)
 
 
 if __name__ == "__main__":

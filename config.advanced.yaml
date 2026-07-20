@@ -6,6 +6,8 @@ retrieval:
   embed_model: BAAI/bge-large-zh-v1.5
   query_prefix: "为这个句子生成表示以用于检索相关文章："
   top_k: 5
+  # Keep the full evidence window: some policy questions need an
+  # authoritative curriculum-page chunk that is not in a smaller window.
   candidate_k: 50
   use_bm25: true
   use_reranker: true

@@ -1,0 +1,516 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "generated_at": "2026-07-18T15:27:10+0800",
+  "methodology": {
+    "sequential_runs": 20,
+    "warmups_per_scenario": 2,
+    "concurrency_levels": [
+      1,
+      4,
+      8
+    ],
+    "requests_per_concurrency_group": 24,
+    "model_headers": false
+  },
+  "sequential": {
+    "options": {
+      "client_ms": {
+        "count": 20,
+        "min": 31.53,
+        "mean": 34.31,
+        "p50": 32.31,
+        "p90": 37.09,
+        "p95": 39.59,
+        "p99": 52.2,
+        "max": 55.36,
+        "stdev": 5.19
+      },
+      "server_ms": {},
+      "response_bytes": {
+        "count": 20,
+        "min": 16931.0,
+        "mean": 16931.0,
+        "p50": 16931.0,
+        "p90": 16931.0,
+        "p95": 16931.0,
+        "p99": 16931.0,
+        "max": 16931.0,
+        "stdev": 0.0
+      },
+      "successes": 20,
+      "errors": []
+    },
+    "general_no_key": {
+      "client_ms": {
+        "count": 20,
+        "min": 0.75,
+        "mean": 0.86,
+        "p50": 0.83,
+        "p90": 0.93,
+        "p95": 0.96,
+        "p99": 1.36,
+        "max": 1.46,
+        "stdev": 0.15
+      },
+      "server_ms": {
+        "count": 20,
+        "min": 0.17,
+        "mean": 0.19,
+        "p50": 0.19,
+        "p90": 0.21,
+        "p95": 0.22,
+        "p99": 0.24,
+        "max": 0.24,
+        "stdev": 0.02
+      },
+      "response_bytes": {
+        "count": 20,
+        "min": 3810.0,
+        "mean": 3811.4,
+        "p50": 3812.0,
+        "p90": 3812.0,
+        "p95": 3812.0,
+        "p99": 3812.0,
+        "max": 3812.0,
+        "stdev": 0.92
+      },
+      "successes": 20,
+      "errors": []
+    },
+    "structured_sql": {
+      "client_ms": {
+        "count": 20,
+        "min": 46.34,
+        "mean": 47.92,
+        "p50": 47.48,
+        "p90": 49.84,
+        "p95": 50.88,
+        "p99": 52.46,
+        "max": 52.85,
+        "stdev": 1.56
+      },
+      "server_ms": {
+        "count": 20,
+        "min": 45.19,
+        "mean": 46.75,
+        "p50": 46.28,
+        "p90": 48.65,
+        "p95": 49.7,
+        "p99": 51.29,
+        "max": 51.69,
+        "stdev": 1.55
+      },
+      "response_bytes": {
+        "count": 20,
+        "min": 9835.0,
+        "mean": 9838.2,
+        "p50": 9839.0,
+        "p90": 9839.0,
+        "p95": 9839.0,
+        "p99": 9839.0,
+        "max": 9839.0,
+        "stdev": 1.17
+      },
+      "successes": 20,
+      "errors": []
+    },
+    "policy_rag": {
+      "client_ms": {
+        "count": 20,
+        "min": 1185.76,
+        "mean": 1227.04,
+        "p50": 1203.77,
+        "p90": 1262.87,
+        "p95": 1369.98,
+        "p99": 1456.5,
+        "max": 1478.14,
+        "stdev": 69.1
+      },
+      "server_ms": {
+        "count": 20,
+        "min": 1183.61,
+        "mean": 1224.68,
+        "p50": 1202.2,
+        "p90": 1258.39,
+        "p95": 1366.45,
+        "p99": 1452.22,
+        "max": 1473.66,
+        "stdev": 68.49
+      },
+      "response_bytes": {
+        "count": 20,
+        "min": 22338.0,
+        "mean": 22339.6,
+        "p50": 22340.0,
+        "p90": 22340.0,
+        "p95": 22340.0,
+        "p99": 22340.0,
+        "max": 22340.0,
+        "stdev": 0.8
+      },
+      "successes": 20,
+      "errors": []
+    },
+    "notice_rag": {
+      "client_ms": {
+        "count": 20,
+        "min": 1889.84,
+        "mean": 2590.52,
+        "p50": 2167.28,
+        "p90": 3555.13,
+        "p95": 3656.34,
+        "p99": 3831.14,
+        "max": 3874.84,
+        "stdev": 722.77
+      },
+      "server_ms": {
+        "count": 20,
+        "min": 1888.29,
+        "mean": 2584.03,
+        "p50": 2163.18,
+        "p90": 3545.46,
+        "p95": 3645.87,
+        "p99": 3789.72,
+        "max": 3825.68,
+        "stdev": 716.9
+      },
+      "response_bytes": {
+        "count": 20,
+        "min": 15463.0,
+        "mean": 15464.7,
+        "p50": 15465.0,
+        "p90": 15465.0,
+        "p95": 15465.0,
+        "p99": 15465.0,
+        "max": 15465.0,
+        "stdev": 0.71
+      },
+      "successes": 20,
+      "errors": []
+    },
+    "evidence_refusal": {
+      "client_ms": {
+        "count": 20,
+        "min": 2933.51,
+        "mean": 3436.8,
+        "p50": 3428.72,
+        "p90": 3900.75,
+        "p95": 4084.56,
+        "p99": 4095.99,
+        "max": 4098.85,
+        "stdev": 314.54
+      },
+      "server_ms": {
+        "count": 20,
+        "min": 2930.1,
+        "mean": 3429.31,
+        "p50": 3420.65,
+        "p90": 3883.13,
+        "p95": 4073.58,
+        "p99": 4077.22,
+        "max": 4078.13,
+        "stdev": 311.57
+      },
+      "response_bytes": {
+        "count": 20,
+        "min": 11459.0,
+        "mean": 11460.6,
+        "p50": 11461.0,
+        "p90": 11461.0,
+        "p95": 11461.0,
+        "p99": 11461.0,
+        "max": 11461.0,
+        "stdev": 0.8
+      },
+      "successes": 20,
+      "errors": []
+    }
+  },
+  "concurrent": {
+    "general_no_key": [
+      {
+        "concurrency": 1,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 278.89,
+        "wall_seconds": 0.09,
+        "client_ms": {
+          "count": 24,
+          "min": 2.18,
+          "mean": 3.41,
+          "p50": 2.68,
+          "p90": 3.81,
+          "p95": 3.98,
+          "p99": 14.55,
+          "max": 17.7,
+          "stdev": 3.03
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 0.44,
+          "mean": 0.59,
+          "p50": 0.52,
+          "p90": 0.71,
+          "p95": 0.72,
+          "p99": 1.54,
+          "max": 1.79,
+          "stdev": 0.26
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 419.98,
+        "wall_seconds": 0.06,
+        "client_ms": {
+          "count": 24,
+          "min": 5.38,
+          "mean": 8.88,
+          "p50": 7.65,
+          "p90": 13.37,
+          "p95": 14.37,
+          "p99": 15.54,
+          "max": 15.84,
+          "stdev": 2.92
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 1.44,
+          "mean": 3.81,
+          "p50": 3.67,
+          "p90": 5.72,
+          "p95": 6.4,
+          "p99": 7.14,
+          "max": 7.34,
+          "stdev": 1.39
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 353.08,
+        "wall_seconds": 0.07,
+        "client_ms": {
+          "count": 24,
+          "min": 10.45,
+          "mean": 19.95,
+          "p50": 19.21,
+          "p90": 24.09,
+          "p95": 25.68,
+          "p99": 30.37,
+          "max": 31.69,
+          "stdev": 4.55
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 3.0,
+          "mean": 11.11,
+          "p50": 11.21,
+          "p90": 16.94,
+          "p95": 18.59,
+          "p99": 18.81,
+          "max": 18.82,
+          "stdev": 4.23
+        },
+        "errors": []
+      }
+    ],
+    "structured_sql": [
+      {
+        "concurrency": 1,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 8.27,
+        "wall_seconds": 2.9,
+        "client_ms": {
+          "count": 24,
+          "min": 80.75,
+          "mean": 120.61,
+          "p50": 100.16,
+          "p90": 154.6,
+          "p95": 183.16,
+          "p99": 334.27,
+          "max": 378.03,
+          "stdev": 59.23
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 78.07,
+          "mean": 116.51,
+          "p50": 97.47,
+          "p90": 139.64,
+          "p95": 176.76,
+          "p99": 330.39,
+          "max": 374.36,
+          "stdev": 58.45
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 8.36,
+        "wall_seconds": 2.87,
+        "client_ms": {
+          "count": 24,
+          "min": 139.77,
+          "mean": 449.1,
+          "p50": 451.5,
+          "p90": 616.5,
+          "p95": 632.35,
+          "p99": 697.16,
+          "max": 715.96,
+          "stdev": 133.28
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 136.56,
+          "mean": 426.61,
+          "p50": 443.68,
+          "p90": 530.61,
+          "p95": 604.08,
+          "p99": 689.49,
+          "max": 711.16,
+          "stdev": 134.18
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 8.04,
+        "wall_seconds": 2.98,
+        "client_ms": {
+          "count": 24,
+          "min": 758.4,
+          "mean": 969.45,
+          "p50": 947.36,
+          "p90": 1198.32,
+          "p95": 1277.92,
+          "p99": 1295.52,
+          "max": 1296.61,
+          "stdev": 186.96
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 596.1,
+          "mean": 903.32,
+          "p50": 938.06,
+          "p90": 1177.89,
+          "p95": 1181.34,
+          "p99": 1183.7,
+          "max": 1184.32,
+          "stdev": 162.54
+        },
+        "errors": []
+      }
+    ],
+    "policy_rag": [
+      {
+        "concurrency": 1,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 0.4,
+        "wall_seconds": 59.5,
+        "client_ms": {
+          "count": 24,
+          "min": 1978.44,
+          "mean": 2479.03,
+          "p50": 2261.16,
+          "p90": 3140.52,
+          "p95": 3487.31,
+          "p99": 3674.07,
+          "max": 3711.6,
+          "stdev": 477.53
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 1976.82,
+          "mean": 2472.12,
+          "p50": 2259.6,
+          "p90": 3122.65,
+          "p95": 3480.25,
+          "p99": 3668.22,
+          "max": 3705.81,
+          "stdev": 473.13
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 0.43,
+        "wall_seconds": 55.59,
+        "client_ms": {
+          "count": 24,
+          "min": 8588.22,
+          "mean": 9255.99,
+          "p50": 8984.37,
+          "p90": 10537.85,
+          "p95": 10553.97,
+          "p99": 10573.13,
+          "max": 10578.11,
+          "stdev": 660.09
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 8584.59,
+          "mean": 9251.76,
+          "p50": 8980.82,
+          "p90": 10528.81,
+          "p95": 10549.44,
+          "p99": 10570.36,
+          "max": 10575.62,
+          "stdev": 658.98
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 24,
+        "successes": 24,
+        "error_rate": 0.0,
+        "throughput_rps": 0.41,
+        "wall_seconds": 59.14,
+        "client_ms": {
+          "count": 24,
+          "min": 18286.74,
+          "mean": 19697.75,
+          "p50": 18966.69,
+          "p90": 21759.24,
+          "p95": 21778.42,
+          "p99": 21781.31,
+          "max": 21781.43,
+          "stdev": 1465.79
+        },
+        "server_ms": {
+          "count": 24,
+          "min": 18276.18,
+          "mean": 19691.88,
+          "p50": 18960.71,
+          "p90": 21756.19,
+          "p95": 21766.87,
+          "p99": 21776.06,
+          "max": 21778.51,
+          "stdev": 1466.44
+        },
+        "errors": []
+      }
+    ]
+  }
+}

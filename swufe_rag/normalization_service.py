@@ -22,10 +22,10 @@ PROGRAM_TEXT_RE = re.compile(
     r"培养目标|工作方向|主要课程|毕业要求"
 )
 MODULE_CREDIT_RE = re.compile(
-    r"(?:通识教育基础|大学科基础|专业必修|专业方向|通识教育核心|"
+    r"(?:通识教育基础|大学科基础|专业必修|专业方向|专业选修|通识教育核心|"
     r"自由选修|实践环节).{0,12}(?:多少|几|最低|至少|需要修|修满).{0,6}学分|"
     r"(?:多少|几|最低|至少|需要修|修满).{0,6}(?:通识教育基础|大学科基础|"
-    r"专业必修|专业方向|通识教育核心|自由选修|实践环节).{0,8}学分"
+    r"专业必修|专业方向|专业选修|通识教育核心|自由选修|实践环节).{0,8}学分"
 )
 CROSS_MAJOR_RE = re.compile(
     r"(?:计算机科学(?:与技术)?|计科|CS).{0,20}(?:人工智能专业|AI专业)|"
@@ -33,14 +33,16 @@ CROSS_MAJOR_RE = re.compile(
     re.I,
 )
 ACTUAL_OFFERING_RE = re.compile(
-    r"教务系统.*开课|实际开课|(?:本|下)学期.{0,8}(?:能|可以).{0,5}选"
+    r"教务系统.*(?:开|选).{0,8}(?:课|课程)|实际.{0,4}(?:开|选).{0,6}(?:课|课程)|"
+    r"(?:本|下)学期.{0,8}(?:能|可以).{0,5}选"
 )
 
 MODULE_PATTERNS = (
     (re.compile(r"通识教育基础"), "通识教育基础课"),
     (re.compile(r"大学科基础"), "大学科基础课"),
     (re.compile(r"专业必修"), "专业必修课"),
-    (re.compile(r"专业方向|专业选修"), "专业方向课"),
+    (re.compile(r"专业选修"), "专业选修课"),
+    (re.compile(r"专业方向"), "专业方向课"),
     (re.compile(r"通识教育核心"), "通识教育核心课"),
     (re.compile(r"自由选修|自选课"), "自由选修课"),
     (re.compile(r"实践环节|实践课程"), "实践环节课"),
@@ -64,8 +66,16 @@ def _course_names(
 ) -> tuple[list[str], str | None]:
     if cohort is None:
         return [], None
-    compact_question = _compact(question)
-    if re.search(r"\u54ea\u4e9b.*\u7a0b\u5e8f\u8bbe\u8ba1|\u7a0b\u5e8f\u8bbe\u8ba1\u8bfe\u7a0b", question) and not re.search(r"C\s*\u8bed\u8a00|JAVA|Python|\u9762\u5411\u5bf9\u8c61", question, re.I):
+    question_without_scope = question
+    if major:
+        major_stem = str(major).removesuffix("专业")
+        question_without_scope = re.sub(
+            rf"{re.escape(major_stem)}\s*专业",
+            "",
+            question_without_scope,
+        )
+    compact_question = _compact(question_without_scope)
+    if re.search(r"\u54ea\u4e9b.*\u7a0b\u5e8f\u8bbe\u8ba1|\u7a0b\u5e8f\u8bbe\u8ba1\u8bfe\u7a0b", question_without_scope) and not re.search(r"C\s*\u8bed\u8a00|JAVA|Python|\u9762\u5411\u5bf9\u8c61", question_without_scope, re.I):
         return [], None
 
     matches: dict[str, str] = {}
@@ -128,7 +138,21 @@ def normalize_query(
     detected_names, inferred_major = _course_names(
         database, question, query.cohort, query.major
     )
-    names = list(query.course_names) or detected_names
+    compact_question = _compact(question)
+    llm_names = [
+        value
+        for value in query.course_names
+        if _compact(value)
+        and (
+            _compact(value) in compact_question
+            or _compact(re.split(r"[（(]", value, maxsplit=1)[0]) in compact_question
+        )
+    ]
+    # Exact names found in the scoped academic database are authoritative.
+    # Keep an LLM-proposed name only when it is literally present in the user
+    # question, so additions such as a spurious “课程” suffix cannot suppress
+    # a valid database match.
+    names = list(dict.fromkeys([*detected_names, *llm_names]))
     if query.major is None and inferred_major is not None:
         updates["major"] = inferred_major
         warnings.append("根据该年级唯一包含此课程的培养方案补全专业范围。")
@@ -162,7 +186,7 @@ def normalize_query(
         warnings.append("该问题涉及多个专业，使用原文证据进行对照，不执行单专业 SQL。")
     elif PROGRAM_TEXT_RE.search(question) and not re.search(r"最低.*学分|毕业.*学分", question):
         updates["primary_intent"] = "school_requirement"
-    elif names or codes:
+    elif (names or codes) and query.primary_intent not in {"policy", "promotion"}:
         updates["primary_intent"] = "course_query"
 
     updates["course_names"] = names

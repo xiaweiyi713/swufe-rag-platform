@@ -1,6 +1,6 @@
 # swufe-rag 全量接口参考
 
-更新日期：2026-07-15  
+更新日期：2026-07-18  
 适用分支：`feature/production-api-boundary`  
 本文档版本：`1.1`  
 冻结数据/B/C `contract_version`：`1.0`
@@ -331,6 +331,7 @@ handle_question(
 | `citations` | `list[Citation]` | 通用分支为空 |
 | `retrieved` | `list[RetrievedSummary]` | 通用分支为空 |
 | `official_links` | `list[OfficialLink]` | 仅返回数据库中与当前主题匹配的官方入口 |
+| `web_sources` | `list[WebSource]` | 公开网页标题、链接和摘要；不属于学校可信引用 |
 | `refused` | `bool` | 学校证据不足为 `true`；澄清问题为 `false` |
 | `latency_ms` | `float` | 本次完整处理耗时 |
 
@@ -457,6 +458,7 @@ python -m app.server
 | `GET` | `/assets/chat.js` | JavaScript | 正式 Web 客户端 |
 | `GET` | `/options` | JSON | 可选学院、年级、块数量、运行模式 |
 | `POST` | `/ask` | `AskResponse` | 路由优先的统一问答接口 |
+| `POST` | `/ask/stream` | NDJSON | 与 `/ask` 同请求契约的流式问答接口 |
 | `GET` | `/source/{chunk_id}` | `KnowledgeChunk` | 可信原文回查 |
 | `GET` | `/docs` | HTML | FastAPI Swagger 文档 |
 | `GET` | `/openapi.json` | JSON | OpenAPI Schema |
@@ -544,18 +546,53 @@ Content-Type: application/json
 ```json
 {
   "mode": "school_rag",
-  "answer_md": "当前知识库中未找到能够明确回答该问题的西南财大官方规定。我不会改用通用模型猜测学校事实；请查看下方已登记的官方来源，或咨询教务处、学院教务办。",
+  "answer_md": "当前校内知识库没有找到足以确认这个问题的学校官方依据。下面是根据公开网页搜索摘要整理的参考性推测……",
   "citations": [],
   "retrieved": [],
   "official_links": [],
+  "web_sources": [
+    {"title": "公开网页标题", "url": "https://example.edu/notice", "snippet": "搜索摘要"}
+  ],
   "refused": true,
   "latency_ms": 96.4
 }
 ```
 
+该联网补充只出现在正式 HTTP 编排层：先完成校内检索并确认依据不足，再自动搜索。
+模型只能依据公开网页标题和摘要生成带不确定性措辞的参考回答；`citations` 仍为空，
+`refused` 仍为 `true`，前端必须与通过校内证据校验的回答区分展示。
+
 缺少学院或年级时返回澄清问题，仍为 `mode=school_rag`，但 `refused=false`，且不会执行检索。
 
-### 4.4 `GET /options`
+### 4.4 `POST /ask/stream`
+
+请求体和可选 BYOK 请求头与 `POST /ask` 相同。响应类型为
+`application/x-ndjson`，每行是一个完整 JSON 事件：
+
+| `type` | 说明 |
+|---|---|
+| `meta` | 回答模式与执行路径，如 `general_chat/general_llm` |
+| `status` | 当前阶段；可用于展示检索或生成状态 |
+| `delta` | 新生成的文本片段，客户端应立即追加显示 |
+| `final` | `response` 字段包含与 `/ask` 完全兼容的最终响应 |
+| `error` | 流开始后的错误；包含安全处理后的 `message` 与 `error_type` |
+
+示例：
+
+```text
+{"type":"meta","mode":"general_chat","execution_path":"general_llm"}
+{"type":"status","stage":"generating","message":"正在生成回复"}
+{"type":"delta","text":"你好"}
+{"type":"delta","text":"，很高兴见到你。"}
+{"type":"final","response":{"mode":"general_chat","answer_md":"你好，很高兴见到你。","citations":[],"retrieved":[],"official_links":[],"refused":false,"execution_path":"general_llm"}}
+```
+
+普通对话直接转发模型增量。学校事实必须先完成检索、证据门和引用校验，
+通过后才发送答案片段；证据不足时仍返回经过校验的拒答，不会流出未经验证的模型文本。
+启用 Redis 后，已通过校验且不依赖会话历史的学校答案可返回
+`status.stage=cache`，随后仍按 `meta`、`delta`、`final` 顺序输出。
+
+### 4.5 `GET /options`
 
 响应示例：
 
@@ -564,10 +601,26 @@ Content-Type: application/json
   "mode": "production-hybrid",
   "colleges": ["计算机与人工智能学院"],
   "cohorts": ["2023", "2024", "2025"],
+  "majors_by_cohort": {
+    "2023": ["人工智能专业", "计算机科学与技术专业"]
+  },
+  "major_colleges_by_cohort": {
+    "2023": {
+      "人工智能专业": "计算机与人工智能学院",
+      "计算机科学与技术专业": "计算机与人工智能学院"
+    }
+  },
   "chunk_count": 814,
-  "default_top_k": 8
+  "default_top_k": 8,
+  "redis": {
+    "sessions": {"backend": "redis", "ttl_seconds": 259200},
+    "answer_cache": {"backend": "redis", "ttl_seconds": 86400}
+  }
 }
 ```
+
+`major_colleges_by_cohort` 是“入学年级 + 专业 → 学院”的权威归属映射。
+客户端应使用它按已选学院过滤专业；用户先选专业时，应自动同步对应学院。
 
 ### 4.5 `GET /source/{chunk_id}`
 
@@ -788,6 +841,22 @@ original_title,corrected_title,decision,reason
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | 本地 Ollama OpenAI 兼容地址 |
 | `SWUFE_RAG_MODE` | `demo` | 调试服务模式：`demo` 或 `review` |
 | `SWUFE_RAG_CHUNKS` | `data/chunks.jsonl` | review 调试知识块路径 |
+| `SWUFE_RAG_REDIS_URL` | 空 | Redis 会话与可信答案缓存；空时安全降级 |
+| `SWUFE_RAG_SESSION_TTL` | `259200` | Redis 会话 TTL，秒 |
+| `SWUFE_RAG_ANSWER_CACHE_TTL` | `86400` | 已验证学校答案缓存 TTL，秒 |
+| `SWUFE_RAG_SESSION_LOCK_TTL` | `180` | 同一会话分布式锁租期，秒 |
+| `SWUFE_RAG_SESSION_LOCK_WAIT` | `120` | 同一会话锁等待上限，秒 |
+| `SWUFE_RAG_REDIS_SOCKET_TIMEOUT` | `0.75` | Redis 读写超时，秒 |
+| `SWUFE_RAG_REDIS_CONNECT_TIMEOUT` | `0.75` | Redis 建连超时，秒 |
+| `SWUFE_RAG_REDIS_MAX_CONNECTIONS` | `32` | 单进程连接池上限 |
+| `SWUFE_RAG_REDIS_CIRCUIT_SECONDS` | `5` | Redis 故障熔断窗口，秒 |
+| `SWUFE_RAG_SESSION_MIRROR_MAX` | `2048` | 单进程故障镜像容量 |
+| `SWUFE_RAG_CACHE_VERSION` | 空 | 知识库/生成规则发布时手工更新的缓存版本 |
+| `SWUFE_RAG_QUERY_MAX_CONCURRENCY` | `2` | 单进程同时执行的冷检索请求数；缓存命中不占用名额 |
+| `SWUFE_RAG_QUERY_QUEUE_SIZE` | `8` | 冷检索等待队列上限；超过后返回 HTTP 429 |
+| `SWUFE_RAG_QUERY_QUEUE_TIMEOUT` | `8.0` | 冷检索在队列中的最长等待时间，秒 |
+| `SWUFE_RAG_RETRIEVAL_CACHE_SIZE` | `512` | 单进程检索结果缓存条目上限 |
+| `SWUFE_RAG_RETRIEVAL_CACHE_TTL` | `300` | 单进程检索结果缓存 TTL，秒 |
 | `RUN_BGE_SMOKE` | 未设置 | 设为 `1` 启用真实 BGE 冒烟测试 |
 | `RUN_FAISS_SMOKE` | 未设置 | 设为 `1` 启用真实 FAISS 冒烟测试 |
 
@@ -803,7 +872,7 @@ paths:
 retrieval:
   embed_model: BAAI/bge-large-zh-v1.5
   top_k: 5
-  candidate_k: 20
+  candidate_k: 50
   use_bm25: true
   use_reranker: true
   rerank_model: BAAI/bge-reranker-base

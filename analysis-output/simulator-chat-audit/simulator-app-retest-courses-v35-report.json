@@ -1,0 +1,30 @@
+{
+  "expected_count": 4,
+  "actual_count": 4,
+  "passed": 4,
+  "failed": 0,
+  "unexpected_ids": [],
+  "failures": [],
+  "rows": [
+    {
+      "id": "course_detail",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_classification",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_hours",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_code",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

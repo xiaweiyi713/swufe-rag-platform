@@ -63,6 +63,37 @@ class ChunkingTests(unittest.TestCase):
         self.assertIn("计算机科学与技术专业", chunks[0]["article"])
         self.assertIn("一、培养目标", chunks[0]["article"])
 
+    def test_experimental_program_heading_resets_article_scope(self) -> None:
+        parsed = ParsedDocument(
+            Path("plan.pdf"),
+            [
+                DocumentElement(
+                    "heading", "数字经济（基础学科拔尖实验班）人才培养方案", page=1
+                ),
+                DocumentElement("paragraph", "一、培养目标\n培养拔尖人才。", page=1),
+            ],
+        )
+        chunks = build_chunks(parsed, self._source())
+        self.assertTrue(
+            all("数字经济(基础学科拔尖实验班)" in item["article"] for item in chunks)
+        )
+
+    def test_section_sidecar_title_wins_over_conflicting_pdf_heading(self) -> None:
+        parsed = ParsedDocument(
+            Path("plan.pdf"),
+            [
+                DocumentElement(
+                    "section", "金融学专业辅修学位人才培养方案", page=16
+                ),
+                DocumentElement("paragraph", "金融学专业人才培养方案", page=16),
+                DocumentElement(
+                    "table", "| 课程 | 学分 |\n| --- | --- |\n| 金融学 | 3 |", page=16
+                ),
+            ],
+        )
+        chunks = build_chunks(parsed, self._source())
+        assert all("金融学专业辅修学位人才培养方案" in item["article"] for item in chunks)
+
     def test_missing_program_title_is_inferred_from_body_and_applies_to_table(self) -> None:
         parsed = ParsedDocument(
             Path("plan.pdf"),

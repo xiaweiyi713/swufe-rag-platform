@@ -1,0 +1,654 @@
+{
+  "generated_at": "2026-07-18T22:40:57+0800",
+  "cache_backend": "redis",
+  "requests_per_group": 8,
+  "levels": [
+    1,
+    4,
+    8
+  ],
+  "results": {
+    "general_no_key_hot": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 155.62,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 26.33,
+          "p50": 25.76,
+          "p90": 42.32,
+          "p95": 44.3,
+          "p99": 45.89,
+          "max": 46.29
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 26.53,
+          "p50": 25.93,
+          "p90": 42.55,
+          "p95": 44.51,
+          "p99": 46.08,
+          "max": 46.47
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 29.41,
+          "p50": 28.81,
+          "p90": 45.26,
+          "p95": 47.31,
+          "p99": 48.95,
+          "max": 49.36
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 325.54,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 12.42,
+          "p50": 11.14,
+          "p90": 19.49,
+          "p95": 19.67,
+          "p99": 19.82,
+          "max": 19.86
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 12.78,
+          "p50": 11.27,
+          "p90": 19.96,
+          "p95": 20.04,
+          "p99": 20.1,
+          "max": 20.12
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 17.71,
+          "p50": 16.41,
+          "p90": 24.13,
+          "p95": 24.17,
+          "p99": 24.2,
+          "max": 24.21
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 426.84,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 9.7,
+          "p50": 9.56,
+          "p90": 12.85,
+          "p95": 13.04,
+          "p99": 13.19,
+          "max": 13.23
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 10.05,
+          "p50": 9.93,
+          "p90": 13.24,
+          "p95": 13.35,
+          "p99": 13.44,
+          "max": 13.46
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 15.26,
+          "p50": 15.35,
+          "p90": 18.28,
+          "p95": 18.43,
+          "p99": 18.54,
+          "max": 18.57
+        },
+        "errors": []
+      }
+    ],
+    "general_no_key_cold": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 169.53,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 24.37,
+          "p50": 23.94,
+          "p90": 40.4,
+          "p95": 42.18,
+          "p99": 43.6,
+          "max": 43.96
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 24.55,
+          "p50": 24.13,
+          "p90": 40.6,
+          "p95": 42.37,
+          "p99": 43.79,
+          "max": 44.14
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 27.46,
+          "p50": 27.69,
+          "p90": 42.84,
+          "p95": 44.9,
+          "p99": 46.55,
+          "max": 46.96
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 507.59,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 8.21,
+          "p50": 8.11,
+          "p90": 11.82,
+          "p95": 12.11,
+          "p99": 12.35,
+          "max": 12.41
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 8.6,
+          "p50": 8.36,
+          "p90": 12.21,
+          "p95": 12.5,
+          "p99": 12.73,
+          "max": 12.78
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 11.33,
+          "p50": 11.21,
+          "p90": 14.79,
+          "p95": 14.97,
+          "p99": 15.12,
+          "max": 15.15
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 481.27,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 8.72,
+          "p50": 8.47,
+          "p90": 11.27,
+          "p95": 11.64,
+          "p99": 11.93,
+          "max": 12.01
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 9.28,
+          "p50": 9.14,
+          "p90": 11.96,
+          "p95": 12.27,
+          "p99": 12.51,
+          "max": 12.58
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 12.87,
+          "p50": 12.6,
+          "p90": 16.01,
+          "p95": 16.12,
+          "p99": 16.2,
+          "max": 16.22
+        },
+        "errors": []
+      }
+    ],
+    "structured_sql_hot": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 31.72,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 200.67,
+          "p50": 225.29,
+          "p90": 243.92,
+          "p95": 246.42,
+          "p99": 248.43,
+          "max": 248.93
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 224.1,
+          "p50": 225.45,
+          "p90": 244.08,
+          "p95": 246.58,
+          "p99": 248.58,
+          "max": 249.08
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 227.25,
+          "p50": 228.3,
+          "p90": 246.97,
+          "p95": 249.45,
+          "p99": 251.43,
+          "max": 251.93
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 316.08,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 15.32,
+          "p50": 14.53,
+          "p90": 20.98,
+          "p95": 21.12,
+          "p99": 21.24,
+          "max": 21.27
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 15.59,
+          "p50": 14.84,
+          "p90": 21.35,
+          "p95": 21.39,
+          "p99": 21.42,
+          "max": 21.43
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 19.96,
+          "p50": 19.58,
+          "p90": 24.7,
+          "p95": 24.8,
+          "p99": 24.89,
+          "max": 24.91
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 401.04,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 9.56,
+          "p50": 9.13,
+          "p90": 11.39,
+          "p95": 11.66,
+          "p99": 11.88,
+          "max": 11.94
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 9.99,
+          "p50": 9.59,
+          "p90": 11.93,
+          "p95": 12.18,
+          "p99": 12.37,
+          "max": 12.42
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 17.94,
+          "p50": 17.92,
+          "p90": 19.15,
+          "p95": 19.35,
+          "p99": 19.51,
+          "max": 19.55
+        },
+        "errors": []
+      }
+    ],
+    "structured_sql_cold": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 18.91,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 188.69,
+          "p50": 189.22,
+          "p90": 337.58,
+          "p95": 356.32,
+          "p99": 371.31,
+          "max": 375.06
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 235.48,
+          "p50": 235.79,
+          "p90": 384.1,
+          "p95": 401.96,
+          "p99": 416.25,
+          "max": 419.82
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 238.83,
+          "p50": 238.94,
+          "p90": 387.22,
+          "p95": 405.05,
+          "p99": 419.31,
+          "max": 422.88
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 22.65,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 78.65,
+          "p50": 36.81,
+          "p90": 179.54,
+          "p95": 209.23,
+          "p99": 232.99,
+          "max": 238.93
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 223.47,
+          "p50": 232.77,
+          "p90": 322.33,
+          "p95": 335.73,
+          "p99": 346.44,
+          "max": 349.12
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 227.22,
+          "p50": 236.79,
+          "p90": 325.48,
+          "p95": 339.08,
+          "p99": 349.96,
+          "max": 352.68
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 21.46,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 7.55,
+          "p50": 7.73,
+          "p90": 7.96,
+          "p95": 7.96,
+          "p99": 7.96,
+          "max": 7.97
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 361.9,
+          "p50": 361.86,
+          "p90": 362.44,
+          "p95": 362.45,
+          "p99": 362.46,
+          "max": 362.46
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 370.96,
+          "p50": 370.64,
+          "p90": 372.23,
+          "p95": 372.32,
+          "p99": 372.38,
+          "max": 372.4
+        },
+        "errors": []
+      }
+    ],
+    "policy_rag_hot": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 2.27,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 3041.49,
+          "p50": 3469.69,
+          "p90": 3499.5,
+          "p95": 3505.49,
+          "p99": 3510.29,
+          "max": 3511.49
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 3469.7,
+          "p50": 3469.87,
+          "p90": 3499.69,
+          "p95": 3505.72,
+          "p99": 3510.55,
+          "max": 3511.76
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 3476.28,
+          "p50": 3474.93,
+          "p90": 3510.02,
+          "p95": 3517.08,
+          "p99": 3522.73,
+          "max": 3524.14
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 219.44,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 19.24,
+          "p50": 19.43,
+          "p90": 26.36,
+          "p95": 26.42,
+          "p99": 26.47,
+          "max": 26.49
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 19.51,
+          "p50": 19.69,
+          "p90": 26.63,
+          "p95": 26.71,
+          "p99": 26.76,
+          "max": 26.78
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 27.77,
+          "p50": 27.69,
+          "p90": 35.27,
+          "p95": 35.29,
+          "p99": 35.31,
+          "max": 35.31
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 217.97,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 20.3,
+          "p50": 19.92,
+          "p90": 21.1,
+          "p95": 21.9,
+          "p99": 22.54,
+          "max": 22.7
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 20.8,
+          "p50": 20.36,
+          "p90": 21.65,
+          "p95": 22.45,
+          "p99": 23.09,
+          "max": 23.25
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 35.11,
+          "p50": 34.89,
+          "p90": 35.89,
+          "p95": 36.25,
+          "p99": 36.54,
+          "max": 36.62
+        },
+        "errors": []
+      }
+    ],
+    "policy_rag_cold": [
+      {
+        "concurrency": 1,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 0.81,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 4348.01,
+          "p50": 4337.13,
+          "p90": 7804.28,
+          "p95": 8232.72,
+          "p99": 8575.46,
+          "max": 8661.15
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 5570.59,
+          "p50": 5591.52,
+          "p90": 9010.02,
+          "p95": 9428.79,
+          "p99": 9763.8,
+          "max": 9847.56
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 5576.54,
+          "p50": 5597.9,
+          "p90": 9016.28,
+          "p95": 9434.45,
+          "p99": 9768.99,
+          "max": 9852.62
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 4,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 0.84,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 2415.29,
+          "p50": 2410.71,
+          "p90": 4832.7,
+          "p95": 4835.41,
+          "p99": 4837.59,
+          "max": 4838.13
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 7183.04,
+          "p50": 7184.33,
+          "p90": 9569.81,
+          "p95": 9571.77,
+          "p99": 9573.34,
+          "max": 9573.73
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 7195.47,
+          "p50": 7197.69,
+          "p90": 9576.43,
+          "p95": 9577.83,
+          "p99": 9578.96,
+          "max": 9579.24
+        },
+        "errors": []
+      },
+      {
+        "concurrency": 8,
+        "requests": 8,
+        "successes": 8,
+        "error_rate": 0.0,
+        "throughput_rps": 0.86,
+        "first_event_ms": {
+          "count": 8,
+          "mean": 6.57,
+          "p50": 6.74,
+          "p90": 7.49,
+          "p95": 7.5,
+          "p99": 7.51,
+          "max": 7.51
+        },
+        "first_delta_ms": {
+          "count": 8,
+          "mean": 9287.38,
+          "p50": 9305.11,
+          "p90": 9305.69,
+          "p95": 9305.77,
+          "p99": 9305.82,
+          "max": 9305.84
+        },
+        "complete_ms": {
+          "count": 8,
+          "mean": 9296.01,
+          "p50": 9313.85,
+          "p90": 9315.08,
+          "p95": 9315.11,
+          "p99": 9315.13,
+          "max": 9315.13
+        },
+        "errors": []
+      }
+    ]
+  }
+}

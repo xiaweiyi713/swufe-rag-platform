@@ -2,18 +2,26 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 
 from academic_audit.database import build_database
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default="data/academic_v2.sqlite3")
+    parser.add_argument("--catalog", default="data/curriculum_catalog_v2.json")
+    parser.add_argument("--sources", default="data/sources.csv")
+    parser.add_argument("--chunks", default="data/chunks.jsonl")
+    parser.add_argument("--raw-dir", default="data/raw")
+    args = parser.parse_args()
     report = build_database(
-        "data/academic_v2.sqlite3",
-        catalog_path="data/curriculum_catalog_v2.json",
-        sources_path="data/sources.csv",
-        chunks_path="data/chunks.jsonl",
-        raw_dir="data/raw",
+        args.output,
+        catalog_path=args.catalog,
+        sources_path=args.sources,
+        chunks_path=args.chunks,
+        raw_dir=args.raw_dir,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

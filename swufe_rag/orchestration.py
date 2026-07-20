@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import re
-from threading import RLock
+from threading import Lock, RLock
 import time
 from typing import Any, Callable
 
@@ -46,6 +47,11 @@ class SessionState:
     last_rewritten_query: str | None = None
     recent_messages: list[str] = field(default_factory=list)
     general_history: list[tuple[str, str]] = field(default_factory=list)
+    # Typed query context lives in the same session record as route/general
+    # memory so Redis-backed sessions remain complete across processes.
+    last_normalized_query: dict[str, Any] | None = None
+    pending_normalized_query: dict[str, Any] | None = None
+    context_question: str | None = None
 
     def route_context(self) -> RouteContext:
         return RouteContext(
@@ -75,6 +81,21 @@ class InMemorySessionStore:
         self._states: dict[str, SessionState] = {}
         self._order: list[str] = []
         self._lock = RLock()
+        # Starlette may resume a synchronous streaming generator on a different
+        # worker thread. Plain locks can be released by that worker; RLocks are
+        # thread-owned and would leak a stripe in that situation.
+        self._guards = tuple(Lock() for _ in range(256))
+
+    @contextmanager
+    def guard(self, session_id: str | None):
+        if session_id is None:
+            yield
+            return
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ValueError("session_id must be null or a non-empty string")
+        lock = self._guards[hash(session_id.strip()) % len(self._guards)]
+        with lock:
+            yield
 
     def get(self, session_id: str | None) -> SessionState:
         if session_id is None:
@@ -102,7 +123,7 @@ def _summary(chunk: RetrievedChunk) -> dict[str, Any]:
         "college": chunk["college"],
         "cohort": chunk["cohort"],
         "score": chunk["score"],
-        "is_table": chunk["is_table"],
+        "is_table": bool(chunk["is_table"]),
         "summary": chunk["text"][:260],
     }
 
@@ -124,10 +145,17 @@ def _source_appendix(citations: list[dict[str, Any]]) -> str:
         article = str(citation.get("article") or "")
         page_url = str(citation.get("page_url") or "")
         file_url = str(citation.get("file_url") or "")
-        match = re.search(r"原文件第(\d+)页", article)
-        if match is None:
-            match = re.search(r"(?:#|[?&])page=(\d+)", page_url)
-        page = f"原文件第{int(match.group(1))}页" if match else "页码未标注"
+        physical_page = citation.get("physical_page")
+        try:
+            page_number = int(physical_page) if physical_page is not None else None
+        except (TypeError, ValueError):
+            page_number = None
+        if page_number is None:
+            match = re.search(r"(?:原文件)?第(\d+)页", article)
+            if match is None:
+                match = re.search(r"(?:#|[?&])page=(\d+)", page_url)
+            page_number = int(match.group(1)) if match else None
+        page = f"原文件第{page_number}页" if page_number is not None else "页码未标注"
         page_link = f"[{page}]({page_url})" if page_url else page
         file_link = f"[下载原文件]({file_url})" if file_url else "原文件链接未登记"
         lines.append(
@@ -158,6 +186,7 @@ class HybridRuntime:
         self.binder = TrustedAnswerBinder(metadata_db)
         self.sessions = sessions or InMemorySessionStore()
         self.mode = runtime_mode
+        self.runtime_info = dict(runtime_info or {})
 
     @staticmethod
     def _clarification(decision: RouteDecision, text: str) -> dict[str, Any]:
@@ -236,8 +265,15 @@ class HybridRuntime:
         question: str,
         decision: RouteDecision,
         state: SessionState,
+        *,
+        web_context: str | None = None,
     ) -> dict[str, Any]:
-        text = self.general_chat.answer(question, state.general_history)
+        if web_context:
+            text = self.general_chat.answer(
+                question, state.general_history, web_context=web_context
+            )
+        else:
+            text = self.general_chat.answer(question, state.general_history)
         state.general_history.extend([("user", question), ("assistant", text)])
         del state.general_history[:-24]
         return {

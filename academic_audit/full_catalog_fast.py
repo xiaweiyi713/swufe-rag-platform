@@ -213,10 +213,18 @@ def build_full_catalog_fast(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--sources", default="data/sources.csv")
+    parser.add_argument("--raw-dir", default="data/raw")
+    parser.add_argument("--chunks", default="data/chunks.jsonl")
     parser.add_argument("--output", default="data/curriculum_catalog_v2.json")
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
-    result = build_full_catalog_fast(workers=args.workers)
+    result = build_full_catalog_fast(
+        sources_path=args.sources,
+        raw_dir=args.raw_dir,
+        chunks_path=args.chunks,
+        workers=args.workers,
+    )
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_suffix(target.suffix + ".tmp")

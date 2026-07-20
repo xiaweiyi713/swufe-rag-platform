@@ -256,6 +256,7 @@ def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
                 page_tables.append(page.extract_tables() or [])
             except Exception:
                 page_tables.append([])
+    section_headings = _load_pdf_sections(path, page_count=page_count)
 
     if _needs_ocr(page_texts):
         if ocr_provider is None:
@@ -293,6 +294,12 @@ def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
     elements: list[DocumentElement] = []
     web_print_cleaned = False
     for page_number, (text, tables) in enumerate(zip(page_texts, page_tables), start=1):
+        if page_number in section_headings:
+            elements.append(
+                DocumentElement(
+                    "section", section_headings[page_number], page=page_number
+                )
+            )
         web_print_page = _is_web_print_page(text)
         if text and not web_print_page:
             elements.append(DocumentElement("paragraph", text, page=page_number))
@@ -317,7 +324,37 @@ def _parse_pdf(path: Path, ocr_provider: OCRProvider | None) -> ParsedDocument:
     warnings = ["web_print_noise_removed"] if web_print_cleaned else []
     if partial_ocr:
         warnings.append("partial_ocr_used")
+    if section_headings:
+        warnings.append("section_boundaries_applied")
     return ParsedDocument(path, elements, page_count, warnings)
+
+
+def _load_pdf_sections(path: Path, *, page_count: int) -> dict[int, str]:
+    sidecar = path.with_suffix(path.suffix + ".sections.json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"PDF section sidecar is unreadable: {sidecar}") from exc
+    sections = payload.get("sections") if isinstance(payload, dict) else None
+    if not isinstance(sections, list) or not sections:
+        raise ValueError(f"PDF section sidecar must contain sections: {sidecar}")
+    result: dict[int, str] = {}
+    for item in sections:
+        start = item.get("start_page") if isinstance(item, dict) else None
+        end = item.get("end_page") if isinstance(item, dict) else None
+        title = normalize_text(str(item.get("title", ""))) if isinstance(item, dict) else ""
+        if (
+            not isinstance(start, int)
+            or not isinstance(end, int)
+            or not 1 <= start <= end <= page_count
+            or start in result
+            or not title
+        ):
+            raise ValueError(f"invalid PDF section boundary in {sidecar}: {item!r}")
+        result[start] = title
+    return result
 
 
 def _parse_text(path: Path) -> ParsedDocument:

@@ -1,0 +1,646 @@
+{
+  "expected_count": 123,
+  "actual_count": 123,
+  "passed": 121,
+  "failed": 2,
+  "unexpected_ids": [],
+  "failures": [
+    {
+      "id": "course_hours",
+      "passed": false,
+      "errors": [
+        "answer missing '34学时'",
+        "citation_count=0, expected >= 1"
+      ]
+    },
+    {
+      "id": "english_exemption",
+      "passed": false,
+      "errors": [
+        "answer missing '雅思成绩7分'"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "id": "greeting",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "thanks",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_knowledge",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "weather",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_campus_essay",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_enrollment_code",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_canteen_translation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_failed_exam_emotion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_exam_study",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_ai_career",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_promotion_concept",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_credit_system",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_library_opinion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_canteen_recipe",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_library_translation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_scholarship_application",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_dorm_insomnia",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_counselor_emotion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_school_relationship",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "mixed_greeting",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "graduation_total",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "module_credit",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "semester_courses",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_detail",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_classification",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_hours",
+      "passed": false,
+      "errors": [
+        "answer missing '34学时'",
+        "citation_count=0, expected >= 1"
+      ]
+    },
+    {
+      "id": "course_code",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "program_profile",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cross_major",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "year_four_plan",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "completed_module",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "actual_offerings",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cyber_2024",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "law_2022",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "business_english_2020",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "insurance_2018",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "transfer_major",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "transfer_school",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "defer_exam",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "exam_late",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_selection",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "english_exemption",
+      "passed": false,
+      "errors": [
+        "answer missing '雅思成绩7分'"
+      ]
+    },
+    {
+      "id": "art_credit",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "digital_credit",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "minor_degree",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "degree_award",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "thesis",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "paper_reward",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "major_division",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_basic",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_score",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_failure",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "academic_warning",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "makeup_eligibility",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dropout_conditions",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "makeup_schedule_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "grade_lookup",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_canteen_2026",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_study_room_2026",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_liulin_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hot_water",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_boxing_laundry",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_xin_laundry",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_courier",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_printing",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hospital",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_supermarket",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_food",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_study",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hongyuan",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_return",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "freshman_start",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_summer_vacation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_registration",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_fee",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_location",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "outage_20260616",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dragon_boat_2026",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "library_live",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "canteen_live",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "campus_network",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dormitory",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "empty_classroom",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "campus_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "scholarship_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "grant_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "work_study_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_id_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "enrollment_proof_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cet_registration_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "calendar_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "winter_break_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "shuttle_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "counseling_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "leave_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "borrowing_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "classroom_booking_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dorm_checkout_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "campus_card_replacement_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_insurance_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "sports_hours_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "club_registration_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "diploma_replacement_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "transcript_print_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "tuition_amount_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "president_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "university_tier_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "prompt_injection",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "fake_rule",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "missing_course_scope",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "missing_graduation_scope",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "unsupported_cohort",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a2",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a3",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_policy_b1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_policy_b2",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_policy_b3",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_switch_c1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_switch_c2",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_deep_d1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_web_e1",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

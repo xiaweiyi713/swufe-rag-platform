@@ -46,8 +46,18 @@ def build_request_query_runtime(
     api_key: str,
     *,
     config_path: str | Path = "config.advanced.yaml",
+    base_url: str | None = None,
+    model_override: str | None = None,
+    thinking_enabled: bool = False,
 ):
-    runtime = _build_request(base_runtime, api_key, config_path=config_path)
+    runtime = _build_request(
+        base_runtime,
+        api_key,
+        config_path=config_path,
+        base_url=base_url,
+        model_override=model_override,
+        thinking_enabled=thinking_enabled,
+    )
     runtime.understanding = QuestionUnderstandingService(runtime.understanding.client)
     return runtime
 

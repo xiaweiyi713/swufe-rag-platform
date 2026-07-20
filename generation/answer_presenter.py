@@ -16,7 +16,11 @@ from swufe_rag.query_plan_schema import ExecutionPlan
 
 ANSWER_SYSTEM_PROMPT = """你是教务事实表达器，只输出 JSON。
 你只能使用 evidence_packet 中的事实生成简短总结、解释、警告或澄清问题。
-先针对用户原问题给出自然、清楚的直接回答，再解释证据；不要只复述数据库字段。
+summary 必须先针对用户原问题给出自然、清楚的直接回答，不要只复述数据库字段。
+你的输出只负责回答开头的文字说明。课程表、培养方案模块表和来源文件由程序随后追加，
+不得在 summary 或 explanations 中重写表格、罗列完整课程清单或生成来源列表。
+当 presentation_instruction 要求仅回答毕业总学分时，summary 只能用一个自然段说明总学分，
+不得提及模块数量、模块名称或各模块学分，explanations 和 warnings 必须为空。
 若问题是规划或策略，必须区分“可选范围”和“必须完成”，给出可执行步骤，并说明缺少成绩单或实时开课数据造成的边界。
 课程查询结果默认是符合条件的候选范围；除非 evidence_packet 有带引用的明确要求，不得声称所有候选都必须修完。
 summary 与 explanations 应共同形成连贯回答，避免僵硬模板、无标点长句和中英文表头残片。
@@ -48,6 +52,15 @@ def _marker(evidence_id: str | None) -> str:
     if not evidence_id or not evidence_id.startswith("E"):
         return ""
     return f"[{evidence_id[1:]}]"
+
+
+def _is_whole_program_breakdown(plan: ExecutionPlan) -> bool:
+    query = plan.query
+    return bool(
+        query.primary_intent == "graduation_requirement"
+        and "credit_total" in query.requested_outputs
+        and not query.course_modules
+    )
 
 
 def _course_table(courses: list[CourseFact]) -> str:
@@ -117,12 +130,54 @@ def _course_detail_summary(courses: list[CourseFact], question: str) -> str:
             parts.append(f"\u8bfe\u5802\u5b66\u65f6{course.teaching_hours:g}" if course.teaching_hours is not None else "\u8bfe\u5802\u5b66\u65f6\u672a\u6807\u6ce8")
             parts.append(f"\u5b9e\u8df5\u5b66\u65f6{course.practice_hours:g}" if course.practice_hours is not None else "\u5b9e\u8df5\u5b66\u65f6\u672a\u6807\u6ce8")
         if include_department:
-            department = course.department or "\u672a\u6807\u6ce8"
-            parts.append(f"\u5f00\u8bfe\u5b66\u9662\u4e3a{department}")
+            parts.append(f"\u5f00\u8bfe\u5b66\u9662\u4e3a{course.department or '\u672a\u6807\u6ce8'}")
         values.append(f"{course.name}\uff08{course.code}\uff09\uff1a" + "\uff0c".join(parts) + _marker(course.evidence_id) + "\u3002")
     if len(values) == 1:
         return values[0]
     return "\n".join(f"- {value}" for value in values)
+
+
+def _semester_course_sections(
+    *,
+    scope: str,
+    semesters: list[int],
+    courses: list[CourseFact],
+    show_hours: bool,
+    show_department: bool,
+) -> str:
+    targets = set(semesters)
+    exact: list[CourseFact] = []
+    flexible: list[CourseFact] = []
+    for course in courses:
+        values = semester_values(course.semester)
+        if len(values) == 1 and values.issubset(targets):
+            exact.append(course)
+        else:
+            flexible.append(course)
+
+    label = "、".join(f"第{value}学期" for value in semesters)
+    sections: list[str] = []
+    if exact:
+        sections.append(
+            f"### {scope}{label}明确安排课程\n\n"
+            + _course_table(
+                exact,
+                include_hours=show_hours,
+                include_department=show_department,
+            )
+        )
+    if flexible:
+        sections.append(
+            f"### 跨学期完成范围（覆盖{label}）\n\n"
+            f"> 以下课程在培养方案中标注为跨学期完成范围，并不等于必须在{label}修读；"
+            "应结合个人完成情况，并以当学期教务系统的实际开课为准。\n\n"
+            + _course_table(
+                flexible,
+                include_hours=show_hours,
+                include_department=show_department,
+            )
+        )
+    return "\n\n".join(sections)
 
 
 def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
@@ -142,16 +197,82 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
         marker = _marker(str(minimum.get("evidence_id") or ""))
         sections.append(f"{scope}的毕业最低学分为 **{float(minimum['value']):g} 学分**{marker}。")
 
-    visible_requirements = [
-        value for value in packet.requirements
-        if value.evidence_id is not None
-    ]
+    whole_program_breakdown = _is_whole_program_breakdown(plan)
+    credit_component_fact = next(
+        (
+            fact
+            for fact in packet.facts
+            if fact.get("field") == "graduation_credit_components"
+        ),
+        None,
+    )
+    credit_components = (
+        credit_component_fact.get("value")
+        if isinstance(credit_component_fact, dict)
+        else None
+    )
+    if whole_program_breakdown and isinstance(credit_components, list):
+        component_marker = _marker(
+            str(credit_component_fact.get("evidence_id") or "")
+        )
+        detailed = any(component.get("section") for component in credit_components)
+        lines = [
+            "### 培养方案原文模块与学分构成",
+        ]
+        if detailed:
+            lines.extend(
+                [
+                    "模块名称按原文顺序列示；学分采用不重复计入毕业总学分的口径。",
+                    "| 板块 | 模块 | 必修 | 选修 | 合计 | 说明 |",
+                    "|---|---|---:|---:|---:|---|",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "| 类别 | 必修 | 选修 | 合计 | 占比 |",
+                    "|---|---:|---:|---:|---:|",
+                ]
+            )
+        for component in credit_components:
+            if detailed:
+                lines.append(
+                    "| {section} | {module} | {required:g} | {elective:g} | {total:g}{marker} | {note} |".format(
+                        section=str(component.get("section") or ""),
+                        module=str(component.get("module") or "—"),
+                        required=float(component.get("required_credits") or 0),
+                        elective=float(component.get("elective_credits") or 0),
+                        total=float(component.get("total_credits") or 0),
+                        marker=component_marker,
+                        note=str(component.get("note") or "—"),
+                    )
+                )
+            else:
+                lines.append(
+                    "| {module} | {required:g} | {elective:g} | {total:g} | {ratio:g}%{marker} |".format(
+                        module=str(component.get("module") or "—"),
+                        required=float(component.get("required_credits") or 0),
+                        elective=float(component.get("elective_credits") or 0),
+                        total=float(component.get("total_credits") or 0),
+                        ratio=float(component.get("ratio_percent") or 0),
+                        marker=component_marker,
+                    )
+                )
+        sections.append("\n".join(lines))
+    visible_requirements = (
+        list(packet.requirements)
+        if whole_program_breakdown
+        else [
+            value for value in packet.requirements
+            if value.evidence_id is not None
+        ]
+    )
     if query.course_modules:
         visible_requirements = [
             value for value in packet.requirements
             if any(module in value.module for module in query.course_modules)
         ]
-    if visible_requirements:
+    if visible_requirements and not credit_components:
         lines = [
             "### 培养方案模块要求",
             "| 模块 | 最低学分 | 说明 |",
@@ -179,16 +300,60 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
                 courses = [value for value in courses if (value.practice_hours or 0) == highest]
                 sections.append(f"实践学时最多的是以下课程（{highest:g} 学时）：")
             if courses:
-                semester_text = "、".join(str(value) for value in query.target_semesters)
-                heading = (
-                    f"### {scope}第{semester_text}学期培养方案课程"
-                    if semester_text
-                    else f"### {scope}培养方案课程"
+                asks_semesters = bool(
+                    re.search(
+                        r"(?:哪|哪些|哪几个|什么).{0,10}学期|"
+                        r"学期.{0,10}(?:哪|哪些|哪几个|什么)",
+                        query.original_question,
+                    )
                 )
+                if asks_semesters:
+                    semester_numbers = sorted(
+                        {
+                            semester
+                            for course in courses
+                            for semester in semester_values(course.semester)
+                        }
+                    )
+                    if semester_numbers:
+                        semester_label = "、".join(
+                            f"第{value}学期" for value in semester_numbers
+                        )
+                        unassigned = sum(
+                            not semester_values(course.semester) for course in courses
+                        )
+                        note = (
+                            f"；另有 {unassigned} 门限选课程未标注明确开课学期"
+                            if unassigned
+                            else ""
+                        )
+                        sections.append(
+                            f"{scope}培养方案中，符合条件的课程覆盖"
+                            f" **{semester_label}**{note}。"
+                        )
+                semester_text = "、".join(str(value) for value in query.target_semesters)
                 credit_summary = _credit_scope_summary(plan, courses)
                 if credit_summary:
                     sections.append(credit_summary)
-                sections.append(heading + "\n\n" + _course_table(courses, include_hours=show_hours, include_department=show_department))
+                if semester_text:
+                    sections.append(
+                        _semester_course_sections(
+                            scope=scope,
+                            semesters=query.target_semesters,
+                            courses=courses,
+                            show_hours=show_hours,
+                            show_department=show_department,
+                        )
+                    )
+                else:
+                    sections.append(
+                        f"### {scope}培养方案课程\n\n"
+                        + _course_table(
+                            courses,
+                            include_hours=show_hours,
+                            include_department=show_department,
+                        )
+                    )
             elif result.get("status") == "classification_incomplete":
                 if query.information_scope == "actual_offerings":
                     target = "、".join(str(value) for value in query.target_semesters)
@@ -245,13 +410,19 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
                     completed = module.get("completed_credits")
                     if module.get("completed_by_unverified_claim"):
                         status = "用户声明，未核验"
+                        completed_display = "用户声明已完成"
+                        remaining_display = "0（按声明）"
                     elif module.get("completion_known"):
                         status = "按已修课程匹配"
+                        completed_display = completed if completed is not None else "—"
+                        remaining_display = remaining if remaining is not None else "—"
                     else:
                         status = "缺少成绩单，无法核算"
+                        completed_display = "—"
+                        remaining_display = "—"
                     lines.append(
                         f"| {module['module']} | {required if required is not None else '—'} | "
-                        f"{completed if completed is not None else '—'} | {remaining if remaining is not None else '—'} | "
+                        f"{completed_display} | {remaining_display} | "
                         f"{status} |"
                     )
                 sections.append("\n".join(lines))
@@ -280,11 +451,15 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
     return "\n\n".join(sections)
 
 
-def _render_llm_draft(draft: dict[str, Any]) -> str:
+def _render_llm_draft(
+    draft: dict[str, Any], *, summary_only: bool = False
+) -> str:
     parts: list[str] = []
     summary = str(draft.get("summary") or "").strip()
     if summary:
-        parts.append(summary)
+        parts.append(" ".join(summary.splitlines()) if summary_only else summary)
+    if summary_only:
+        return "\n\n".join(parts)
     for item in draft.get("explanations") or []:
         text = str(item.get("text") or "").strip()
         markers = "".join(_marker(value) for value in item.get("evidence_ids") or [])
@@ -299,6 +474,69 @@ def _render_llm_draft(draft: dict[str, Any]) -> str:
     return "\n\n".join(parts)
 
 
+def _deterministic_details(canonical: str) -> str:
+    """Keep program-rendered sections while dropping a duplicate lead sentence."""
+
+    match = re.search(r"(?m)^###\s+", canonical)
+    return canonical[match.start() :].strip() if match else ""
+
+
+MULTI_ROW_DETAIL_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:门|学分)|"
+    r"(?:通识|专业|实践|学科|大类|自由).{0,8}(?:课|模块)"
+)
+SAFE_TABLE_GUIDE_RE = re.compile(
+    r"(?:具体)?(?:课程)?(?:安排|明细|详情).{0,16}?(?:请)?见下(?:方)?(?:课程)?表(?:格)?"
+)
+GENERIC_TABLE_LEAD = "根据培养方案，相关明细及其适用范围请见下表。"
+
+
+def _contains_multi_row_detail(draft: dict[str, Any]) -> bool:
+    summary = str(draft.get("summary") or "")
+    return bool(MULTI_ROW_DETAIL_RE.search(summary))
+
+
+def _safe_table_guide(draft: dict[str, Any] | None) -> str | None:
+    if not isinstance(draft, dict):
+        return None
+    match = SAFE_TABLE_GUIDE_RE.search(str(draft.get("summary") or ""))
+    return f"{match.group(0)}。" if match else None
+
+
+def _single_requirement_lead(
+    plan: ExecutionPlan, packet: EvidencePacket
+) -> str | None:
+    requirements = list(packet.requirements)
+    if plan.query.course_modules:
+        requirements = [
+            requirement
+            for requirement in requirements
+            if any(
+                target in requirement.module or requirement.module in target
+                for target in plan.query.course_modules
+            )
+        ]
+    if len(requirements) != 1 or packet.courses:
+        return None
+    requirement = requirements[0]
+    credits = (
+        requirement.required_credits
+        if requirement.required_credits is not None
+        else requirement.listed_credits
+    )
+    if credits is None:
+        return None
+    scope = "".join(
+        value
+        for value in (
+            f"{plan.query.cohort}级" if plan.query.cohort else "",
+            plan.query.major or "",
+        )
+    )
+    subject = f"{scope}的{requirement.module}" if scope else requirement.module
+    return f"根据培养方案，{subject}最低要求为{credits:g}学分。"
+
+
 class AnswerPresenter:
     def __init__(self, client: LLMClient | None = None) -> None:
         self.client = client
@@ -307,29 +545,96 @@ class AnswerPresenter:
         canonical = deterministic_body(plan, packet)
         if self.client is None:
             return PresentedAnswer(canonical, False, False, "deterministic_formatter")
+        details = _deterministic_details(canonical)
         prompt_packet = packet.model_dump()
         prompt_packet["requirements"] = [
             value for value in prompt_packet.get("requirements", [])
             if value.get("evidence_id")
         ]
+        whole_program_summary = bool(
+            _is_whole_program_breakdown(plan)
+            and re.search(r"(?m)^###\s+培养方案", canonical)
+        )
+        summary_only = bool(details)
+        single_requirement_lead = (
+            _single_requirement_lead(plan, packet) if summary_only else None
+        )
+        has_multi_row_details = bool(
+            not single_requirement_lead
+            and (
+                len(prompt_packet.get("courses", [])) > 1
+                or len(prompt_packet.get("requirements", [])) > 1
+            )
+        )
+        expected_summary = (
+            GENERIC_TABLE_LEAD
+            if has_multi_row_details and not whole_program_summary
+            else single_requirement_lead
+        )
+        if whole_program_summary:
+            # The program-rendered table owns module details. Hiding those rows
+            # keeps the prose model focused on the requested graduation total.
+            prompt_packet["requirements"] = []
+            prompt_packet["courses"] = []
+            prompt_packet["facts"] = [
+                fact
+                for fact in prompt_packet.get("facts", [])
+                if fact.get("field") == "graduation_min_credits"
+            ]
+            for fact in prompt_packet["facts"]:
+                value = fact.get("value")
+                if isinstance(value, float) and value.is_integer():
+                    fact["value"] = int(value)
+            prompt_packet["audit"] = {}
+            prompt_packet["operation_results"] = []
+        elif summary_only:
+            # Detailed rows are already rendered below the prose. Keep a
+            # single record when it is the direct object of the question, but
+            # hide multi-row tables so the model cannot enumerate them again.
+            if len(prompt_packet.get("courses", [])) > 1:
+                prompt_packet["courses"] = []
+            if len(prompt_packet.get("requirements", [])) > 1:
+                prompt_packet["requirements"] = []
+            if has_multi_row_details:
+                prompt_packet["operation_results"] = []
+            else:
+                for operation in prompt_packet.get("operation_results", []):
+                    operation.pop("record_ids", None)
+                    operation.pop("requirement_ids", None)
+                    operation.pop("assumed_scope_record_ids", None)
         for citation in prompt_packet.get("citations", []):
             citation.pop("quote", None)
             citation.pop("page_url", None)
             citation.pop("file_url", None)
-        prompt = json.dumps(
-            {
-                "question": plan.query.original_question,
-                "normalized_query": plan.query.model_dump(),
-                "evidence_packet": prompt_packet,
-                "output_schema": {
-                    "summary": "string",
-                    "explanations": [{"text": "string", "evidence_ids": ["E1"]}],
-                    "warnings": ["string"],
-                    "clarification_question": "string|null",
-                },
+        prompt_payload = {
+            "question": plan.query.original_question,
+            "normalized_query": plan.query.model_dump(),
+            "evidence_packet": prompt_packet,
+            "presentation_instruction": (
+                    "只用一个自然段直接回答毕业最低总学分；不要提及模块数量、"
+                    "模块名称或各模块学分；explanations 和 warnings 返回空数组。"
+                    if whole_program_summary
+                    else (
+                        f"summary 必须逐字等于：“{expected_summary}”"
+                        "explanations 和 warnings 返回空数组。"
+                        if expected_summary
+                    else (
+                        "只用一个简短自然段给出直接结论或引出下方明细；不得枚举课程、"
+                        "模块或逐项复述表格；多行明细时不得声称课程门数或学分合计；"
+                        "explanations 和 warnings 返回空数组。"
+                        if summary_only
+                        else "回答开头文字，避免复述随后由程序展示的表格。"
+                    )
+                    )
+                ),
+            "output_schema": {
+                "summary": "string",
+                "explanations": [{"text": "string", "evidence_ids": ["E1"]}],
+                "warnings": ["string"],
+                "clarification_question": "string|null",
             },
-            ensure_ascii=False,
-        )
+        }
+        prompt = json.dumps(prompt_payload, ensure_ascii=False)
         try:
             raw = self.client.generate(ANSWER_SYSTEM_PROMPT, prompt).strip()
             raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
@@ -339,10 +644,58 @@ class AnswerPresenter:
         if not isinstance(draft, dict):
             return PresentedAnswer(canonical, True, False, "deterministic_formatter", "invalid_json")
         valid, error = validate_explanation(draft, packet, plan)
+        if expected_summary and (
+            not valid or str(draft.get("summary") or "").strip() != expected_summary
+        ):
+            prompt_payload["rejected_draft"] = draft
+            prompt_payload["presentation_instruction"] = (
+                f"summary 必须逐字等于：“{expected_summary}”不得增删任何字。"
+                "explanations 和 warnings 返回空数组。"
+            )
+            try:
+                raw = self.client.generate(
+                    ANSWER_SYSTEM_PROMPT,
+                    json.dumps(prompt_payload, ensure_ascii=False),
+                ).strip()
+                raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                repaired_draft = json.loads(raw)
+            except Exception:
+                repaired_draft = None
+            if isinstance(repaired_draft, dict):
+                repaired_valid, repaired_error = validate_explanation(
+                    repaired_draft, packet, plan
+                )
+                if (
+                    repaired_valid
+                    and str(repaired_draft.get("summary") or "").strip()
+                    == expected_summary
+                ):
+                    draft = repaired_draft
+                    valid, error = True, None
+                else:
+                    safe_guide = None
+                    if expected_summary == GENERIC_TABLE_LEAD:
+                        safe_guide = _safe_table_guide(
+                            repaired_draft
+                        ) or _safe_table_guide(draft)
+                    if safe_guide:
+                        draft = {
+                            "summary": safe_guide,
+                            "explanations": [],
+                            "warnings": [],
+                            "clarification_question": None,
+                        }
+                        valid, error = validate_explanation(draft, packet, plan)
+                    else:
+                        valid, error = False, repaired_error or "repeated_table_detail"
+            else:
+                valid, error = False, "repair_generation_failed"
         if not valid:
             return PresentedAnswer(canonical, True, False, "deterministic_formatter", error)
-        explanation = _render_llm_draft(draft)
-        answer = explanation + "\n\n" + canonical if explanation else canonical
+        explanation = _render_llm_draft(draft, summary_only=summary_only)
+        answer = explanation
+        if details:
+            answer += "\n\n" + details
         return PresentedAnswer(answer, True, True, "llm")
 
 

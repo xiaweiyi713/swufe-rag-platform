@@ -1,0 +1,809 @@
+{
+  "expected_count": 123,
+  "actual_count": 123,
+  "passed": 106,
+  "failed": 17,
+  "unexpected_ids": [],
+  "failures": [
+    {
+      "id": "thanks",
+      "passed": false,
+      "errors": [
+        "answer missing '谢谢'"
+      ]
+    },
+    {
+      "id": "mixed_greeting",
+      "passed": false,
+      "errors": [
+        "answer missing '165 学分'"
+      ]
+    },
+    {
+      "id": "graduation_total",
+      "passed": false,
+      "errors": [
+        "answer missing '165 学分'"
+      ]
+    },
+    {
+      "id": "course_detail",
+      "passed": false,
+      "errors": [
+        "answer missing '开课学期为6'"
+      ]
+    },
+    {
+      "id": "course_hours",
+      "passed": false,
+      "errors": [
+        "answer missing '实践学时34'"
+      ]
+    },
+    {
+      "id": "cyber_2024",
+      "passed": false,
+      "errors": [
+        "answer missing '152 学分'"
+      ]
+    },
+    {
+      "id": "exam_late",
+      "passed": false,
+      "errors": [
+        "answer missing '取消其考试资格'"
+      ]
+    },
+    {
+      "id": "english_exemption",
+      "passed": false,
+      "errors": [
+        "answer missing '六级604分'"
+      ]
+    },
+    {
+      "id": "digital_credit",
+      "passed": false,
+      "errors": [
+        "answer missing '不限制修读总学分数'"
+      ]
+    },
+    {
+      "id": "thesis",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "answer missing '学术不端检测'",
+        "answer missing '论文答辩'",
+        "citation_count=0, expected >= 2",
+        "citation title missing '毕业论文'"
+      ]
+    },
+    {
+      "id": "summer_study_room_2026",
+      "passed": false,
+      "errors": [
+        "answer missing '通博楼1—5楼'"
+      ]
+    },
+    {
+      "id": "outage_20260616",
+      "passed": false,
+      "errors": [
+        "answer missing '8:00—19:00'",
+        "answer missing '其孜楼（图书馆）'"
+      ]
+    },
+    {
+      "id": "empty_classroom",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "sports_hours_unknown",
+      "passed": false,
+      "errors": [
+        "app error: timeout",
+        "llmCalled=None",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "club_registration_unknown",
+      "passed": false,
+      "errors": [
+        "llmCalled=None",
+        "path='sql', expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "diploma_replacement_unknown",
+      "passed": false,
+      "errors": [
+        "app error: 网络连接失败：没有连上教务问答后端：The operation couldn’t be completed. (NSURLErrorDomain error -1005.)",
+        "empty answer",
+        "llmCalled=None",
+        "mode=None, expected 'school_rag'",
+        "path=None, expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "app_policy_b2",
+      "passed": false,
+      "errors": [
+        "answer missing '谢谢'"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "id": "greeting",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "thanks",
+      "passed": false,
+      "errors": [
+        "answer missing '谢谢'"
+      ]
+    },
+    {
+      "id": "general_knowledge",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "weather",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_campus_essay",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_enrollment_code",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_canteen_translation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_failed_exam_emotion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_exam_study",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_ai_career",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_promotion_concept",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_credit_system",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_library_opinion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_canteen_recipe",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_library_translation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_scholarship_application",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_dorm_insomnia",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_counselor_emotion",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "general_school_relationship",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "mixed_greeting",
+      "passed": false,
+      "errors": [
+        "answer missing '165 学分'"
+      ]
+    },
+    {
+      "id": "graduation_total",
+      "passed": false,
+      "errors": [
+        "answer missing '165 学分'"
+      ]
+    },
+    {
+      "id": "module_credit",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "semester_courses",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_detail",
+      "passed": false,
+      "errors": [
+        "answer missing '开课学期为6'"
+      ]
+    },
+    {
+      "id": "course_classification",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "course_hours",
+      "passed": false,
+      "errors": [
+        "answer missing '实践学时34'"
+      ]
+    },
+    {
+      "id": "course_code",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "program_profile",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cross_major",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "year_four_plan",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "completed_module",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "actual_offerings",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cyber_2024",
+      "passed": false,
+      "errors": [
+        "answer missing '152 学分'"
+      ]
+    },
+    {
+      "id": "law_2022",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "business_english_2020",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "insurance_2018",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "transfer_major",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "transfer_school",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "defer_exam",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "exam_late",
+      "passed": false,
+      "errors": [
+        "answer missing '取消其考试资格'"
+      ]
+    },
+    {
+      "id": "course_selection",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "english_exemption",
+      "passed": false,
+      "errors": [
+        "answer missing '六级604分'"
+      ]
+    },
+    {
+      "id": "art_credit",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "digital_credit",
+      "passed": false,
+      "errors": [
+        "answer missing '不限制修读总学分数'"
+      ]
+    },
+    {
+      "id": "minor_degree",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "degree_award",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "thesis",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "answer missing '学术不端检测'",
+        "answer missing '论文答辩'",
+        "citation_count=0, expected >= 2",
+        "citation title missing '毕业论文'"
+      ]
+    },
+    {
+      "id": "paper_reward",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "major_division",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_basic",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_score",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "promotion_failure",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "academic_warning",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "makeup_eligibility",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dropout_conditions",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "makeup_schedule_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "grade_lookup",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_canteen_2026",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_study_room_2026",
+      "passed": false,
+      "errors": [
+        "answer missing '通博楼1—5楼'"
+      ]
+    },
+    {
+      "id": "summer_liulin_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hot_water",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_boxing_laundry",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_xin_laundry",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_courier",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_printing",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hospital",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_supermarket",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_food",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_guanghua_study",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_hongyuan",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "summer_return",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "freshman_start",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_summer_vacation",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_registration",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_fee",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "ncre_location",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "outage_20260616",
+      "passed": false,
+      "errors": [
+        "answer missing '8:00—19:00'",
+        "answer missing '其孜楼（图书馆）'"
+      ]
+    },
+    {
+      "id": "dragon_boat_2026",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "library_live",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "canteen_live",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "campus_network",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dormitory",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "empty_classroom",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "campus_card",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "scholarship_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "grant_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "work_study_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_id_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "enrollment_proof_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "cet_registration_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "calendar_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "winter_break_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "shuttle_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "counseling_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "leave_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "borrowing_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "classroom_booking_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "dorm_checkout_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "campus_card_replacement_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "student_insurance_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "sports_hours_unknown",
+      "passed": false,
+      "errors": [
+        "app error: timeout",
+        "llmCalled=None",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "club_registration_unknown",
+      "passed": false,
+      "errors": [
+        "llmCalled=None",
+        "path='sql', expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "diploma_replacement_unknown",
+      "passed": false,
+      "errors": [
+        "app error: 网络连接失败：没有连上教务问答后端：The operation couldn’t be completed. (NSURLErrorDomain error -1005.)",
+        "empty answer",
+        "llmCalled=None",
+        "mode=None, expected 'school_rag'",
+        "path=None, expected 'rag'",
+        "refused=False, expected True"
+      ]
+    },
+    {
+      "id": "transcript_print_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "tuition_amount_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "president_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "university_tier_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "prompt_injection",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "fake_rule",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "missing_course_scope",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "missing_graduation_scope",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "unsupported_cohort",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a2",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_scope_a3",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_policy_b1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_policy_b2",
+      "passed": false,
+      "errors": [
+        "answer missing '谢谢'"
+      ]
+    },
+    {
+      "id": "app_policy_b3",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_switch_c1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_switch_c2",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_deep_d1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "app_web_e1",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

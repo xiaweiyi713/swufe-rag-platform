@@ -141,30 +141,43 @@ def _plans(courses: list[dict[str, Any]], modules: list[dict[str, Any]]) -> list
 def repair(
     catalog_path: str | Path = "data/curriculum_catalog_v2.json",
     *,
+    cohort: int | str = 2024,
     sources_path: str | Path = "data/sources.csv",
     chunks_path: str | Path = "data/chunks.jsonl",
     raw_dir: str | Path = "data/raw",
 ) -> dict[str, Any]:
+    cohort_value = str(cohort)
+    source_file = f"school/{cohort_value[-2:]}级培养方案.pdf"
     target = Path(catalog_path)
     catalog = json.loads(target.read_text(encoding="utf-8"))
     with Path(sources_path).open("r", encoding="utf-8-sig", newline="") as handle:
-        source = next(row for row in csv.DictReader(handle) if row["file"].replace("\\", "/") == "school/24级培养方案.pdf")
+        source = next(
+            row
+            for row in csv.DictReader(handle)
+            if row["file"].replace("\\", "/") == source_file
+        )
 
     base._majors_from_basic_info = article_majors  # type: ignore[assignment]
     base._evidence = lambda *args, **kwargs: None  # type: ignore[assignment]
     base._following_evidence = lambda *args, **kwargs: []  # type: ignore[assignment]
     part = base._extract_book(source, str(raw_dir), str(chunks_path))
     evidence = _evidence_index(Path(chunks_path))
-    courses_2024 = part["courses"]
-    for course in courses_2024:
+    repaired_courses = part["courses"]
+    for course in repaired_courses:
         course["evidence"] = evidence.get(
             (course["source_title"], int(course["page"]), course["code"])
         )
 
-    courses = [course for course in catalog["courses"] if str(course["cohort"]) != "2024"]
-    courses.extend(courses_2024)
-    plans = [plan for plan in catalog["plans"] if str(plan["cohort"]) != "2024"]
-    plans.extend(_plans(courses_2024, part["modules"]))
+    courses = [
+        course
+        for course in catalog["courses"]
+        if str(course["cohort"]) != cohort_value
+    ]
+    courses.extend(repaired_courses)
+    plans = [
+        plan for plan in catalog["plans"] if str(plan["cohort"]) != cohort_value
+    ]
+    plans.extend(_plans(repaired_courses, part["modules"]))
 
     # Normalize owner labels in all cohorts and use the dominant offering
     # department where the old extractor excluded the actual owner as a
@@ -202,8 +215,11 @@ def repair(
         "plan_count": catalog["plan_count"],
         "course_count": catalog["course_count"],
         "coverage": catalog["coverage"],
-        "cohort_2024_majors": [
-            plan["major"] for plan in catalog["plans"] if str(plan["cohort"]) == "2024"
+        "repaired_cohort": cohort_value,
+        "cohort_majors": [
+            plan["major"]
+            for plan in catalog["plans"]
+            if str(plan["cohort"]) == cohort_value
         ],
     }
 

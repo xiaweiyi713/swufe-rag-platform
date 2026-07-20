@@ -7,6 +7,8 @@ from pathlib import Path
 import sqlite3
 import sys
 
+from retrieval.index import file_sha256
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = (
@@ -19,6 +21,7 @@ REQUIRED_FILES = (
     "artifacts/index.faiss",
     "artifacts/vectors.npy",
     "artifacts/chunk_ids.json",
+    "artifacts/manifest.json",
     "app/server/application.py",
     "handoff/START_HERE.md",
 )
@@ -64,7 +67,6 @@ def main() -> int:
         """,
         ("计算机科学与技术专业", "人工智能专业", "网络空间安全专业"),
     ).fetchall()
-    database.close()
     by_major = {row["major"]: row for row in rows}
     for major in ("计算机科学与技术专业", "人工智能专业", "网络空间安全专业"):
         row = by_major.get(major)
@@ -80,8 +82,55 @@ def main() -> int:
             errors.append(f"unverified page/rule metadata for {major}")
 
     chunk_ids = json.loads((ROOT / "artifacts/chunk_ids.json").read_text(encoding="utf-8"))
-    if len(chunk_ids) != 60_827:
-        errors.append(f"chunk id count: expected 60827, got {len(chunk_ids)}")
+    manifest = json.loads((ROOT / "artifacts/manifest.json").read_text(encoding="utf-8"))
+    expected_chunks = counts["policy_chunks"]
+    if len(chunk_ids) != expected_chunks:
+        errors.append(
+            f"chunk id count: expected database policy_chunks={expected_chunks}, "
+            f"got {len(chunk_ids)}"
+        )
+    if int(manifest.get("chunk_count", -1)) != expected_chunks:
+        errors.append("artifact manifest chunk_count does not match the database")
+    if manifest.get("chunks_sha256") != file_sha256(ROOT / "data/chunks.jsonl"):
+        errors.append("artifact manifest hash does not match data/chunks.jsonl")
+
+    has_2025 = scalar(
+        database,
+        "SELECT count(*) FROM document_sources WHERE source_key='school/25级培养方案.pdf'",
+    )
+    if has_2025:
+        courses_2025 = scalar(
+            database, "SELECT count(*) FROM course_offerings WHERE cohort=2025"
+        )
+        plans_2025 = scalar(
+            database,
+            "SELECT count(DISTINCT major) FROM course_offerings WHERE cohort=2025",
+        )
+        if courses_2025 < 5_000 or plans_2025 < 70:
+            errors.append(
+                f"2025 curriculum coverage is incomplete: "
+                f"courses={courses_2025}, plans={plans_2025}"
+            )
+    database.close()
+
+    try:
+        import faiss
+        import numpy as np
+
+        vectors = np.load(ROOT / "artifacts/vectors.npy", mmap_mode="r")
+        index = faiss.read_index(str(ROOT / "artifacts/index.faiss"))
+        dimension = int(manifest.get("dimension", -1))
+        if vectors.shape != (expected_chunks, dimension):
+            errors.append(
+                f"vector shape mismatch: expected {(expected_chunks, dimension)}, "
+                f"got {vectors.shape}"
+            )
+        if index.ntotal != expected_chunks or index.d != dimension:
+            errors.append(
+                f"FAISS shape mismatch: ntotal={index.ntotal}, d={index.d}"
+            )
+    except (ImportError, OSError, ValueError) as exc:
+        errors.append(f"retrieval artifacts are unreadable: {exc}")
 
     for table, count in counts.items():
         print(f"[OK] {table}: {count}")

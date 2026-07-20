@@ -698,8 +698,10 @@ class AcademicDatabase:
         report = self._report()
         rows = self._fetchall(
             """
-            SELECT cohort, major FROM course_offerings
-            WHERE is_primary = 1 GROUP BY cohort, major ORDER BY cohort, major
+            SELECT cohort, major, college FROM course_offerings
+            WHERE is_primary = 1 AND major <> '' AND college <> ''
+            GROUP BY cohort, major, college
+            ORDER BY cohort, major, college
             """
         )
         colleges = [
@@ -710,9 +712,22 @@ class AcademicDatabase:
             )
         ]
         majors_by_cohort: dict[str, list[str]] = {}
+        major_colleges_by_cohort: dict[str, dict[str, str]] = {}
         for row in rows:
-            majors_by_cohort.setdefault(str(row["cohort"]), []).append(row["major"])
-        return {**report, "colleges": colleges, "majors_by_cohort": majors_by_cohort}
+            cohort = str(row["cohort"])
+            major = str(row["major"])
+            values = majors_by_cohort.setdefault(cohort, [])
+            if major not in values:
+                values.append(major)
+            major_colleges_by_cohort.setdefault(cohort, {}).setdefault(
+                major, str(row["college"])
+            )
+        return {
+            **report,
+            "colleges": colleges,
+            "majors_by_cohort": majors_by_cohort,
+            "major_colleges_by_cohort": major_colleges_by_cohort,
+        }
 
     def resolve_major(self, text: str, cohort: int | None = None) -> str | None:
         aliases = self._fetchall(

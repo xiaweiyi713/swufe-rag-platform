@@ -29,6 +29,229 @@ MODULES = (
 )
 
 
+def _category_plan_components(
+    text: str,
+    *,
+    major_stem: str,
+    graduation_total: float,
+) -> list[dict[str, float | str]]:
+    """Parse the merged credit summary used by 2025 category plans."""
+
+    general = re.search(
+        r"思想政治与通.*?(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%.*?识课程",
+        text,
+    )
+    professional_meta = re.search(r"专业课程\s+(\d+)\s+(\d+)\s+(\d+)%", text)
+    if general is None or professional_meta is None:
+        return []
+
+    major_pairs = [
+        (float(match.group(1)), float(match.group(2)))
+        for match in re.finditer(
+            rf"{re.escape(major_stem)}(?:专业)?\s*(\d{{2,3}}(?:\.\d+)?)\s+(\d{{2,3}}(?:\.\d+)?)",
+            text,
+        )
+    ]
+    professional = next(
+        (
+            (required, total)
+            for required, total in major_pairs
+            if required < total < graduation_total
+        ),
+        None,
+    )
+    overall = next(
+        (
+            (required, total)
+            for required, total in major_pairs
+            if total == graduation_total and required < total
+        ),
+        None,
+    )
+    if professional is None or overall is None:
+        return []
+
+    general_required = float(general.group(2))
+    general_elective = float(general.group(3))
+    general_total = float(general.group(4))
+    professional_required, professional_total = professional
+    professional_elective = float(professional_meta.group(2))
+    overall_required, _overall_total = overall
+    overall_elective = graduation_total - overall_required
+
+    if any(
+        abs(left - right) > 0.01
+        for left, right in (
+            (general_required + general_elective, general_total),
+            (professional_required + professional_elective, professional_total),
+            (general_total + professional_total, graduation_total),
+            (general_required + professional_required, overall_required),
+            (general_elective + professional_elective, overall_elective),
+        )
+    ):
+        return []
+
+    thought_required = 17.0
+    general_core_elective = 8.0
+    general_optional_elective = 2.0
+    general_foundation_required = general_required - thought_required
+    general_foundation_elective = (
+        general_elective - general_core_elective - general_optional_elective
+    )
+    subject_foundation_required = 14.0
+    platform_required = 13.0
+    professional_core_required = 16.0 if major_stem == "计算机科学与技术" else 15.0
+    professional_elective_required = 8.0
+    cross_major_elective_required = 2.0
+    independent_practice_required = (
+        professional_required
+        - subject_foundation_required
+        - platform_required
+        - professional_core_required
+    )
+    other_practice_required = independent_practice_required - 4.0 - 6.0
+
+    components: list[dict[str, float | str]] = [
+        {
+            "section": "一、思想政治课程板块",
+            "module": "思想政治课程",
+            "required_credits": thought_required,
+            "elective_credits": 0.0,
+            "total_credits": thought_required,
+            "note": "",
+        },
+        {
+            "section": "二、通识课程板块",
+            "module": "（一）通识基础课模块",
+            "required_credits": general_foundation_required,
+            "elective_credits": general_foundation_elective,
+            "total_credits": general_foundation_required
+            + general_foundation_elective,
+            "note": "含综合素质、外语、数学、程序设计和体育类课程",
+        },
+        {
+            "section": "二、通识课程板块",
+            "module": "（二）通识核心课模块",
+            "required_credits": 0.0,
+            "elective_credits": general_core_elective,
+            "total_credits": general_core_elective,
+            "note": "在任意4个模块中各选1门，修读不少于8学分",
+        },
+        {
+            "section": "二、通识课程板块",
+            "module": "（三）通识选修课模块",
+            "required_credits": 0.0,
+            "elective_credits": general_optional_elective,
+            "total_credits": general_optional_elective,
+            "note": "动态开课，至少修读2学分",
+        },
+        {
+            "section": "三、专业课程板块",
+            "module": "（一）学科基础课模块",
+            "required_credits": subject_foundation_required,
+            "elective_credits": 0.0,
+            "total_credits": subject_foundation_required,
+            "note": "",
+        },
+        {
+            "section": "三、专业课程板块",
+            "module": "（二）大类平台课模块",
+            "required_credits": platform_required,
+            "elective_credits": 0.0,
+            "total_credits": platform_required,
+            "note": "",
+        },
+        {
+            "section": "三、专业课程板块",
+            "module": "（三）专业核心课模块",
+            "required_credits": professional_core_required,
+            "elective_credits": 0.0,
+            "total_credits": professional_core_required,
+            "note": f"{major_stem}专业核心课",
+        },
+        {
+            "section": "三、专业课程板块",
+            "module": "（四）专业选修课模块",
+            "required_credits": 0.0,
+            "elective_credits": professional_elective_required,
+            "total_credits": professional_elective_required,
+            "note": "选修不低于8学分",
+        },
+        {
+            "section": "三、专业课程板块",
+            "module": "（五）跨专业选修课模块",
+            "required_credits": 0.0,
+            "elective_credits": cross_major_elective_required,
+            "total_credits": cross_major_elective_required,
+            "note": "在本专业培养方案以外至少选修2学分",
+        },
+        {
+            "section": "四、实验与实践课",
+            "module": "（一）其他实验与实践课",
+            "required_credits": other_practice_required,
+            "elective_credits": 0.0,
+            "total_credits": other_practice_required,
+            "note": "原表列示18学分，其中8学分已在专业模块列示；此处按毕业总学分口径净计10学分",
+        },
+        {
+            "section": "四、实验与实践课",
+            "module": "（二）毕业实习",
+            "required_credits": 4.0,
+            "elective_credits": 0.0,
+            "total_credits": 4.0,
+            "note": "",
+        },
+        {
+            "section": "四、实验与实践课",
+            "module": "（三）毕业论文",
+            "required_credits": 6.0,
+            "elective_credits": 0.0,
+            "total_credits": 6.0,
+            "note": "",
+        },
+    ]
+    components.append(
+        {
+            "section": "",
+            "module": "合计",
+            "required_credits": overall_required,
+            "elective_credits": overall_elective,
+            "total_credits": graduation_total,
+            "note": "",
+        }
+    )
+    if any(
+        value < 0
+        for component in components
+        for value in (
+            float(component["required_credits"]),
+            float(component["elective_credits"]),
+            float(component["total_credits"]),
+        )
+    ):
+        return []
+    detail_rows = components[:-1]
+    if any(
+        abs(left - right) > 0.01
+        for left, right in (
+            (
+                sum(float(item["required_credits"]) for item in detail_rows),
+                overall_required,
+            ),
+            (
+                sum(float(item["elective_credits"]) for item in detail_rows),
+                overall_elective,
+            ),
+            (
+                sum(float(item["total_credits"]) for item in detail_rows),
+                graduation_total,
+            ),
+        )
+    ):
+        return []
+    return components
+
+
 def _program_header(
     plan: ExecutionPlan, metadata: MetadataDB
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
@@ -53,13 +276,13 @@ def _program_header(
         # header. Prefer the number attached to the requested major instead of
         # blindly taking the first number after “毕业最低学分要求”.
         total_match = re.search(
-            rf"{re.escape(stem)}(?:专业)?\s*(\d{{2,3}}(?:\.\d+)?)\s*学分",
+            rf"{re.escape(stem)}(?:专业)?\s*(\d{{2,3}}(?:\.\d+)?)\s*个?\s*学分",
             text,
         )
         score = 20 if total_match else 0
         if total_match is None and stem in article:
             total_match = re.search(
-                r"毕业最低学分(?:要求)?(?:为|[:：]|.{0,20}?)(\d{2,3}(?:\.\d+)?)\s*学分",
+                r"毕业最低学分(?:要求)?(?:为|[:：]|.{0,24}?)(\d{2,3}(?:\.\d+)?)\s*个?\s*学分",
                 text,
             )
             score = 10 if total_match else 0
@@ -76,10 +299,16 @@ def _program_header(
         article = str(row["article"])
         physical_page = _physical_page(doc_title, article)
         resolved_article = _resolved_article(doc_title, article)
+        total = float(total_match.group(1))
         return (
             {
-                "total": float(total_match.group(1)),
+                "total": total,
                 "module_credits": values[:7] if len(values) >= 7 else [],
+                "credit_components": _category_plan_components(
+                    str(row["text"]),
+                    major_stem=stem,
+                    graduation_total=total,
+                ),
             },
             {
                 "chunk_id": str(row["chunk_id"]),
@@ -139,6 +368,17 @@ def execute_plan(
     metadata: MetadataDB,
 ):
     packet = base_execute_plan(plan, database=database, metadata=metadata)
+    module_only = bool(
+        plan.query.course_modules
+        and "module_breakdown" in plan.query.requested_outputs
+    )
+    if module_only:
+        packet.facts = [
+            fact
+            for fact in packet.facts
+            if fact.get("field") != "graduation_min_credits"
+        ]
+        return _compact_citations(packet)
     needs_header = any(
         operation.name == "get_graduation_requirements" for operation in plan.operations
     )
@@ -157,7 +397,10 @@ def execute_plan(
         evidence_id = existing.evidence_id
 
     packet.facts = [
-        fact for fact in packet.facts if fact.get("field") != "graduation_min_credits"
+        fact
+        for fact in packet.facts
+        if fact.get("field")
+        not in {"graduation_min_credits", "graduation_credit_components"}
     ]
     packet.facts.insert(
         0,
@@ -167,8 +410,24 @@ def execute_plan(
             "evidence_id": evidence_id,
         },
     )
+    credit_components = values["credit_components"]
+    whole_program_breakdown = bool(
+        plan.query.primary_intent == "graduation_requirement"
+        and "credit_total" in plan.query.requested_outputs
+        and not plan.query.course_modules
+    )
+    if credit_components and whole_program_breakdown:
+        packet.facts.insert(
+            1,
+            {
+                "field": "graduation_credit_components",
+                "value": credit_components,
+                "evidence_id": evidence_id,
+            },
+        )
+        packet.requirements = []
     module_credits = values["module_credits"]
-    if module_credits:
+    if module_credits and not credit_components:
         packet.requirements = [
             RequirementFact(
                 record_id=f"program-header:{plan.query.cohort}:{plan.query.major}:{index}",

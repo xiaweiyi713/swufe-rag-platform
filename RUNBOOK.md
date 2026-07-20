@@ -123,6 +123,89 @@ python -m app.server
 - 非法业务参数返回 `400`，未知 `chunk_id` 返回 `404`；
 - 正式服务不会因 `SWUFE_RAG_MODE=demo` 或其他调试配置而加载 fixture。
 
+## Redis 生产配置
+
+安装 `requirements-web.txt` 后可选启用 Redis：
+
+```bash
+export SWUFE_RAG_REDIS_URL='redis://127.0.0.1:6379/0'
+export SWUFE_RAG_CACHE_VERSION='kb-2026-07-18'
+python -m app.server
+```
+
+| 变量 | 默认值 | 说明 |
+|---|---:|---|
+| `SWUFE_RAG_REDIS_URL` | 空 | 空时使用进程内会话且禁用答案缓存；支持 `redis://`/`rediss://` |
+| `SWUFE_RAG_SESSION_TTL` | `259200` | 会话 TTL，秒 |
+| `SWUFE_RAG_ANSWER_CACHE_TTL` | `86400` | 已验证学校答案 TTL，秒 |
+| `SWUFE_RAG_SESSION_LOCK_TTL` | `180` | 同一会话分布式锁租期，秒；应长于最慢请求 |
+| `SWUFE_RAG_SESSION_LOCK_WAIT` | `120` | 等待同一会话请求完成的最长时间，秒 |
+| `SWUFE_RAG_REDIS_SOCKET_TIMEOUT` | `0.75` | Redis 读写超时，秒 |
+| `SWUFE_RAG_REDIS_CONNECT_TIMEOUT` | `0.75` | Redis 建连超时，秒 |
+| `SWUFE_RAG_REDIS_MAX_CONNECTIONS` | `32` | 单进程连接池上限 |
+| `SWUFE_RAG_REDIS_CIRCUIT_SECONDS` | `5` | 运行时故障后的熔断窗口，秒 |
+| `SWUFE_RAG_SESSION_MIRROR_MAX` | `2048` | 单进程故障镜像的最大会话数 |
+| `SWUFE_RAG_CACHE_VERSION` | 空 | 手工缓存命名空间；知识库或生成规则发布时修改 |
+| `SWUFE_RAG_QUERY_MAX_CONCURRENCY` | `2` | 单进程同时执行的冷检索请求数；缓存命中不占用名额 |
+| `SWUFE_RAG_QUERY_QUEUE_SIZE` | `8` | 冷检索等待队列上限；超过后返回 HTTP 429 |
+| `SWUFE_RAG_QUERY_QUEUE_TIMEOUT` | `8.0` | 冷检索在队列中的最长等待时间，秒 |
+| `SWUFE_RAG_RETRIEVAL_CACHE_SIZE` | `512` | 单进程检索结果缓存条目上限；只缓存已加载运行时内的结果 |
+| `SWUFE_RAG_RETRIEVAL_CACHE_TTL` | `300` | 单进程检索结果缓存 TTL，秒 |
+
+`GET /options` 的 `redis.sessions.backend` 和 `redis.answer_cache.backend` 均应为 `redis`。启动时无法连接会安全降级；运行中断线会继续使用本地会话镜像，恢复后的下一次访问会把较新的脏会话回写 Redis。多实例在 Redis 故障期间只能保证各实例内一致，因此生产监控仍应对降级日志告警。
+
+安全要求：远程 Redis 使用 ACL 独立账号与 `rediss://`，限制网络来源，不在 `.env`、日志或 Git 中暴露完整 URL。应用日志只输出脱敏后的主机、端口和数据库编号。
+
+快速检查：
+
+```bash
+redis-cli -u "$SWUFE_RAG_REDIS_URL" ping
+curl -s http://127.0.0.1:8000/options
+```
+
+## 新年级培养方案增量导入
+
+学校以 ZIP 发布分学院 PDF 时，先校验官方压缩包并生成带分册边界的完整总册。以下以 2025 级为例，所有候选文件先写入 `tmp/`，不要直接覆盖生产库：
+
+```bash
+python -m scripts.import_curriculum_bundle \
+  "/path/to/2025级本科人才培养方案20251024" \
+  --cohort 2025 \
+  --official-archive tmp/official-2025/2025.zip
+
+python -m tools.build_ingestion_parts \
+  --parts-dir tmp/full_ingest_parts_2025 \
+  --output tmp/full_chunks_candidate_2025.jsonl \
+  --report tmp/full_ingest_report_candidate_2025.json
+
+python -m scripts.merge_ingested_source \
+  --baseline data/chunks.jsonl \
+  --addition tmp/full_ingest_parts_2025/0070.jsonl \
+  --source-file school/25级培养方案.pdf \
+  --candidate-report tmp/full_ingest_report_candidate_2025.json \
+  --output tmp/full_chunks_merged_2025.jsonl \
+  --report tmp/full_ingest_report_merged_2025.json
+```
+
+结构化目录先全量抽取新年级，再运行大类方案二次解析，最后以现有生产目录为冻结基线合并。这样旧年级已经人工核验的学期和脚注规则不会被通用解析器覆盖：
+
+```bash
+python -m academic_audit.full_catalog_fast \
+  --chunks tmp/full_chunks_candidate_2025.jsonl \
+  --output tmp/curriculum_catalog_v2_candidate_2025.json
+python -m academic_audit.repair_2024_catalog_v2 \
+  --target tmp/curriculum_catalog_v2_candidate_2025.json \
+  --cohort 2025 --chunks tmp/full_chunks_candidate_2025.jsonl
+python -m scripts.merge_curriculum_cohort \
+  --baseline data/curriculum_catalog_v2.json \
+  --candidate tmp/curriculum_catalog_v2_candidate_2025.json \
+  --manifest data/curriculum_import_2025.json \
+  --output tmp/curriculum_catalog_v2_merged_2025.json \
+  --cohort 2025
+```
+
+上线前必须通过候选语料硬校验、SQLite 覆盖审计、FAISS 行数与哈希校验，并为现有 `data/`、`artifacts/` 留可回滚备份。
+
 ## 真实数据验收
 
 1. 全量运行知识块契约校验并人工抽查表格与 URL。

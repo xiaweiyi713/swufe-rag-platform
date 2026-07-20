@@ -2,7 +2,7 @@
 
 ## 使用方式
 
-正式问答接口仍为 `POST /ask`，JSON 请求体和响应契约不变。需要使用真实 DeepSeek 生成时，在同源请求中增加可选请求头：
+正式问答接口为 `POST /ask`；流式客户端使用 `POST /ask/stream`。两个端点的 JSON 请求体和 BYOK 请求头一致。需要使用真实 DeepSeek 生成时，在同源请求中增加可选请求头：
 
 ```http
 X-LLM-API-Key: <临时密钥>
@@ -24,6 +24,10 @@ X-LLM-API-Key: <临时密钥>
 ```
 
 密钥不能写入 JSON 请求体；`AskRequest` 继续使用 `extra="forbid"`，因此请求体中的 `api_key` 会返回 HTTP 422。
+
+流式端点返回 `application/x-ndjson`。普通对话的 DeepSeek 增量作为 `delta`
+事件实时转发，最后用 `final.response` 返回完整的兼容响应；学校事实仍须先通过
+本地证据校验，BYOK 不会绕过引用和拒答边界。
 
 ## 生命周期与安全边界
 

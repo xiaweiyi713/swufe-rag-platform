@@ -86,6 +86,16 @@ class CurriculumAuditService:
             )
             for cohort in cohorts
         }
+        major_colleges_by_cohort = {
+            cohort: {
+                plan["major"]: plan["college"]
+                for plan in self.plans
+                if plan["cohort"] == cohort
+                and plan.get("major")
+                and plan.get("college")
+            }
+            for cohort in cohorts
+        }
         modules_by_plan = {
             f"{plan['cohort']}::{plan['major']}": [
                 module["name"]
@@ -102,6 +112,7 @@ class CurriculumAuditService:
             "course_count": len(self.courses),
             "cohorts": cohorts,
             "majors_by_cohort": majors_by_cohort,
+            "major_colleges_by_cohort": major_colleges_by_cohort,
             "modules_by_plan": modules_by_plan,
             "module_aliases": MODULE_ALIASES,
         }

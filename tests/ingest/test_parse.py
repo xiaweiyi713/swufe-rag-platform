@@ -9,6 +9,7 @@ from ingest.parse import (
     _clean_web_print_paragraph,
     _clean_web_print_table,
     _is_web_print_page,
+    _load_pdf_sections,
     SidecarOCRProvider,
     join_wrapped_lines,
     normalize_text,
@@ -100,6 +101,39 @@ class ParseTests(unittest.TestCase):
             )
             provider = SidecarOCRProvider(root)
             self.assertEqual(provider.page_map(pdf, expected_pages=10), {1: "图片封面标题"})
+
+    def test_pdf_section_sidecar_validates_and_loads_boundaries(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            pdf = Path(temporary) / "25级培养方案.pdf"
+            pdf.write_bytes(b"unused")
+            sidecar = pdf.with_suffix(".pdf.sections.json")
+            sidecar.write_text(
+                json.dumps(
+                    {
+                        "sections": [
+                            {
+                                "start_page": 1,
+                                "end_page": 22,
+                                "title": "数字经济（基础学科拔尖实验班）人才培养方案",
+                            },
+                            {
+                                "start_page": 23,
+                                "end_page": 49,
+                                "title": "计算机科学与技术人才培养方案",
+                            },
+                        ]
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                _load_pdf_sections(pdf, page_count=49),
+                {
+                    1: "数字经济(基础学科拔尖实验班)人才培养方案",
+                    23: "计算机科学与技术人才培养方案",
+                },
+            )
 
 if __name__ == "__main__":
     unittest.main()

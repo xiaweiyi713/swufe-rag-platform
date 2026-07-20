@@ -1,0 +1,15 @@
+{
+  "expected_count": 1,
+  "actual_count": 1,
+  "passed": 1,
+  "failed": 0,
+  "unexpected_ids": [],
+  "failures": [],
+  "rows": [
+    {
+      "id": "thesis",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

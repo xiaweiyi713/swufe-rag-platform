@@ -44,7 +44,16 @@ def build_request_query_runtime(
     api_key: str,
     *,
     config_path: str | Path = "config.advanced.yaml",
+    base_url: str | None = None,
+    model_override: str | None = None,
+    thinking_enabled: bool = False,
 ) -> QueryPipelineRuntime:
+    """BYOK per-request runtime.
+
+    ``base_url``/``model_override`` let the caller pick any OpenAI-compatible
+    provider per request (X-LLM-Base-URL / X-LLM-Model headers); both default
+    to the configured DeepSeek setup when omitted.
+    """
     if not isinstance(base_runtime, QueryPipelineRuntime):
         raise ValueError("request API keys require a QueryPipelineRuntime")
     if not isinstance(api_key, str) or not api_key.strip():
@@ -54,6 +63,9 @@ def build_request_query_runtime(
     if not isinstance(generation, dict):
         raise ValueError("generation config must be a mapping")
     model = str(generation.get("llm", "deepseek-chat"))
+    if isinstance(model_override, str) and model_override.strip():
+        model = model_override.strip()
+    request_base_url = base_url.strip() if isinstance(base_url, str) and base_url.strip() else None
     retries = int(generation.get("max_retries", 2))
     timeout = float(generation.get("request_timeout_seconds", 60))
     key = api_key.strip()
@@ -61,10 +73,12 @@ def build_request_query_runtime(
     def client(*, temperature: float = 0.0) -> OpenAICompatibleClient:
         return OpenAICompatibleClient(
             model,
+            base_url=request_base_url,
             api_key=key,
             temperature=temperature,
             max_retries=retries,
             timeout_seconds=timeout,
+            thinking_enabled=thinking_enabled,
         )
 
     planner_client = client()
@@ -92,12 +106,13 @@ def build_request_query_runtime(
         ),
         router=base_runtime.router,
         school_retrieve=base_runtime.school_retrieve,
-        school_answer=grounded.answer,
+        school_answer=grounded.answer_polished,
         general_chat=GeneralChatService(general_client),
         metadata_db=base_runtime.metadata_db,
         sessions=base_runtime.sessions,
         runtime_mode=f"{base_runtime.mode}+request-llm",
         runtime_info=getattr(base_runtime, "runtime_info", {}),
+        query_context=base_runtime.query_context,
     )
 
 

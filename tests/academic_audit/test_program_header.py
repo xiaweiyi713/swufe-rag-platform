@@ -28,3 +28,20 @@ def test_2024_category_header_selects_each_major_total_and_physical_page() -> No
             assert citation["page_url"].endswith("#page=374")
     finally:
         metadata.close()
+
+
+def test_2023_program_header_accepts_ge_credit_wording() -> None:
+    metadata = MetadataDB(ROOT / "data" / "metadata.sqlite3")
+    try:
+        plan = SimpleNamespace(
+            query=SimpleNamespace(cohort=2023, major="经济统计学专业")
+        )
+        value = _program_header(plan, metadata)
+    finally:
+        metadata.close()
+
+    assert value is not None
+    facts, citation = value
+    assert facts["total"] == 166
+    assert facts["module_credits"] == [67, 22, 18, 18, 8, 9, 24]
+    assert citation["physical_page"] == 221

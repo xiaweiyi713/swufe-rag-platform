@@ -240,6 +240,9 @@ def create_app(
             value = get_runtime().options()
             audit_options = get_audit_service().options()
             value["majors_by_cohort"] = audit_options.get("majors_by_cohort", {})
+            value["major_colleges_by_cohort"] = audit_options.get(
+                "major_colleges_by_cohort", {}
+            )
             value["structured_plan_count"] = audit_options.get("plan_count", 0)
             value["structured_course_count"] = audit_options.get("course_count", 0)
             return value

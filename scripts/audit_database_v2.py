@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 import sqlite3
 
 
 def main() -> None:
-    path = Path("data/academic_v2.sqlite3")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--database", default="data/academic_v2.sqlite3")
+    parser.add_argument("--output", default="analysis-output/full-system-v2/database-quality.json")
+    args = parser.parse_args()
+    path = Path(args.database)
     connection = sqlite3.connect(path)
 
     def scalar(sql: str):
@@ -43,7 +48,7 @@ def main() -> None:
             )
         ],
     }
-    output = Path("analysis-output/full-system-v2/database-quality.json")
+    output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
