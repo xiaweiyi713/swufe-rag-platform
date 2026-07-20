@@ -4,6 +4,19 @@
 
 核心设计原则:**可信优先** —— 只依据知识库作答、强制引用溯源、按学院/年级过滤、知识库未覆盖时明确拒答。
 
+## Docker 开发环境
+
+后端与 Redis 已使用 Docker Compose 编排，知识库/索引以只读制品挂载；iOS 客户端继续由 macOS/Xcode 构建，并通过 `http://127.0.0.1:8000` 访问容器服务。
+
+```bash
+cp .env.docker.example .env.docker
+docker compose -f "back-end engineer/swufe-rag/docker-compose.yml" \
+  --env-file .env.docker up --build -d
+curl http://127.0.0.1:8000/readyz
+```
+
+后端是独立 Git checkout，准备方式和固定版本见 [REPOSITORY.md](REPOSITORY.md)；完整启动、模型缓存、真机联调与运维命令见 [DOCKER.md](DOCKER.md)。
+
 ## 仓库结构与模块归属
 
 ```
@@ -106,11 +119,11 @@ top_k: 5  chunk_max_len: 500  use_bm25: true  temperature: 0  refuse_th: 0.35
 
 ```bash
 # 方式一:uv(推荐)
-uv venv --python 3.10 .venv && source .venv/bin/activate
+uv venv --python 3.12 .venv && source .venv/bin/activate
 uv pip install fastapi uvicorn pyyaml httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 方式二:conda(与计划书一致)
-conda create -n rag python=3.10 -y && conda activate rag
+conda create -n rag python=3.12 -y && conda activate rag
 pip install fastapi uvicorn pyyaml httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 

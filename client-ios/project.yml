@@ -1,0 +1,41 @@
+name: SwufeAsk
+options:
+  bundleIdPrefix: com.swufe
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  SwufeAsk:
+    type: application
+    platform: iOS
+    sources:
+      - SwufeAsk
+    settings:
+      base:
+        PRODUCT_NAME: SwufeAsk
+        PRODUCT_BUNDLE_IDENTIFIER: com.swufe.SwufeAsk
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    # 显示名、权限描述等 Info.plist 内容统一维护在下方 info.properties，
+    # 不再在 build settings 里用 INFOPLIST_KEY_* 重复一份。
+    info:
+      path: SwufeAsk/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: 西财教务问答
+        UILaunchScreen: {}
+        SWUFE_ASK_API_BASE_URL: http://127.0.0.1:8000
+        NSMicrophoneUsageDescription: 用于把你的语音提问转成文字，识别在本机完成。
+        NSSpeechRecognitionUsageDescription: 用于在本机识别你的语音提问并填入输入框。
+        # iOS 14+ 访问局域网（真机连开发机后端）会弹本地网络授权，必须带说明文案。
+        NSLocalNetworkUsageDescription: 用于连接同一局域网内电脑上运行的教务问答后端服务。
+        NSAppTransportSecurity:
+          # 允许本地网络内的明文 HTTP（真机演示连开发机 http://192.168.x.x:8000）。
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            127.0.0.1:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false

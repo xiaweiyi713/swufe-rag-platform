@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWUFE 教务智答 · 可溯源的培养方案与推免政策问答</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  :root{
+    --ink:#16283a; --ink-2:#4a6076; --ink-3:#7d92a6;
+    --brand:#0d4f8b; --brand-2:#1273c4; --accent:#0e9db0; --gold:#b98f45;
+    --line:rgba(22,40,58,.10);
+  }
+  *{ -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro SC","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+    color:var(--ink); background:#e9eef5; overflow:hidden;
+    font-feature-settings:"tnum";
+  }
+  ::selection{ background:rgba(18,115,196,.18); }
+
+  /* ---------- 背景:光斑 + 噪点 ---------- */
+  #bg{ position:fixed; inset:0; z-index:-2; background:linear-gradient(160deg,#eef3f9 0%,#e7edf6 48%,#e9f1f2 100%); }
+  .blob{ position:absolute; border-radius:50%; filter:blur(90px); opacity:.75; will-change:transform; }
+  .blob-1{ width:52vw; height:52vw; left:-12vw; top:-18vw; background:radial-gradient(circle at 35% 35%,rgba(18,115,196,.20),transparent 65%); animation:drift1 26s ease-in-out infinite alternate; }
+  .blob-2{ width:44vw; height:44vw; right:-10vw; top:8vh;  background:radial-gradient(circle at 60% 40%,rgba(14,157,176,.16),transparent 65%); animation:drift2 32s ease-in-out infinite alternate; }
+  .blob-3{ width:38vw; height:38vw; left:22vw; bottom:-16vw; background:radial-gradient(circle at 50% 50%,rgba(185,143,69,.13),transparent 62%); animation:drift3 38s ease-in-out infinite alternate; }
+  @keyframes drift1{ to{ transform:translate(6vw,4vh) scale(1.08);} }
+  @keyframes drift2{ to{ transform:translate(-5vw,6vh) scale(.94);} }
+  @keyframes drift3{ to{ transform:translate(4vw,-5vh) scale(1.1);} }
+  #noise{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.05; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  /* ---------- 玻璃 ---------- */
+  .glass{
+    background:linear-gradient(150deg,rgba(255,255,255,.78),rgba(255,255,255,.5));
+    backdrop-filter:blur(26px) saturate(170%); -webkit-backdrop-filter:blur(26px) saturate(170%);
+    border:1px solid rgba(255,255,255,.72);
+    box-shadow:0 10px 34px rgba(13,79,139,.09), 0 2px 6px rgba(13,79,139,.05), inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  .glass-soft{
+    background:linear-gradient(150deg,rgba(255,255,255,.6),rgba(255,255,255,.34));
+    backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%);
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 4px 18px rgba(13,79,139,.06), inset 0 1px 0 rgba(255,255,255,.7);
+  }
+
+  /* ---------- 滚动条 ---------- */
+  .scroll-thin{ scrollbar-width:thin; scrollbar-color:rgba(22,40,58,.16) transparent; }
+  .scroll-thin::-webkit-scrollbar{ width:5px; height:5px; }
+  .scroll-thin::-webkit-scrollbar-thumb{ background:rgba(22,40,58,.14); border-radius:99px; }
+  .scroll-thin::-webkit-scrollbar-thumb:hover{ background:rgba(22,40,58,.26); }
+  .scroll-thin::-webkit-scrollbar-track{ background:transparent; }
+
+  /* ---------- 消息 ---------- */
+  .msg-enter{ animation:msgIn .38s cubic-bezier(.21,1.02,.55,1) both; }
+  @keyframes msgIn{ from{ opacity:0; transform:translateY(10px) scale(.985);} to{ opacity:1; transform:none;} }
+  .bubble-user{
+    background:linear-gradient(135deg,#11629f,#0d4f8b 60%,#0a4173);
+    color:#f4f9ff; border-radius:18px 18px 5px 18px;
+    box-shadow:0 6px 20px rgba(13,79,139,.28), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .typing-dot{ width:6px; height:6px; border-radius:50%; background:var(--brand-2); opacity:.35; animation:tp 1.2s infinite; }
+  .typing-dot:nth-child(2){ animation-delay:.18s; } .typing-dot:nth-child(3){ animation-delay:.36s; }
+  @keyframes tp{ 0%,100%{ opacity:.25; transform:translateY(0);} 40%{ opacity:1; transform:translateY(-3px);} }
+
+  /* ---------- Markdown 排版 ---------- */
+  .md{ font-size:15px; line-height:1.85; color:var(--ink); word-break:break-word; }
+  .md>*+*{ margin-top:.65em; }
+  .md strong{ color:var(--brand); font-weight:600; }
+  .md h1,.md h2,.md h3{ font-weight:600; color:var(--ink); line-height:1.5; }
+  .md h1{ font-size:1.15em; } .md h2{ font-size:1.08em; } .md h3{ font-size:1.02em; }
+  .md ul{ padding-left:1.35em; list-style:none; }
+  .md ul>li{ position:relative; margin:.3em 0; }
+  .md ul>li::before{ content:""; position:absolute; left:-1.05em; top:.78em; width:5px; height:5px; border-radius:50%; background:var(--brand-2); opacity:.55; }
+  .md ol{ padding-left:1.4em; }
+  .md ol>li{ margin:.3em 0; list-style:decimal; }
+  .md ol>li::marker{ color:var(--brand-2); font-weight:600; }
+  .md blockquote{ border-left:3px solid var(--gold); background:rgba(185,143,69,.07); padding:.55em .9em; border-radius:6px; color:#6b5a36; font-size:.94em; }
+  .md code{ background:rgba(13,79,139,.08); border-radius:5px; padding:.1em .4em; font-size:.88em; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--brand); }
+  .md-table-wrap{ overflow-x:auto; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.55); }
+  .md table{ border-collapse:collapse; width:100%; font-size:.92em; min-width:420px; }
+  .md thead th{ background:linear-gradient(180deg,rgba(13,79,139,.08),rgba(13,79,139,.05)); color:var(--brand); font-weight:600; text-align:left; padding:.55em .85em; white-space:nowrap; }
+  .md tbody td{ padding:.5em .85em; border-top:1px solid var(--line); }
+  .md tbody tr:nth-child(even){ background:rgba(13,79,139,.025); }
+
+  /* ---------- 引用角标 ---------- */
+  sup.cite{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px;
+    margin:0 1px; border-radius:6px; cursor:pointer; user-select:none; vertical-align:super;
+    font-size:10.5px; font-weight:700; line-height:1; color:#fff;
+    background:linear-gradient(135deg,var(--brand-2),var(--brand));
+    box-shadow:0 2px 6px rgba(13,79,139,.32); transition:transform .15s,box-shadow .15s; }
+  sup.cite:hover{ transform:translateY(-1.5px) scale(1.12); box-shadow:0 4px 10px rgba(13,79,139,.4); }
+
+  /* ---------- 引用卡片 ---------- */
+  .cite-card{ transition:transform .2s, box-shadow .2s; }
+  .cite-card:hover{ transform:translateY(-1px); }
+  .cite-flash{ animation:flashRing 1.6s ease-out 2; }
+  @keyframes flashRing{
+    0%{ box-shadow:0 0 0 0 rgba(18,115,196,.55), 0 4px 18px rgba(13,79,139,.06); }
+    70%{ box-shadow:0 0 0 10px rgba(18,115,196,0), 0 4px 18px rgba(13,79,139,.06); }
+    100%{ box-shadow:0 0 0 0 rgba(18,115,196,0), 0 4px 18px rgba(13,79,139,.06); } }
+  .quote-hl{ background:linear-gradient(transparent 55%, rgba(185,143,69,.24) 55%); }
+
+  /* ---------- score 条 ---------- */
+  .score-bar{ height:5px; border-radius:99px; background:rgba(13,79,139,.10); overflow:hidden; }
+  .score-fill{ height:100%; border-radius:99px; background:linear-gradient(90deg,var(--accent),var(--brand-2)); transition:width .6s cubic-bezier(.2,.8,.2,1); }
+
+  /* ---------- 控件 ---------- */
+  .btn-send{ background:linear-gradient(135deg,var(--brand-2),var(--brand)); box-shadow:0 5px 16px rgba(13,79,139,.32), inset 0 1px 0 rgba(255,255,255,.25); transition:transform .15s, box-shadow .15s, opacity .15s; }
+  .btn-send:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 8px 22px rgba(13,79,139,.4); }
+  .btn-send:active:not(:disabled){ transform:scale(.96); }
+  .btn-send:disabled{ opacity:.45; }
+  .chip{ transition:transform .16s, box-shadow .16s, background .16s; cursor:pointer; }
+  .chip:hover{ transform:translateY(-1.5px); box-shadow:0 6px 16px rgba(13,79,139,.14); background:rgba(255,255,255,.85); }
+  select.ident{ appearance:none; -webkit-appearance:none; background-image:none; }
+  .sel-wrap{ position:relative; }
+  .sel-wrap::after{ content:"\f107"; font-family:FontAwesome; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--ink-3); pointer-events:none; }
+  textarea#q{ resize:none; outline:none; background:transparent; }
+  .fold-enter{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1); }
+  .fold-enter.open{ grid-template-rows:1fr; }
+  .fold-inner{ overflow:hidden; min-height:0; }
+
+  /* ---------- 模态 ---------- */
+  #modal-backdrop{ background:rgba(22,40,58,.28); backdrop-filter:blur(10px) saturate(120%); -webkit-backdrop-filter:blur(10px) saturate(120%); }
+  .modal-enter{ animation:modalIn .42s cubic-bezier(.2,.9,.3,1.15) both; }
+  @keyframes modalIn{ from{ opacity:0; transform:translateY(16px) scale(.96);} to{ opacity:1; transform:none;} }
+
+  /* ---------- 窄屏引用抽屉 ---------- */
+  @media (max-width:1023px){
+    #cite-pane{ position:fixed; top:0; right:0; bottom:0; width:min(92vw,400px); z-index:40; transform:translateX(105%); transition:transform .34s cubic-bezier(.2,.8,.2,1); }
+    #cite-pane.open{ transform:none; box-shadow:-16px 0 48px rgba(13,79,139,.18); }
+  }
+  .fade-in{ animation:fadeIn .5s ease both; }
+  @keyframes fadeIn{ from{ opacity:0;} to{ opacity:1;} }
+</style>
+</head>
+<body>
+<div id="bg"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+<div id="noise"></div>
+
+<!-- ================= 顶部导航 ================= -->
+<header class="glass-soft relative z-30 mx-3 mt-3 rounded-2xl px-4 sm:px-5 h-[52px] flex items-center gap-3">
+  <div class="flex items-center gap-2.5 min-w-0">
+    <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0"
+         style="background:linear-gradient(135deg,var(--brand-2),var(--brand));box-shadow:0 4px 12px rgba(13,79,139,.35)">
+      <i class="fa fa-university text-[13px]"></i>
+    </div>
+    <div class="leading-tight min-w-0">
+      <div class="font-semibold text-[14.5px] tracking-wide truncate">SWUFE 教务智答</div>
+      <div class="text-[10.5px] truncate" style="color:var(--ink-3)">培养方案 · 推免细则 · 学籍规定 · 可溯源问答</div>
+    </div>
+  </div>
+  <div class="ml-auto flex items-center gap-2">
+    <button id="identity-badge" class="chip glass-soft hidden sm:flex items-center gap-2 rounded-full pl-3 pr-2.5 h-9 text-[12.5px] font-medium" style="color:var(--brand)">
+      <i class="fa fa-graduation-cap" style="color:var(--brand-2)"></i>
+      <span id="identity-text">未选择身份</span>
+      <span class="w-6 h-6 rounded-full flex items-center justify-center" style="background:rgba(13,79,139,.08)"><i class="fa fa-pencil text-[10px]"></i></span>
+    </button>
+    <button id="identity-badge-sm" class="chip glass-soft sm:hidden w-9 h-9 rounded-full flex items-center justify-center" style="color:var(--brand)"><i class="fa fa-graduation-cap"></i></button>
+    <button id="cite-toggle" class="chip glass-soft lg:hidden w-9 h-9 rounded-full items-center justify-center hidden" style="color:var(--brand)">
+      <i class="fa fa-bookmark"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ================= 主体 ================= -->
+<main class="relative z-10 flex gap-3 px-3 pt-3 pb-3" style="height:calc(100% - 64px)">
+
+  <!-- 左:聊天区 -->
+  <section class="flex-1 min-w-0 flex flex-col gap-2.5">
+    <div id="chat-scroll" class="scroll-thin flex-1 overflow-y-auto rounded-2xl pr-1">
+      <!-- 空状态 -->
+      <div id="empty-state" class="h-full flex flex-col items-center justify-center px-4 fade-in">
+        <div class="glass rounded-3xl px-7 sm:px-10 py-9 max-w-[560px] w-full text-center">
+          <div class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-5"
+               style="background:linear-gradient(135deg,var(--brand-2),var(--brand));box-shadow:0 8px 24px rgba(13,79,139,.35)">
+            <i class="fa fa-commenting-o text-xl"></i>
+          </div>
+          <h1 class="text-[19px] font-semibold tracking-wide">问一问你的培养方案与保研政策</h1>
+          <p class="mt-2 text-[13px] leading-relaxed" style="color:var(--ink-2)">
+            回答只依据学校与学院官方文件,每个论断带 <sup class="cite" style="cursor:default">1</sup> 角标,点击即可核对原文条款与官网出处;超出知识库范围会明确拒答。
+          </p>
+          <div id="example-chips" class="mt-6 grid sm:grid-cols-2 gap-2.5 text-left"></div>
+          <p class="mt-5 text-[11px]" style="color:var(--ink-3)"><i class="fa fa-flask mr-1"></i>当前为桩数据演示模式(provider: mock),条款内容为编造样例,仅用于联调与界面验证</p>
+        </div>
+      </div>
+      <!-- 消息流 -->
+      <div id="messages" class="hidden max-w-[880px] mx-auto w-full px-1 sm:px-2 py-2 space-y-5"></div>
+    </div>
+
+    <!-- 底部:检索详情折叠区 -->
+    <div id="retrieval-panel" class="glass-soft rounded-2xl overflow-hidden shrink-0 hidden">
+      <button id="retrieval-toggle" class="w-full h-10 px-4 flex items-center gap-2 text-[12.5px] font-medium" style="color:var(--ink-2)">
+        <i class="fa fa-search text-[11px]" style="color:var(--accent)"></i>
+        <span>检索详情</span>
+        <span id="retrieval-summary" class="font-normal" style="color:var(--ink-3)"></span>
+        <i id="retrieval-caret" class="fa fa-angle-up ml-auto transition-transform duration-300" style="color:var(--ink-3)"></i>
+      </button>
+      <div id="retrieval-fold" class="fold-enter"><div class="fold-inner">
+        <div id="retrieval-body" class="px-4 pb-3.5 pt-0.5 space-y-2.5 max-h-[240px] overflow-y-auto scroll-thin"></div>
+      </div></div>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="glass rounded-[22px] p-2 pl-4 flex items-end gap-2 shrink-0">
+      <textarea id="q" rows="1" placeholder="输入你的问题,如:我挂过一门课还能保研吗?(Enter 发送,Shift+Enter 换行)"
+        class="flex-1 py-2.5 text-[14.5px] leading-6 max-h-[120px] scroll-thin placeholder:text-[13px]" style="color:var(--ink)"></textarea>
+      <button id="send" class="btn-send w-10 h-10 rounded-full text-white flex items-center justify-center shrink-0 mb-0.5" disabled>
+        <i class="fa fa-paper-plane text-[13px] -translate-x-[1px]"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- 右:引用面板 -->
+  <aside id="cite-pane" class="glass rounded-2xl w-[clamp(320px,30vw,420px)] shrink-0 flex-col hidden lg:flex">
+    <div class="h-12 px-4 flex items-center gap-2 border-b shrink-0" style="border-color:var(--line)">
+      <i class="fa fa-bookmark-o" style="color:var(--gold)"></i>
+      <span class="font-semibold text-[13.5px] tracking-wide">来源与引用</span>
+      <span id="cite-count" class="text-[11px] px-2 py-0.5 rounded-full" style="background:rgba(13,79,139,.08);color:var(--brand)">0</span>
+      <button id="cite-close" class="lg:hidden ml-auto w-8 h-8 rounded-full flex items-center justify-center" style="color:var(--ink-3)"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="cite-body" class="flex-1 overflow-y-auto scroll-thin p-3 space-y-4">
+      <div id="cite-empty" class="h-full flex flex-col items-center justify-center text-center px-6 py-16">
+        <div class="w-12 h-12 rounded-2xl glass-soft flex items-center justify-center mb-3"><i class="fa fa-quote-left" style="color:var(--ink-3)"></i></div>
+        <p class="text-[12.5px] leading-relaxed" style="color:var(--ink-3)">提问后,回答引用的原文条款会按回答分组展示在这里;点击正文角标可快速定位。</p>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- ================= 身份选择模态 ================= -->
+<div id="identity-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div id="modal-backdrop" class="absolute inset-0"></div>
+  <div class="modal-enter glass relative rounded-3xl w-full max-w-[420px] p-7">
+    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-4"
+         style="background:linear-gradient(135deg,var(--brand-2),var(--brand));box-shadow:0 6px 18px rgba(13,79,139,.35)">
+      <i class="fa fa-graduation-cap text-lg"></i>
+    </div>
+    <h2 class="text-[17px] font-semibold">选择你的身份</h2>
+    <p class="mt-1.5 text-[12.5px] leading-relaxed" style="color:var(--ink-2)">
+      培养方案一届一发、推免细则各院不同。系统将<strong style="color:var(--brand)">只在你的适用范围内</strong>检索条款,避免拿别人的规定回答你的问题。
+    </p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <label class="text-[11.5px] font-medium mb-1.5 block" style="color:var(--ink-2)"><i class="fa fa-building-o mr-1"></i>所在学院</label>
+        <div class="sel-wrap"><select id="sel-college" class="ident glass-soft w-full h-11 rounded-xl px-3.5 text-[13.5px] font-medium outline-none cursor-pointer" style="color:var(--ink)"></select></div>
+      </div>
+      <div>
+        <label class="text-[11.5px] font-medium mb-1.5 block" style="color:var(--ink-2)"><i class="fa fa-calendar-o mr-1"></i>入学年级</label>
+        <div class="sel-wrap"><select id="sel-cohort" class="ident glass-soft w-full h-11 rounded-xl px-3.5 text-[13.5px] font-medium outline-none cursor-pointer" style="color:var(--ink)"></select></div>
+      </div>
+    </div>
+    <button id="identity-confirm" class="btn-send w-full h-11 rounded-xl text-white text-[14px] font-semibold mt-6">
+      进入系统 <i class="fa fa-arrow-right ml-1 text-[12px]"></i>
+    </button>
+    <button id="identity-cancel" class="hidden w-full h-9 mt-2 text-[12.5px]" style="color:var(--ink-3)">取消</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ * SWUFE 教务智答 · 前端(模块D)
+ * 依赖接口:POST /ask, GET /source/{id}, GET /meta(契约见主 README)
+ * ============================================================ */
+const API = location.origin.startsWith("file") ? "http://127.0.0.1:8000" : "";
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  college: null, cohort: null,
+  turn: 0,                 // 回答序号
+  retrievals: {},          // turn -> retrieved[]
+  pendingIdentityRequired: false,
+};
+
+const EXAMPLES = [
+  { icon: "fa-life-ring",  tag: "推免资格", q: "我挂过一门课,重修通过了还能保研吗?" },
+  { icon: "fa-pie-chart",  tag: "表格数值", q: "推免综合成绩的权重是怎么构成的?" },
+  { icon: "fa-table",      tag: "培养方案", q: "各类课程的学分怎么分布?" },
+  { icon: "fa-book",       tag: "选修学分", q: "金融科技导论算不算专业选修学分?" },
+  { icon: "fa-exchange",   tag: "学籍管理", q: "转专业需要什么条件?" },
+  { icon: "fa-ban",        tag: "库外问题", q: "食堂几点关门?" },
+];
+
+/* ---------------- Markdown 渲染 ---------------- */
+marked.setOptions({ gfm: true, breaks: false });
+function renderMd(md, citations) {
+  // [n] -> 角标(仅替换 citations 中存在的 marker)
+  const valid = new Set((citations || []).map(c => String(c.marker)));
+  const withSup = md.replace(/\[(\d+)\]/g, (m, n) =>
+    valid.has(n) ? `<sup class="cite" data-marker="${n}">${n}</sup>` : m);
+  let html = marked.parse(withSup);
+  if (window.DOMPurify) html = DOMPurify.sanitize(html, { ADD_ATTR: ["data-marker"] });
+  const div = document.createElement("div");
+  div.className = "md";
+  div.innerHTML = html;
+  // 表格包一层横向滚动容器,窄屏不塌
+  div.querySelectorAll("table").forEach(t => {
+    const wrap = document.createElement("div");
+    wrap.className = "md-table-wrap";
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+  return div;
+}
+
+/* ---------------- API ---------------- */
+async function getJSON(path, opts) {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+/* ---------------- 身份 ---------------- */
+async function initIdentity() {
+  const meta = await getJSON("/meta");
+  const selC = $("sel-college"), selY = $("sel-cohort");
+  selC.innerHTML = meta.colleges.map(c => `<option value="${c}">${c}</option>`).join("");
+  selY.innerHTML = meta.cohorts.map(c => `<option value="${c}">${c} 级</option>`).join("");
+  const saved = JSON.parse(localStorage.getItem("swufe_identity") || "null");
+  if (saved && meta.colleges.includes(saved.college) && meta.cohorts.includes(saved.cohort)) {
+    applyIdentity(saved.college, saved.cohort);
+  } else {
+    openIdentityModal(true);
+  }
+}
+function applyIdentity(college, cohort) {
+  state.college = college; state.cohort = cohort;
+  localStorage.setItem("swufe_identity", JSON.stringify({ college, cohort }));
+  $("identity-text").textContent = `${college} · ${cohort}级`;
+}
+function openIdentityModal(required) {
+  state.pendingIdentityRequired = required;
+  $("identity-cancel").classList.toggle("hidden", required);
+  if (state.college) { $("sel-college").value = state.college; $("sel-cohort").value = state.cohort; }
+  $("identity-modal").classList.remove("hidden");
+  $("identity-modal").classList.add("flex");
+}
+function closeIdentityModal() {
+  $("identity-modal").classList.add("hidden");
+  $("identity-modal").classList.remove("flex");
+}
+$("identity-confirm").onclick = () => {
+  applyIdentity($("sel-college").value, $("sel-cohort").value);
+  closeIdentityModal();
+  $("q").focus();
+};
+$("identity-cancel").onclick = closeIdentityModal;
+$("modal-backdrop").onclick = () => { if (!state.pendingIdentityRequired) closeIdentityModal(); };
+$("identity-badge").onclick = () => openIdentityModal(false);
+$("identity-badge-sm").onclick = () => openIdentityModal(false);
+
+/* ---------------- 空状态示例 ---------------- */
+$("example-chips").innerHTML = EXAMPLES.map(e => `
+  <button class="chip glass-soft rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-left" data-q="${e.q}">
+    <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(13,79,139,.08);color:var(--brand-2)"><i class="fa ${e.icon} text-[11px]"></i></span>
+    <span class="min-w-0">
+      <span class="block text-[10px] font-medium" style="color:var(--ink-3)">${e.tag}</span>
+      <span class="block text-[12.5px] font-medium truncate" style="color:var(--ink)">${e.q}</span>
+    </span>
+  </button>`).join("");
+$("example-chips").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-q]");
+  if (btn) { $("q").value = btn.dataset.q; autoGrow(); send(); }
+});
+
+/* ---------------- 输入区 ---------------- */
+const qEl = $("q");
+function autoGrow() {
+  qEl.style.height = "auto";
+  qEl.style.height = Math.min(qEl.scrollHeight, 120) + "px";
+  $("send").disabled = !qEl.value.trim();
+}
+qEl.addEventListener("input", autoGrow);
+qEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$("send").onclick = send;
+
+/* ---------------- 发送与渲染 ---------------- */
+function scrollBottom() {
+  const sc = $("chat-scroll");
+  requestAnimationFrame(() => sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }));
+}
+
+function addUserMsg(text) {
+  const el = document.createElement("div");
+  el.className = "msg-enter flex justify-end";
+  el.innerHTML = `<div class="bubble-user max-w-[78%] px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap"></div>`;
+  el.firstElementChild.textContent = text;
+  $("messages").appendChild(el);
+}
+
+function addTyping() {
+  const el = document.createElement("div");
+  el.id = "typing";
+  el.className = "msg-enter flex";
+  el.innerHTML = `
+    <div class="glass rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2.5">
+      <span class="flex gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>
+      <span id="typing-text" class="text-[12px]" style="color:var(--ink-3)">正在检索条款…</span>
+    </div>`;
+  $("messages").appendChild(el);
+  let i = 0;
+  el.dataset.timer = setInterval(() => {
+    i++; const t = $("typing-text");
+    if (t) t.textContent = ["正在检索条款…", "正在核对适用范围…", "正在生成回答…"][i % 3];
+  }, 1400);
+  scrollBottom();
+}
+function removeTyping() {
+  const el = $("typing");
+  if (el) { clearInterval(+el.dataset.timer); el.remove(); }
+}
+
+function addAssistantMsg(resp, turn) {
+  const wrap = document.createElement("div");
+  wrap.className = "msg-enter flex";
+  const card = document.createElement("div");
+  card.className = "glass rounded-2xl rounded-bl-md px-4.5 sm:px-5 py-4 max-w-[92%] sm:max-w-[85%] w-fit";
+  card.style.padding = "16px 20px";
+
+  if (resp.refused) {
+    // 拒答:灰色提示卡,与正常回答明确区分
+    card.style.background = "linear-gradient(150deg,rgba(240,243,246,.82),rgba(233,237,242,.6))";
+    card.style.border = "1px dashed rgba(125,146,166,.45)";
+    const rel = (resp.retrieved || []).slice(0, 3);
+    card.innerHTML = `
+      <div class="flex items-center gap-2.5 mb-2.5">
+        <span class="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style="background:rgba(125,146,166,.16);color:var(--ink-3)"><i class="fa fa-ban text-[12px]"></i></span>
+        <span class="text-[12px] font-semibold tracking-wide px-2 py-0.5 rounded-full" style="background:rgba(125,146,166,.14);color:var(--ink-2)">知识库未覆盖 · 已拒答</span>
+      </div>`;
+    const body = renderMd(resp.answer_md, []);
+    body.style.color = "var(--ink-2)";
+    card.appendChild(body);
+    if (rel.length) {
+      const relBox = document.createElement("div");
+      relBox.className = "mt-3 pt-3 space-y-1.5";
+      relBox.style.borderTop = "1px solid var(--line)";
+      relBox.innerHTML = `<div class="text-[11px] font-medium mb-1.5" style="color:var(--ink-3)"><i class="fa fa-compass mr-1"></i>最相关条款(供参考)</div>` +
+        rel.map(r => `
+          <button class="rel-chunk w-full text-left rounded-lg px-2.5 py-2 text-[12px] leading-snug chip" style="background:rgba(255,255,255,.5);color:var(--ink-2)" data-chunk="${r.chunk_id}">
+            <span class="font-medium" style="color:var(--ink)">《${r.doc_title}》</span>${r.article}
+            <span class="ml-1 text-[10.5px]" style="color:var(--ink-3)">相似度 ${(r.score * 100).toFixed(0)}%</span>
+          </button>`).join("");
+      card.appendChild(relBox);
+    }
+  } else {
+    card.appendChild(renderMd(resp.answer_md, resp.citations));
+    // 元信息行
+    const meta = document.createElement("div");
+    meta.className = "mt-3 pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]";
+    meta.style.borderTop = "1px solid var(--line)";
+    meta.style.color = "var(--ink-3)";
+    meta.innerHTML = `
+      <span><i class="fa fa-bookmark-o mr-1" style="color:var(--gold)"></i>${resp.citations.length} 条来源引用</span>
+      <span><i class="fa fa-bolt mr-1" style="color:var(--accent)"></i>${resp.latency_ms} ms</span>
+      <button class="show-retrieval underline decoration-dotted underline-offset-2 hover:opacity-70" data-turn="${turn}">检索详情(${(resp.retrieved || []).length} 块命中)</button>
+      <span class="hidden sm:inline"><i class="fa fa-shield mr-1"></i>仅依据官方文件作答</span>`;
+    card.appendChild(meta);
+  }
+  wrap.appendChild(card);
+  $("messages").appendChild(wrap);
+}
+
+async function send() {
+  const text = qEl.value.trim();
+  if (!text) return;
+  if (!state.college) { openIdentityModal(true); return; }
+  qEl.value = ""; autoGrow();
+  $("empty-state").classList.add("hidden");
+  $("messages").classList.remove("hidden");
+  addUserMsg(text);
+  addTyping();
+  $("send").disabled = true;
+
+  try {
+    const resp = await getJSON("/ask", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: text, college: state.college, cohort: state.cohort }),
+    });
+    removeTyping();
+    state.turn += 1;
+    state.retrievals[state.turn] = resp.retrieved || [];
+    addAssistantMsg(resp, state.turn);
+    if (!resp.refused && resp.citations.length) addCitationGroup(resp.citations, state.turn);
+    showRetrieval(state.turn);
+  } catch (err) {
+    removeTyping();
+    const el = document.createElement("div");
+    el.className = "msg-enter flex";
+    el.innerHTML = `<div class="glass rounded-2xl px-4 py-3 text-[13px]" style="color:#a04545">
+      <i class="fa fa-plug mr-1.5"></i>请求失败:${err.message}。请确认后端已启动(uvicorn app.server:app)。</div>`;
+    $("messages").appendChild(el);
+  }
+  scrollBottom();
+  autoGrow();
+}
+
+/* ---------------- 引用面板 ---------------- */
+function addCitationGroup(citations, turn) {
+  $("cite-empty")?.remove();
+  const group = document.createElement("div");
+  group.className = "fade-in space-y-2";
+  group.id = `cite-group-${turn}`;
+  group.innerHTML = `
+    <div class="flex items-center gap-2 px-1">
+      <span class="text-[11px] font-semibold tracking-wider" style="color:var(--ink-3)">回答 #${turn}</span>
+      <span class="flex-1 h-px" style="background:var(--line)"></span>
+      <span class="text-[10.5px]" style="color:var(--ink-3)">${citations.length} 个来源</span>
+    </div>`;
+  citations.forEach(c => group.appendChild(citeCard(c, turn)));
+  $("cite-body").appendChild(group);
+  $("cite-count").textContent = document.querySelectorAll(".cite-card").length + citations.length ? document.querySelectorAll(".cite-card").length : 0;
+  $("cite-count").textContent = document.querySelectorAll(".cite-card").length;
+  $("cite-body").scrollTo({ top: $("cite-body").scrollHeight, behavior: "smooth" });
+}
+
+function citeCard(c, turn) {
+  const card = document.createElement("div");
+  card.className = "cite-card glass-soft rounded-xl p-3";
+  card.id = `cite-${turn}-${c.marker}`;
+  card.innerHTML = `
+    <div class="flex items-start gap-2.5">
+      <sup class="cite shrink-0 mt-0.5" style="cursor:default">${c.marker}</sup>
+      <div class="min-w-0 flex-1">
+        <div class="text-[12.5px] font-semibold leading-snug" style="color:var(--ink)">《${c.doc_title}》</div>
+        <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+          <span class="text-[10.5px] px-1.5 py-0.5 rounded-md font-medium" style="background:rgba(13,79,139,.08);color:var(--brand)">${c.article}</span>
+        </div>
+      </div>
+      <button class="cite-fold w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color:var(--ink-3)"><i class="fa fa-angle-down transition-transform duration-300 rotate-180"></i></button>
+    </div>
+    <div class="cite-detail fold-enter open"><div class="fold-inner">
+      <div class="mt-2.5 text-[12.5px] leading-relaxed rounded-lg px-3 py-2.5" style="background:rgba(185,143,69,.06);border-left:3px solid var(--gold);color:var(--ink-2)">
+        <i class="fa fa-quote-left text-[9px] mr-1" style="color:var(--gold)"></i><span class="quote-text"></span>
+      </div>
+      <div class="full-text hidden mt-2"></div>
+      <div class="mt-2.5 flex items-center gap-3 text-[11.5px]">
+        <a class="hover:opacity-70 font-medium" style="color:var(--brand-2)" href="${c.page_url}" target="_blank" rel="noopener">
+          <i class="fa fa-external-link mr-1"></i>查看官网原文</a>
+        <button class="load-full hover:opacity-70 font-medium" style="color:var(--accent)" data-chunk="${c.chunk_id}">
+          <i class="fa fa-file-text-o mr-1"></i>展开完整条款</button>
+      </div>
+    </div></div>`;
+  card.querySelector(".quote-text").textContent = c.quote;
+  return card;
+}
+
+/* 折叠 / 完整条款 / 定位联动(事件委托) */
+document.addEventListener("click", async (ev) => {
+  // 角标 -> 定位卡片
+  const sup = ev.target.closest("sup.cite[data-marker]");
+  if (sup) {
+    const turnEl = sup.closest("[data-turn-id]");
+    const turn = turnEl ? turnEl.dataset.turnId : state.turn;
+    locateCite(turn, sup.dataset.marker);
+    return;
+  }
+  // 引用卡折叠
+  const foldBtn = ev.target.closest(".cite-fold");
+  if (foldBtn) {
+    const detail = foldBtn.closest(".cite-card").querySelector(".cite-detail");
+    detail.classList.toggle("open");
+    foldBtn.querySelector("i").classList.toggle("rotate-180");
+    return;
+  }
+  // 展开完整条款(/source)
+  const loadBtn = ev.target.closest(".load-full");
+  if (loadBtn) {
+    const box = loadBtn.closest(".cite-detail").querySelector(".full-text");
+    if (!box.classList.contains("hidden")) {
+      box.classList.add("hidden");
+      loadBtn.innerHTML = `<i class="fa fa-file-text-o mr-1"></i>展开完整条款`;
+      return;
+    }
+    if (!box.dataset.loaded) {
+      loadBtn.innerHTML = `<i class="fa fa-circle-o-notch fa-spin mr-1"></i>加载中`;
+      try {
+        const chunk = await getJSON(`/source/${loadBtn.dataset.chunk}`);
+        const inner = renderMd(chunk.text, []);
+        inner.style.fontSize = "12.5px";
+        const shell = document.createElement("div");
+        shell.className = "rounded-lg px-3 py-2.5";
+        shell.style.cssText = "background:rgba(255,255,255,.55);border:1px solid var(--line)";
+        shell.innerHTML = `<div class="text-[10.5px] mb-1.5 flex flex-wrap gap-x-2" style="color:var(--ink-3)">
+            <span><i class="fa fa-tag mr-0.5"></i>${chunk.level} · ${chunk.college}</span>
+            <span>适用:${chunk.cohort}</span><span>${chunk.year} · ${chunk.status}</span>
+            ${chunk.is_table ? '<span style="color:var(--gold)"><i class="fa fa-table mr-0.5"></i>表格块</span>' : ""}
+          </div>`;
+        shell.appendChild(inner);
+        box.appendChild(shell);
+        box.dataset.loaded = "1";
+      } catch (e) {
+        box.textContent = "加载失败:" + e.message;
+        box.style.color = "#a04545";
+      }
+    }
+    box.classList.remove("hidden");
+    loadBtn.innerHTML = `<i class="fa fa-angle-up mr-1"></i>收起完整条款`;
+    return;
+  }
+  // 拒答卡的相关条款 -> 打开检索详情
+  const relBtn = ev.target.closest(".rel-chunk");
+  if (relBtn) { setRetrievalOpen(true); return; }
+  // 消息内"检索详情"
+  const showR = ev.target.closest(".show-retrieval");
+  if (showR) { showRetrieval(+showR.dataset.turn); setRetrievalOpen(true); }
+});
+
+function locateCite(turn, marker) {
+  const pane = $("cite-pane");
+  if (window.innerWidth < 1024) pane.classList.add("open");
+  const card = $(`cite-${turn}-${marker}`);
+  if (!card) return;
+  card.querySelector(".cite-detail").classList.add("open");
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.remove("cite-flash");
+  void card.offsetWidth;           // 重置动画
+  card.classList.add("cite-flash");
+}
+
+/* ---------------- 检索详情 ---------------- */
+let retrievalOpen = false;
+function setRetrievalOpen(open) {
+  retrievalOpen = open;
+  $("retrieval-fold").classList.toggle("open", open);
+  $("retrieval-caret").style.transform = open ? "rotate(180deg)" : "";
+}
+$("retrieval-toggle").onclick = () => setRetrievalOpen(!retrievalOpen);
+
+function showRetrieval(turn) {
+  const list = state.retrievals[turn] || [];
+  $("retrieval-panel").classList.remove("hidden");
+  $("retrieval-summary").textContent = `· 回答 #${turn} · 命中 ${list.length} 块`;
+  $("retrieval-body").innerHTML = list.map(r => `
+    <div class="rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,.5);border:1px solid var(--line)">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono px-1.5 py-0.5 rounded" style="background:rgba(14,157,176,.1);color:var(--accent)">${r.chunk_id}</span>
+        <span class="text-[11.5px] font-medium truncate" style="color:var(--ink)">《${r.doc_title}》${r.article}</span>
+        <span class="ml-auto text-[11px] font-semibold shrink-0" style="color:var(--brand-2)">${(r.score * 100).toFixed(1)}%</span>
+      </div>
+      <div class="mt-1.5 flex items-center gap-2">
+        <div class="score-bar flex-1"><div class="score-fill" style="width:${Math.min(100, r.score * 100)}%"></div></div>
+        <span class="text-[10px] shrink-0" style="color:var(--ink-3)">${r.college} · ${r.cohort}</span>
+      </div>
+      <div class="mt-1.5 text-[11.5px] leading-relaxed line-clamp-2" style="color:var(--ink-3)">${r.snippet}…</div>
+    </div>`).join("") || `<div class="text-[12px] py-2 text-center" style="color:var(--ink-3)">本轮无命中知识块</div>`;
+}
+
+/* ---------------- 窄屏引用抽屉 ---------------- */
+$("cite-toggle").onclick = () => $("cite-pane").classList.add("open");
+$("cite-close").onclick = () => $("cite-pane").classList.remove("open");
+function syncResponsive() {
+  const pane = $("cite-pane");
+  const isNarrow = window.innerWidth < 1024;
+  $("cite-toggle").classList.toggle("hidden", !isNarrow);
+  $("cite-toggle").classList.toggle("flex", isNarrow);
+  pane.classList.remove("hidden");
+  pane.classList.add("flex");
+  if (!isNarrow) pane.classList.remove("open");
+}
+window.addEventListener("resize", syncResponsive);
+
+/* ---------------- 启动 ---------------- */
+syncResponsive();
+initIdentity().catch(err => {
+  document.body.insertAdjacentHTML("beforeend",
+    `<div class="fixed bottom-4 left-1/2 -translate-x-1/2 glass rounded-xl px-4 py-2.5 text-[13px] z-50" style="color:#a04545">
+       <i class="fa fa-plug mr-1.5"></i>无法连接后端 /meta:${err.message} —— 请先启动 uvicorn app.server:app
+     </div>`);
+});
+</script>
+</body>
+</html>

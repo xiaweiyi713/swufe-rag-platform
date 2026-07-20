@@ -1,0 +1,33 @@
+# swufe-crawler 配置
+# 独立于 swufe-rag 主项目;只在 merge 步骤按“追加+备份”方式写后端知识库。
+
+# 后端项目根目录(chunks.jsonl / artifacts / metadata.sqlite3 所在)
+backend_dir: "/Users/xuwenyao/swufe-rag/back-end engineer/swufe-rag"
+
+# 抓取站点。列表页里形如 info/<栏目>/<文章>.htm 的链接会被识别为文章。
+sites:
+  # 教务处:选课/考试/成绩/转专业等,与教务问答最对口,排在最前
+  - name: "教务处-通知公告"
+    list_url: "https://jwc.swufe.edu.cn/tzgg.htm"
+    topic: "course_selection"
+  - name: "教务处-首页动态"
+    list_url: "https://jwc.swufe.edu.cn/index.htm"
+    topic: "course_selection"
+  - name: "西财主站-通知公告"
+    list_url: "https://www.swufe.edu.cn/index/tzgg.htm"
+    topic: "notice"
+  - name: "西财新闻网-要闻"
+    list_url: "https://news.swufe.edu.cn/"
+    topic: "campus_news"
+
+crawl:
+  # 相邻请求间隔秒数(礼貌抓取,不给学校服务器压力)
+  delay_seconds: 1.5
+  # 每个站点每天最多抓取的新文章数
+  max_new_per_site: 15
+  timeout_seconds: 20
+  user_agent: "swufe-rag-crawler/1.0 (course project; contact: student)"
+
+chunk:
+  # 单块正文目标长度(字符),与后端 config 的 chunk_max_len 一致量级
+  max_len: 460
