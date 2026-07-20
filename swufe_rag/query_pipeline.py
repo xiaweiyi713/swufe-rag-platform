@@ -664,6 +664,7 @@ class QueryPipelineRuntime(HybridRuntime):
             "type": "meta",
             "mode": "general_chat",
             "execution_path": "general_llm",
+            "answer_streaming": True,
         }
         yield {
             "type": "status",

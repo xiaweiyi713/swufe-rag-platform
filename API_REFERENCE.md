@@ -575,9 +575,9 @@ Content-Type: application/json
 
 | `type` | 说明 |
 |---|---|
-| `meta` | 回答模式与执行路径，如 `general_chat/general_llm` |
+| `meta` | 回答模式、执行路径及 `answer_streaming`；仅通用分支为 `true` |
 | `status` | 当前阶段；可用于展示检索或生成状态 |
-| `delta` | 新生成的文本片段，客户端应立即追加显示 |
+| `delta` | 通用模型实时生成的文本片段；学校事实分支不发送此事件 |
 | `final` | `response` 字段包含与 `/ask` 完全兼容的最终响应 |
 | `error` | 流开始后的错误；包含安全处理后的 `message` 与 `error_type` |
 
@@ -591,10 +591,11 @@ Content-Type: application/json
 {"type":"final","response":{"mode":"general_chat","answer_md":"你好，很高兴见到你。","citations":[],"retrieved":[],"official_links":[],"refused":false,"execution_path":"general_llm"}}
 ```
 
-普通对话直接转发模型增量。学校事实必须先完成检索、证据门和引用校验，
-通过后才发送答案片段；证据不足时仍返回经过校验的拒答，不会流出未经验证的模型文本。
-启用 Redis 后，已通过校验且不依赖会话历史的学校答案可返回
-`status.stage=cache`，随后仍按 `meta`、`delta`、`final` 顺序输出。
+普通对话直接转发供应商模型增量，因此 `delta` 的到达时间是真实首 token 延迟。
+学校事实必须先完成检索、证据门和引用校验；该分支只发送阶段 `status`，随后用
+`final.response` 一次交付完整可信答案，不把已经生成完的全文切块伪装成流式输出。
+证据不足时同样只返回经过校验的拒答。启用 Redis 后，可信学校答案缓存命中会先
+返回 `status.stage=cache`，再按 `meta`、`status.stage=finalizing`、`final` 输出。
 
 ### 4.5 `GET /options`
 

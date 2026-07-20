@@ -1,10 +1,10 @@
 # 西南财大教务 RAG 问答系统
 
-本仓库实现计划书中的 A（数据与知识库）、B（检索）与 C（生成和引用溯源）模块，并已增加“普通对话 / 学校可信 RAG”双路由。学校事实走 SQLite 硬过滤和证据校验，普通问题直接进入通用 LLM；认证、限流、审计和正式部署仍未实现。
+本仓库实现数据、检索、生成引用、正式 FastAPI、Redis 会话/缓存、限流和容器部署，并提供“普通对话 / 学校可信 RAG”双路由。学校事实走 SQLite 硬过滤和证据校验，普通问题直接进入通用 LLM；公网身份认证仍需由部署方在网关层接入。
 
 ## 当前稳定基线
 
-当前知识库覆盖 21 份真实来源、814 个知识块和 77 个表格块。稳定实现包括 B/C、可信来源 SQLite、连续会话双路由、确定性 Demo、真实 BGE/FAISS 评估以及测试 Web。团队原有调用继续使用以下冻结门面：
+当前运行数据包含 70 个登记来源和 69,583 个策略知识块。稳定实现包括可信来源 SQLite、连续会话双路由、真实 BGE/FAISS、结构化培养方案工具、事实校验以及 Web/iOS 客户端。团队原有调用继续使用以下冻结门面：
 
 ```python
 from swufe_rag.api import retrieve, answer
@@ -32,7 +32,7 @@ python -m app.debug_server
 运行完整验证：
 
 ```powershell
-python -m unittest discover -s . -p "test*.py" -v
+python -m pytest -q
 python -m eval.demo_eval
 ```
 
@@ -68,7 +68,7 @@ python -m app.server
 ```
 
 - 浏览器打开 <http://127.0.0.1:8000> 可使用混合对话测试 Web。
-- `POST /ask` 与 `POST /ask/stream` 接收 `question`、可选 `college`、`cohort`、`major`、`session_id`；流式端点以 NDJSON 增量返回文本，并在 `final` 事件中附完整响应。
+- `POST /ask` 与 `POST /ask/stream` 接收 `question`、可选 `college`、`cohort`、`major`、`session_id`；普通对话实时返回模型 `delta`，学校事实只返回阶段状态并在校验后的 `final` 事件交付全文。
 - 普通知识、代码、写作和情绪交流为 `general_chat`，不会先检索或执行学校拒答门。
 - 培养方案、选课、推免、校内服务和学校网址为 `school_rag`；没有证据时不会回退通用模型。
 - `GET /source/{chunk_id}` 返回知识块完整原文及冻结元数据。

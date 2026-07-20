@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from academic_audit.database import AcademicDatabase
-from app.server.application import _stream_preview_text, create_app
+from app.server.application import create_app
 from generation.answer_presenter import AnswerPresenter
 from generation.general_chat import GeneralChatService
 from retrieval.index import load_chunks
@@ -273,6 +273,7 @@ def test_byok_general_stream_forwards_provider_deltas_and_finishes_with_contract
     deltas = [event["text"] for event in events if event["type"] == "delta"]
     assert deltas == ["这是由", "OpenAI兼容", "通用模型生成的回答。"]
     assert events[0]["type"] == "meta"
+    assert events[0]["answer_streaming"] is True
     assert events[-1]["type"] == "final"
     final = events[-1]["response"]
     assert final["answer_md"] == "".join(deltas)
@@ -336,9 +337,10 @@ def test_school_stream_uses_web_reference_after_kb_refusal() -> None:
     assert final["execution_path"] == "rag"
     assert final["refused"] is True
     assert final["citations"] == []
-    assert "".join(
-        event["text"] for event in events if event["type"] == "delta"
-    ) == _stream_preview_text(final["answer_md"])
+    assert not [event for event in events if event["type"] == "delta"]
+    school_meta = next(event for event in events if event["type"] == "meta")
+    assert school_meta["answer_streaming"] is False
+    assert events[-2]["stage"] == "finalizing"
     assert final["web_sources"] == web_sources
     assert final["web_fallback"]["used"] is True
     assert final["final_output_source"] == "llm_web_fallback"
