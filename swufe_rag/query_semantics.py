@@ -16,7 +16,8 @@ from swufe_rag.tool_planner import build_execution_plan as base_build_execution_
 COURSE_WORD_RE = re.compile(
     r"哪些.{0,8}(?:课程|课)|什么(?!时候).{0,8}(?:课程|课)|"
     r"(?:哪|哪些|哪几个|什么).{0,10}学期.{0,10}(?:课程|课)|"
-    r"(?:课程|课).{0,4}(?:选|开)|课程|选修|必修"
+    r"(?:课程|课).{0,6}(?:选|开|有哪些|有哪|包括|包含|清单|列表)|"
+    r"课程|选修|必修"
 )
 EXPLICIT_TARGET_RE = re.compile(r"大[一二三][上下].{0,10}(?:课|课程|选修|必修)")
 SCHOOL_WIDE_REQUIREMENT_RE = re.compile(

@@ -61,6 +61,25 @@ def test_module_credit_uses_program_requirements() -> None:
     assert plan.operations[0].name == "get_graduation_requirements"
 
 
+def test_direction_course_list_uses_scoped_structured_catalog() -> None:
+    question = "专业方向课有哪些"
+    draft = deterministic_understanding(
+        question,
+        college="统计学院",
+        cohort="2023",
+        major="经济统计学专业",
+    )
+    query = normalize_query(draft, question, database=DATABASE)
+    plan = build_execution_plan(query)
+
+    assert query.primary_intent == "course_query"
+    assert query.course_modules == ["专业方向课"]
+    assert query.requested_outputs == ["course_list"]
+    assert plan.execution_path == "sql"
+    assert [operation.name for operation in plan.operations] == ["list_courses"]
+    assert plan.operations[0].arguments["course_modules"] == ["专业方向课"]
+
+
 def test_professional_elective_minimum_keeps_its_exact_module() -> None:
     query, plan = normalized(
         "2024级计算机科学与技术专业的专业选修课最低要修多少学分？"

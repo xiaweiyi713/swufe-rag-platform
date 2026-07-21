@@ -535,6 +535,30 @@ def test_completed_direction_module_is_excluded_from_target_semester() -> None:
     assert "| （四）专业方向课 | 18.0 | 0 | 0.0 |" not in answer
 
 
+def test_economic_statistics_direction_courses_are_complete_and_cited() -> None:
+    database, _, normalized, plan = pipeline(
+        "2023级经济统计学专业的专业方向课有哪些？"
+    )
+    metadata = MetadataDB("data/metadata.sqlite3")
+    packet = execute_plan(plan, database=database, metadata=metadata)
+
+    assert normalized.course_modules == ["专业方向课"]
+    assert plan.execution_path == "sql"
+    assert len(packet.courses) == 9
+    assert {course.name for course in packet.courses} == {
+        "数据库原理与应用",
+        "深度学习",
+        "数据智能前沿",
+        "数学建模与数学实验",
+        "贝叶斯统计",
+        "分类数据分析",
+        "金融统计分析",
+        "证券与期货投资分析",
+        "企业经营管理统计",
+    }
+    assert {citation.physical_page for citation in packet.citations} == {224}
+
+
 def test_semester_answer_separates_fixed_courses_from_flexible_windows() -> None:
     database, _, _, plan = pipeline(
         "2023级人工智能专业大三下有哪些必修课？"
