@@ -225,24 +225,44 @@ struct CleanGlassRoundedSurface: ViewModifier {
 }
 
 struct ActionBlueCapsuleSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let isActive: Bool
+    let adaptsToDark: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if isActive {
             if #available(iOS 26.0, *) {
-                content
-                    .glassEffect(
-                        .regular.tint(Theme.Color.actionBlue).interactive(),
-                        in: Capsule()
-                    )
+                if adaptsToDark && colorScheme == .dark {
+                    content
+                        .glassEffect(
+                            .regular.tint(Color.white.opacity(0.10)).interactive(),
+                            in: Capsule()
+                        )
+                } else {
+                    content
+                        .glassEffect(
+                            .regular.tint(Theme.Color.actionBlue).interactive(),
+                            in: Capsule()
+                        )
+                }
             } else {
                 content
-                    .background(Theme.Color.actionBlueGlass, in: Capsule())
+                    .background(
+                        adaptsToDark && colorScheme == .dark
+                            ? Color.white.opacity(0.10)
+                            : Theme.Color.actionBlueGlass,
+                        in: Capsule()
+                    )
                     .background(.ultraThinMaterial, in: Capsule())
                     .overlay {
                         Capsule()
-                            .strokeBorder(Color.white.opacity(0.34), lineWidth: 1)
+                            .strokeBorder(
+                                Color.white.opacity(
+                                    adaptsToDark && colorScheme == .dark ? 0.16 : 0.34
+                                ),
+                                lineWidth: 1
+                            )
                     }
             }
         } else {
@@ -303,8 +323,16 @@ extension View {
         liquidGlass(radius: radius, elevated: true)
     }
 
-    func actionBlueGlassCapsule(isActive: Bool = true) -> some View {
-        modifier(ActionBlueCapsuleSurface(isActive: isActive))
+    func actionBlueGlassCapsule(
+        isActive: Bool = true,
+        adaptsToDark: Bool = false
+    ) -> some View {
+        modifier(
+            ActionBlueCapsuleSurface(
+                isActive: isActive,
+                adaptsToDark: adaptsToDark
+            )
+        )
     }
 
     func actionBlueGlassBubble(radius: CGFloat = 20) -> some View {

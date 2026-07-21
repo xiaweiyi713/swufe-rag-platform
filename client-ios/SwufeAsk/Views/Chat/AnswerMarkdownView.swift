@@ -419,7 +419,7 @@ private struct SourceFileReference: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .frame(height: 40)
-                    .actionBlueGlassCapsule()
+                    .actionBlueGlassCapsule(adaptsToDark: true)
             }
             .buttonStyle(.plain)
             .frame(minHeight: 44, alignment: .leading)
