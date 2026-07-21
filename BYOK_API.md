@@ -28,9 +28,13 @@ X-LLM-API-Key: <临时密钥>
 密钥不能写入 JSON 请求体；`AskRequest` 继续使用 `extra="forbid"`，因此请求体中的 `api_key` 会返回 HTTP 422。
 
 流式端点返回 `application/x-ndjson`。普通对话的供应商增量作为 `delta`
-事件实时转发，最后用 `final.response` 返回完整的兼容响应。学校事实先完成本地证据
-与引用校验，再通过 `delta` 分片发送不含交互链接的安全预览，最后在
-`final.response` 交付完整 Markdown。BYOK 不会绕过引用和拒答边界。
+事件实时转发。政策 RAG 会先冻结本轮检索证据，再消费供应商的真实 token 流；
+后端只在一个完整声明通过引用、数字/课程代码、来源相关性和 URL 检查后，才发送带
+`verified=true`、`seq` 与 `evidence_ids` 的 `delta`。全部声明结束后还会执行整体校验。
+若中途或整体校验失败，服务端发送 `reset`，要求客户端丢弃尚未展示的字符并立即换成
+确定性证据答案；最后始终用 `final.response` 交付完整 Markdown。结构化 SQL、拒答和
+缓存命中答案不经过供应商声明流，而是发送已完成校验的安全预览。BYOK 不会绕过引用
+和拒答边界。
 
 ## 生命周期与安全边界
 

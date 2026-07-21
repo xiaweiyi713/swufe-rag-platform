@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import re
 import socket
 from urllib.parse import urlsplit
 
@@ -25,6 +26,9 @@ DEFAULT_LLM_PROVIDER_HOSTS = frozenset(
 )
 
 _FAKE_DNS_NETWORK = ipaddress.ip_network("198.18.0.0/15")
+_BAILIAN_WORKSPACE_HOST_RE = re.compile(
+    r"^llm-[a-z0-9]{8,64}\.cn-[a-z0-9-]{2,32}\.maas\.aliyuncs\.com$"
+)
 
 
 def _normalize_hostname(value: str) -> str:
@@ -45,6 +49,13 @@ def allowed_llm_provider_hosts() -> frozenset[str]:
         if value.strip()
     }
     return DEFAULT_LLM_PROVIDER_HOSTS | extra
+
+
+def _hostname_allowed(hostname: str) -> bool:
+    return bool(
+        hostname in allowed_llm_provider_hosts()
+        or _BAILIAN_WORKSPACE_HOST_RE.fullmatch(hostname)
+    )
 
 
 def _allow_fake_dns() -> bool:
@@ -89,9 +100,10 @@ def _resolved_addresses(hostname: str, port: int) -> set[ipaddress.IPv4Address |
 def validate_request_llm_base_url(base_url: str | None) -> str | None:
     """Validate and return a request-supplied provider URL.
 
-    Only HTTPS endpoints on the built-in or operator-provided exact hostname
-    allowlist are accepted. DNS results must all be globally routable, which
-    blocks loopback, private, link-local, reserved and cloud metadata targets.
+    Only HTTPS endpoints on the built-in/operator exact hostname allowlist, or
+    constrained Alibaba Bailian workspace hosts, are accepted. DNS results
+    must all be globally routable, which blocks loopback, private, link-local,
+    reserved and cloud metadata targets.
     """
 
     if base_url is None:
@@ -116,7 +128,7 @@ def validate_request_llm_base_url(base_url: str | None) -> str | None:
         raise ValueError("X-LLM-Base-URL must use port 443")
 
     hostname = _normalize_hostname(parsed.hostname)
-    if hostname not in allowed_llm_provider_hosts():
+    if not _hostname_allowed(hostname):
         raise ValueError("X-LLM-Base-URL provider host is not allowed")
 
     hostname_is_literal = False

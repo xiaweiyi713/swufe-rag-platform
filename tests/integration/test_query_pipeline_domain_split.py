@@ -170,6 +170,46 @@ def test_school_fact_never_falls_back_to_general_model() -> None:
     assert client.calls == []
 
 
+def test_recognized_policy_uses_authoritative_metadata_without_vector_retrieval() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    authoritative = {
+        **chunks[0],
+        "chunk_id": "authoritative-buffer-rule",
+        "doc_title": "西南财经大学本科学生缓考规定",
+        "article": "第三条 缓考申请",
+        "text": "学生因病不能参加考试时，应按学校规定提交缓考申请。",
+    }
+    metadata = MetadataDB.from_chunks(
+        [*chunks, authoritative], trusted_by_default=True
+    )
+    retriever = RecordingRetriever()
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=retriever,
+        school_answer=lambda *_args, **_kwargs: {
+            "answer_md": "证据不足",
+            "citations": [],
+            "refused": True,
+        },
+        general_chat=GeneralChatService(RecordingGeneralClient()),
+        metadata_db=metadata,
+        runtime_mode="authoritative-policy-fast-path-test",
+    )
+    try:
+        result = runtime.handle_question("生病了怎么申请缓考？")
+    finally:
+        metadata.close()
+
+    assert result["execution_path"] == "rag"
+    assert result["rag"]["retrieval_source"] == "authoritative_metadata"
+    assert result["rag"]["retrieval_ms"] < 100
+    assert retriever.calls == []
+
+
 def test_elliptical_follow_up_reuses_school_context_instead_of_general_model() -> None:
     chunks = load_chunks(FIXTURE_PATH)
     metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
@@ -319,8 +359,11 @@ def test_natural_school_follow_up_variants_reuse_policy_context() -> None:
             result = runtime.handle_question(follow_up, session_id=session_id)
             assert result["mode"] == "school_rag", follow_up
             assert result["execution_path"] == "rag", follow_up
-            assert "生病了怎么申请缓考" in retriever.calls[-1][0], follow_up
-            assert follow_up.rstrip("？") in retriever.calls[-1][0], follow_up
+            if result["rag"].get("retrieval_source") == "semantic_retrieval":
+                assert "生病了怎么申请缓考" in retriever.calls[-1][0], follow_up
+                assert follow_up.rstrip("？") in retriever.calls[-1][0], follow_up
+            else:
+                assert result["rag"]["retrieval_source"] == "authoritative_metadata"
     finally:
         metadata.close()
 

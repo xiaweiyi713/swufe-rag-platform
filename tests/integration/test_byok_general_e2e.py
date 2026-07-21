@@ -27,11 +27,13 @@ FIXTURE_PATH = Path(__file__).parents[1] / "fixtures" / "chunks.jsonl"
 def allow_module_local_fake_provider():
     """These transport tests use an in-process HTTP provider by design."""
 
+    FakeOpenAIHandler.stream_pieces = None
     with patch(
         "app.production_runtime.validate_request_llm_base_url",
         side_effect=lambda value: value.strip() if value else None,
     ):
         yield
+    FakeOpenAIHandler.stream_pieces = None
 
 
 class LocalFallbackClient:
@@ -41,13 +43,18 @@ class LocalFallbackClient:
 
 class FakeOpenAIHandler(BaseHTTPRequestHandler):
     requests: list[dict] = []
+    stream_pieces: tuple[str, ...] | None = None
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib callback name
         length = int(self.headers.get("Content-Length", "0"))
         payload = json.loads(self.rfile.read(length) or b"{}")
         type(self).requests.append(payload)
         if payload.get("stream"):
-            pieces = ("这是由", "OpenAI兼容", "通用模型生成的回答。")
+            pieces = type(self).stream_pieces or (
+                "这是由",
+                "OpenAI兼容",
+                "通用模型生成的回答。",
+            )
             events = []
             for piece in pieces:
                 events.append(
@@ -130,6 +137,7 @@ def test_byok_general_question_reaches_openai_compatible_provider_end_to_end() -
         runtime_mode="byok-e2e-base",
     )
     FakeOpenAIHandler.requests = []
+    FakeOpenAIHandler.stream_pieces = None
     provider = ThreadingHTTPServer(("127.0.0.1", 0), FakeOpenAIHandler)
     thread = Thread(target=provider.serve_forever, daemon=True)
     thread.start()
@@ -188,6 +196,7 @@ def test_byok_requests_share_school_follow_up_context_without_sharing_clients() 
         runtime_mode="byok-context-base",
     )
     FakeOpenAIHandler.requests = []
+    FakeOpenAIHandler.stream_pieces = None
     provider = ThreadingHTTPServer(("127.0.0.1", 0), FakeOpenAIHandler)
     thread = Thread(target=provider.serve_forever, daemon=True)
     thread.start()
@@ -279,6 +288,94 @@ def test_byok_general_stream_forwards_provider_deltas_and_finishes_with_contract
     assert final["answer_md"] == "".join(deltas)
     assert final["execution_path"] == "general_llm"
     assert final["citations"] == []
+    assert len(FakeOpenAIHandler.requests) == 1
+    assert FakeOpenAIHandler.requests[0]["stream"] is True
+
+
+def test_byok_school_rag_stream_commits_provider_claims_before_final() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    evidence = {
+        **next(
+            chunk
+            for chunk in chunks
+            if chunk["chunk_id"] == "fixture_school_recommend_005"
+        ),
+        "chunk_id": "verified-degree-rule",
+        "doc_title": "西南财经大学学士学位授予工作办法",
+        "text": (
+            "申请学士学位需达到培养方案规定的毕业条件，"
+            "平均学分绩点达到1.7。"
+        ),
+    }
+    metadata = MetadataDB.from_chunks(
+        [*chunks, evidence], trusted_by_default=True
+    )
+    base_runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=lambda *_args, **_kwargs: [{**evidence, "score": 0.9}],
+        school_answer=lambda *_args, **_kwargs: {
+            "answer_md": "证据不足",
+            "citations": [],
+            "refused": True,
+        },
+        general_chat=GeneralChatService(LocalFallbackClient()),
+        metadata_db=metadata,
+        runtime_mode="byok-school-claim-base",
+    )
+    FakeOpenAIHandler.requests = []
+    FakeOpenAIHandler.stream_pieces = (
+        "申请学士学位需达到培养方案规定的毕业条件，",
+        "平均学分绩点达到1.7[1]。",
+    )
+    provider = ThreadingHTTPServer(("127.0.0.1", 0), FakeOpenAIHandler)
+    thread = Thread(target=provider.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with (
+            patch("app.server.application.build_answer_cache", return_value=None),
+            TestClient(create_app(base_runtime)).stream(
+                "POST",
+                "/ask/stream",
+                headers={
+                    "X-LLM-API-Key": "test-key",
+                    "X-LLM-Base-URL": (
+                        f"http://127.0.0.1:{provider.server_port}/v1"
+                    ),
+                    "X-LLM-Model": "fake-chat",
+                },
+                json={
+                    "question": "申请学士学位需要满足什么条件？",
+                    "session_id": "verified-school-claim",
+                },
+            ) as response,
+        ):
+            events = [json.loads(line) for line in response.iter_lines() if line]
+    finally:
+        provider.shutdown()
+        provider.server_close()
+        thread.join(timeout=2)
+        metadata.close()
+
+    assert response.status_code == 200
+    meta = next(event for event in events if event["type"] == "meta")
+    assert meta["stream_mode"] == "verified_claims"
+    deltas = [event for event in events if event["type"] == "delta"]
+    committed = next(event for event in deltas if event.get("seq") == 1)
+    assert committed["verified"] is True
+    assert committed["evidence_ids"] == ["E1"]
+    assert "1.7[1]" in committed["text"]
+    assert events.index(committed) < len(events) - 1
+    final = events[-1]["response"]
+    assert final["execution_path"] == "rag"
+    assert final["validation"]["passed"] is True
+    assert final["rag"]["verified_claim_stream"] is True
+    assert final["rag"]["verified_claim_count"] == 1
+    assert 0 <= final["rag"]["first_verified_claim_ms"] <= final["rag"]["generation_ms"]
+    assert final["timings"]["answer_generation_ms"] == final["rag"]["generation_ms"]
+    assert final["citations"][0]["chunk_id"] == "verified-degree-rule"
     assert len(FakeOpenAIHandler.requests) == 1
     assert FakeOpenAIHandler.requests[0]["stream"] is True
 

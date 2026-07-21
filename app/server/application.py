@@ -809,6 +809,10 @@ def create_app(
             lease = None
             web_sources: list[dict[str, str]] = []
             web_context = None
+            meta_sent = False
+            raw_streamed_school_text = ""
+            streamed_school_text = ""
+            used_verified_school_stream = False
             try:
                 stream_started = time.perf_counter()
                 sessions = getattr(selected, "sessions", None)
@@ -903,21 +907,113 @@ def create_app(
                                     }
                                 )
                         if payload is None:
-                            # School answers remain fail-closed: no text is
-                            # emitted before evidence and citation validation.
                             web_options = (
                                 {"web_context": web_context, "web_sources": web_sources}
                                 if request.web_search
                                 else {}
                             )
-                            payload = selected.handle_question(
-                                request.question,
-                                college=request.college,
-                                cohort=request.cohort,
-                                major=request.major,
-                                session_id=request.session_id,
-                                **web_options,
+                            school_stream = getattr(
+                                selected, "stream_school_question", None
                             )
+                            if callable(school_stream):
+                                for event in school_stream(
+                                    request.question,
+                                    college=request.college,
+                                    cohort=request.cohort,
+                                    major=request.major,
+                                    session_id=request.session_id,
+                                    **web_options,
+                                ):
+                                    event_type = event.get("type")
+                                    if event_type == "claim":
+                                        if not meta_sent:
+                                            meta_sent = True
+                                            used_verified_school_stream = True
+                                            yield line(
+                                                {
+                                                    "type": "meta",
+                                                    "mode": "school_rag",
+                                                    "execution_path": "rag",
+                                                    "answer_streaming": True,
+                                                    "stream_mode": "verified_claims",
+                                                }
+                                            )
+                                        raw_streamed_school_text += str(
+                                            event.get("text") or ""
+                                        )
+                                        safe_total = _stream_preview_text(
+                                            raw_streamed_school_text
+                                        )
+                                        safe_text = (
+                                            safe_total[len(streamed_school_text) :]
+                                            if safe_total.startswith(streamed_school_text)
+                                            else ""
+                                        )
+                                        if not safe_text and safe_total != streamed_school_text:
+                                            streamed_school_text = safe_total
+                                            yield line(
+                                                {
+                                                    "type": "reset",
+                                                    "text": safe_total,
+                                                    "reason": "claim_preview_reconciled",
+                                                    "verified": True,
+                                                }
+                                            )
+                                        if safe_text:
+                                            streamed_school_text += safe_text
+                                            yield line(
+                                                {
+                                                    "type": "delta",
+                                                    "text": safe_text,
+                                                    "seq": event.get("seq"),
+                                                    "verified": True,
+                                                    "evidence_ids": event.get(
+                                                        "evidence_ids", []
+                                                    ),
+                                                }
+                                            )
+                                    elif event_type == "abort":
+                                        if not meta_sent:
+                                            meta_sent = True
+                                            used_verified_school_stream = True
+                                            yield line(
+                                                {
+                                                    "type": "meta",
+                                                    "mode": "school_rag",
+                                                    "execution_path": "rag",
+                                                    "answer_streaming": True,
+                                                    "stream_mode": "verified_claims",
+                                                }
+                                            )
+                                        replacement = _stream_preview_text(
+                                            str(event.get("answer_md") or "")
+                                        )
+                                        raw_streamed_school_text = replacement
+                                        streamed_school_text = replacement
+                                        yield line(
+                                            {
+                                                "type": "reset",
+                                                "text": replacement,
+                                                "reason": event.get("reason"),
+                                                "verified": True,
+                                            }
+                                        )
+                                    elif event_type == "final":
+                                        payload = event.get("response")
+                            else:
+                                payload = selected.handle_question(
+                                    request.question,
+                                    college=request.college,
+                                    cohort=request.cohort,
+                                    major=request.major,
+                                    session_id=request.session_id,
+                                    **web_options,
+                                )
+                            if not isinstance(payload, dict):
+                                raise GenerationUnavailableError(
+                                    "school stream ended without a final response",
+                                    code="stream_ended_early",
+                                )
                             if _needs_school_web_fallback(
                                 selected, payload, request.question
                             ):
@@ -942,19 +1038,45 @@ def create_app(
                                     payload, hit=False, started_at=stream_started
                                 )
 
-                    yield line(
-                        {
-                            "type": "meta",
-                            "mode": payload.get("mode"),
-                            "execution_path": payload.get("execution_path"),
-                            "answer_streaming": True,
-                        }
-                    )
+                    if not meta_sent:
+                        yield line(
+                            {
+                                "type": "meta",
+                                "mode": payload.get("mode"),
+                                "execution_path": payload.get("execution_path"),
+                                "answer_streaming": True,
+                                "stream_mode": "validated_preview",
+                            }
+                        )
                     preview = _stream_preview_text(
                         str(payload.get("answer_md") or "")
                     )
-                    for chunk in text_chunks(preview):
-                        yield line({"type": "delta", "text": chunk})
+                    if used_verified_school_stream and streamed_school_text:
+                        if preview.startswith(streamed_school_text):
+                            remainder = preview[len(streamed_school_text) :]
+                            for chunk in text_chunks(remainder):
+                                yield line(
+                                    {
+                                        "type": "delta",
+                                        "text": chunk,
+                                        "verified": True,
+                                    }
+                                )
+                        elif preview != streamed_school_text:
+                            # Whole-answer validation or a deterministic/web
+                            # fallback changed the committed body. Replace the
+                            # client quarantine buffer atomically.
+                            yield line(
+                                {
+                                    "type": "reset",
+                                    "text": preview,
+                                    "reason": "final_answer_reconciled",
+                                    "verified": True,
+                                }
+                            )
+                    else:
+                        for chunk in text_chunks(preview):
+                            yield line({"type": "delta", "text": chunk})
                     yield line({"type": "final", "response": payload})
             except GeneratorExit:
                 return

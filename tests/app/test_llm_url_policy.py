@@ -33,6 +33,29 @@ def test_approved_https_provider_with_public_dns_is_allowed() -> None:
         )
 
 
+def test_bailian_workspace_provider_with_public_dns_is_allowed() -> None:
+    endpoint = (
+        "https://llm-g7aepc8gwf4oz35h.cn-beijing.maas.aliyuncs.com/"
+        "compatible-mode/v1"
+    )
+    with patch("app.llm_url_policy.socket.getaddrinfo", return_value=PUBLIC_DNS_RESULT):
+        assert validate_request_llm_base_url(endpoint) == endpoint
+
+
+@pytest.mark.parametrize(
+    "hostname",
+    [
+        "llm-short.cn-beijing.maas.aliyuncs.com",
+        "llm-g7aepc8gwf4oz35h.maas.aliyuncs.com",
+        "llm-g7aepc8gwf4oz35h.cn-beijing.maas.aliyuncs.com.evil.example",
+        "other-g7aepc8gwf4oz35h.cn-beijing.maas.aliyuncs.com",
+    ],
+)
+def test_bailian_workspace_pattern_is_fail_closed(hostname: str) -> None:
+    with pytest.raises(ValueError, match="host is not allowed"):
+        validate_request_llm_base_url(f"https://{hostname}/compatible-mode/v1")
+
+
 def test_fake_dns_requires_explicit_local_opt_in() -> None:
     with (
         patch.dict("os.environ", {"SWUFE_RAG_ALLOW_FAKE_DNS": "0"}),

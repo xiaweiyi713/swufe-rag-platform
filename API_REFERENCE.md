@@ -579,9 +579,10 @@ Content-Type: application/json
 
 | `type` | 说明 |
 |---|---|
-| `meta` | 回答模式、执行路径及 `answer_streaming`；后续有 `delta` 时为 `true` |
+| `meta` | 回答模式、执行路径、`answer_streaming` 与 `stream_mode`；声明流开始时执行路径可为 `null`，以 `final.response` 为准 |
 | `status` | 当前阶段；可用于展示检索或生成状态 |
-| `delta` | 通用模型的实时片段，或学校答案完成校验后的安全展示片段 |
+| `delta` | 通用模型实时片段；或已通过声明级校验的学校片段，此时带 `verified=true`、`seq`、`evidence_ids` |
+| `reset` | 声明或整体校验失败后的原子替换；客户端必须清空未展示缓冲区，并用 `text` 替换当前正文 |
 | `final` | `response` 字段包含与 `/ask` 完全兼容的最终响应 |
 | `error` | 流开始后的错误；包含安全处理后的 `message` 与 `error_type` |
 
@@ -596,10 +597,13 @@ Content-Type: application/json
 ```
 
 普通对话直接转发供应商模型增量，因此 `delta` 的到达时间是真实首 token 延迟。
-学校事实必须先完成检索、证据门和引用校验；通过后才把不含交互链接的安全预览分片
-作为 `delta` 发送，由客户端按既定节奏逐步展示，最后用 `final.response` 替换为带完整
-Markdown 与来源链接的可信答案。证据不足时同样只展示经过校验的拒答。启用 Redis 后，
-可信学校答案缓存命中会先返回 `status.stage=cache`，再按 `meta`、`delta`、`final` 输出。
+政策 RAG 的 `stream_mode=verified_claims`：检索证据在生成前冻结，供应商 token 先进入
+隔离缓冲区，完整声明通过本地校验后才作为 `delta` 提交；所有声明结束后再执行一次
+整体事实与引用校验。校验失败时发送 `reset`，不会发送未通过的声明。结构化 SQL、拒答、
+无流式能力的模型和可信缓存命中使用 `stream_mode=validated_preview`，把完整校验后的安全
+预览分片展示。两种学校模式都在 `final.response` 交付带完整 Markdown 与来源链接的可信
+答案。启用 Redis 后，缓存命中会先返回 `status.stage=cache`，再按
+`meta`、`delta`、`final` 输出。
 
 ### 4.5 `GET /options`
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from queue import Full, Queue
 import re
+from threading import Event, Thread
 import time
 from typing import Any
 
@@ -1066,6 +1068,8 @@ class QueryPipelineRuntime(HybridRuntime):
         top_k: int,
         *,
         contextual_question: str | None = None,
+        claim_sink: Callable[[dict[str, Any]], None] | None = None,
+        stream_cancelled: Callable[[], bool] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         contextual_question = contextual_question or query.original_question
         topic = next((value for pattern, value in TOPICS if pattern.search(contextual_question)), None)
@@ -1077,6 +1081,13 @@ class QueryPipelineRuntime(HybridRuntime):
         retrieval_started = time.perf_counter()
         capacity_wait_ms = 0.0
 
+        evidence_query = (
+            query
+            if contextual_question == query.original_question
+            else query.model_copy(update={"original_question": contextual_question})
+        )
+        enriched = self._authoritative_policy_chunks(evidence_query)
+
         def retrieve_chunks() -> list[dict[str, Any]]:
             return self.school_retrieve(
                 contextual_question,
@@ -1087,12 +1098,25 @@ class QueryPipelineRuntime(HybridRuntime):
                 topic=topic,
             )
 
-        if self._retrieval_capacity is None:
+        if enriched:
+            # Recognized policy topics already map to exact, enabled official
+            # documents in trusted SQLite. Running vector encoding + cross-
+            # encoder reranking first adds tens of seconds on CPU while the
+            # same authoritative chunks are appended afterwards. Freeze this
+            # exact evidence set immediately; use semantic retrieval only when
+            # no deterministic policy selector produced evidence.
+            chunks = list(
+                {chunk["chunk_id"]: chunk for chunk in enriched}.values()
+            )
+            retrieval_source = "authoritative_metadata"
+        elif self._retrieval_capacity is None:
             chunks = retrieve_chunks()
+            retrieval_source = "semantic_retrieval"
         else:
             with self._retrieval_capacity.acquire() as lease:
                 capacity_wait_ms = float(getattr(lease, "waited_ms", 0.0))
                 chunks = retrieve_chunks()
+            retrieval_source = "semantic_retrieval"
         retrieval_ms = round((time.perf_counter() - retrieval_started) * 1000, 2)
         cross_major = self._cross_major_answer(query)
         if cross_major is not None:
@@ -1103,19 +1127,8 @@ class QueryPipelineRuntime(HybridRuntime):
             "retrieved_count": len(chunks),
             "retrieval_ms": retrieval_ms,
             "capacity_wait_ms": round(capacity_wait_ms, 2),
+            "retrieval_source": retrieval_source,
         }
-        evidence_query = (
-            query
-            if contextual_question == query.original_question
-            else query.model_copy(update={"original_question": contextual_question})
-        )
-        enriched = self._authoritative_policy_chunks(evidence_query)
-        # Metadata rows expose canonical ``text``.  Put them last so a
-        # retriever payload with the same id cannot overwrite that evidence.
-        chunks = list({chunk["chunk_id"]: chunk for chunk in [*chunks, *enriched]}.values())
-        if enriched:
-            authoritative_ids = {item["chunk_id"] for item in enriched}
-            chunks.sort(key=lambda chunk: (chunk["chunk_id"] not in authoritative_ids, -float(chunk.get("score") or 0)))
         missing_topics = _missing_evidence_topics(contextual_question, chunks)
         if missing_topics:
             telemetry["generation_accepted"] = False
@@ -1144,7 +1157,58 @@ class QueryPipelineRuntime(HybridRuntime):
             }, telemetry
         telemetry["generation_attempted"] = self.capabilities.policy_llm
         telemetry["fallback_used"] = False
-        if self.capabilities.policy_llm:
+        generation_started = time.perf_counter()
+        verified_claim_count = 0
+        first_verified_claim_ms: float | None = None
+        streamed_answer = None
+        stream_owner = getattr(self.school_answer, "__self__", None)
+        stream_answer = getattr(stream_owner, "stream_answer_polished", None)
+        if (
+            self.capabilities.policy_llm
+            and claim_sink is not None
+            and callable(stream_answer)
+            and bool(getattr(stream_owner, "supports_verified_streaming", False))
+        ):
+            telemetry["verified_claim_stream"] = True
+            for event in stream_answer(
+                contextual_question,
+                chunks,
+                cancelled=stream_cancelled,
+            ):
+                if event.type == "claim" and event.claim is not None:
+                    verified_claim_count += 1
+                    if first_verified_claim_ms is None:
+                        first_verified_claim_ms = round(
+                            (time.perf_counter() - generation_started) * 1000,
+                            2,
+                        )
+                    claim_sink(
+                        {
+                            "type": "claim",
+                            "seq": event.claim.seq,
+                            "text": event.claim.text,
+                            "evidence_ids": list(event.claim.evidence_ids),
+                        }
+                    )
+                elif event.type == "abort" and event.answer is not None:
+                    claim_sink(
+                        {
+                            "type": "abort",
+                            "reason": event.reason,
+                            "answer_md": str(event.answer.get("answer_md") or ""),
+                        }
+                    )
+                    telemetry["fallback_used"] = True
+                    telemetry["fallback_reason"] = event.reason or "claim_validation_failed"
+                elif event.type == "final" and event.answer is not None:
+                    streamed_answer = event.answer
+            if streamed_answer is None:
+                raise GenerationUnavailableError(
+                    "verified school stream ended without a final answer",
+                    code="stream_ended_early",
+                )
+            raw = streamed_answer
+        elif self.capabilities.policy_llm:
             try:
                 raw = self.school_answer(contextual_question, chunks)
             except GenerationUnavailableError as exc:
@@ -1157,6 +1221,13 @@ class QueryPipelineRuntime(HybridRuntime):
                 telemetry["fallback_reason"] = "llm_refused"
         else:
             raw = deterministic_policy_answer(contextual_question, chunks)
+        telemetry["generation_ms"] = round(
+            (time.perf_counter() - generation_started) * 1000,
+            2,
+        )
+        if telemetry.get("verified_claim_stream"):
+            telemetry["verified_claim_count"] = verified_claim_count
+            telemetry["first_verified_claim_ms"] = first_verified_claim_ms
         if raw.get("refused") or raw.get("answer_md") == REFUSAL_TEXT:
             telemetry["generation_accepted"] = False
             return {
@@ -1190,7 +1261,11 @@ class QueryPipelineRuntime(HybridRuntime):
                 "official_links": [],
                 "refused": True,
             }, telemetry
-        answer = _compact_answer_citations(answer)
+        # Claim events use the retrieval-position marker seen by the validator.
+        # Preserve those markers for a streamed turn so the final response does
+        # not renumber citations that the user has already seen.
+        if claim_sink is None:
+            answer = _compact_answer_citations(answer)
         telemetry["generation_accepted"] = True
         citations = [
             {**citation, "physical_page": _citation_page(citation)}
@@ -1220,6 +1295,8 @@ class QueryPipelineRuntime(HybridRuntime):
         include_route_debug: bool = False,
         web_context: str | None = None,
         web_sources: list[dict[str, Any]] | None = None,
+        claim_sink: Callable[[dict[str, Any]], None] | None = None,
+        stream_cancelled: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         total_started = time.perf_counter()
         state = self.sessions.get(session_id)
@@ -1302,6 +1379,8 @@ class QueryPipelineRuntime(HybridRuntime):
                 normalized,
                 top_k,
                 contextual_question=contextual_question,
+                claim_sink=claim_sink,
+                stream_cancelled=stream_cancelled,
             )
             if not rag_telemetry.get("generation_accepted"):
                 final_source = "insufficient"
@@ -1446,13 +1525,88 @@ class QueryPipelineRuntime(HybridRuntime):
                 "question_understanding_ms": planner_ms,
                 "normalization_ms": normalization_ms,
                 "sql_execution_ms": execution_telemetry.get("latency_ms", 0.0),
-                "answer_generation_ms": presenter_telemetry.get("latency_ms", 0.0),
+                "answer_generation_ms": max(
+                    float(presenter_telemetry.get("latency_ms", 0.0) or 0.0),
+                    float(rag_telemetry.get("generation_ms", 0.0) or 0.0),
+                ),
                 "total_ms": total_ms,
             },
         )
         if include_route_debug:
             payload["route"] = decision.to_dict()
         return payload
+
+    def stream_school_question(
+        self,
+        question: str,
+        *,
+        college: str | None = None,
+        cohort: str | None = None,
+        major: str | None = None,
+        session_id: str | None = None,
+        top_k: int = 12,
+        web_context: str | None = None,
+        web_sources: list[dict[str, Any]] | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """Run the synchronous pipeline while forwarding verified claims.
+
+        A bounded queue gives the HTTP consumer backpressure. Disconnects set
+        the cancellation flag, which is checked on every provider fragment so
+        the upstream model stream is closed instead of continuing unseen.
+        """
+
+        queue: Queue[tuple[str, Any]] = Queue(maxsize=64)
+        cancelled = Event()
+
+        def put(kind: str, value: Any) -> None:
+            while not cancelled.is_set():
+                try:
+                    queue.put((kind, value), timeout=0.1)
+                    return
+                except Full:
+                    continue
+            raise GenerationUnavailableError(
+                "verified school stream was cancelled",
+                code="stream_cancelled",
+            )
+
+        def run() -> None:
+            try:
+                response = self.handle_question(
+                    question,
+                    college=college,
+                    cohort=cohort,
+                    major=major,
+                    session_id=session_id,
+                    top_k=top_k,
+                    web_context=web_context,
+                    web_sources=web_sources,
+                    claim_sink=lambda event: put("event", event),
+                    stream_cancelled=cancelled.is_set,
+                )
+                put("final", response)
+            except Exception as exc:
+                if not cancelled.is_set():
+                    try:
+                        put("error", exc)
+                    except GenerationUnavailableError:
+                        pass
+
+        worker = Thread(target=run, name="verified-school-stream", daemon=True)
+        worker.start()
+        try:
+            while True:
+                kind, value = queue.get()
+                if kind == "event":
+                    yield value
+                elif kind == "final":
+                    yield {"type": "final", "response": value}
+                    return
+                else:
+                    raise value
+        finally:
+            cancelled.set()
+            worker.join()
 
     def options(self) -> dict[str, Any]:
         value = super().options()

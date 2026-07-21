@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 from threading import RLock
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from contracts import (
@@ -20,6 +21,11 @@ from generation.grounding import GroundingResult, StrictGroundingValidator
 from generation.llm import LLMClient, OpenAICompatibleClient
 from generation.policy_formatter import deterministic_policy_answer
 from generation.prompts import REFUSAL_TEXT
+from generation.verified_stream import (
+    StreamCancelledError,
+    VerifiedStreamEvent,
+    verified_claim_stream,
+)
 from retrieval.query import (
     analyze_query,
     cohort_specific_coverage,
@@ -50,6 +56,12 @@ POLICY_DRAFT_EXACT_PROMPT = """你是已核验教务文案的原样输出器。
 POLICY_LEAD_PROMPT = """你是教务回答的引导语写作器。
 只输出一句不超过30个汉字的中性引导语，表示下方内容依据已检索的学校官方文件。
 不得包含任何政策事实、数字、结论、引用角标、链接、Markdown 或拒绝用语。"""
+POLICY_STREAM_POLISH_PROMPT = """你是教务政策文案表达器。用户提供的“已核验草稿”是唯一事实来源。
+逐句输出最终答案，不要输出 JSON、代码块、标题、表格、链接、参考文献列表或解释。
+不得增加、删除或改变任何政策事实、数字、条件、范围、结论和引用序号。
+每个句子只表达一个完整声明；每个声明必须以句号、问号、感叹号或分号结束。
+每个包含学校事实的声明必须把原草稿中的引用角标放在句末标点之前。
+如果无法改善表达，逐字输出已核验草稿。"""
 
 
 POLICY_NUMBER_RE = re.compile(r"(?<![A-Za-z])\d+(?:\.\d+)?%?")
@@ -278,6 +290,68 @@ class AdvancedGenerationService:
             }
         )
 
+    @property
+    def supports_verified_streaming(self) -> bool:
+        return callable(getattr(self.client, "stream_generate", None))
+
+    def stream_answer_polished(
+        self,
+        query: str,
+        chunks: list[dict[str, Any]],
+        *,
+        cancelled: Callable[[], bool] | None = None,
+    ) -> Iterator[VerifiedStreamEvent]:
+        """Stream provider tokens through a sentence-level evidence gate."""
+
+        clean_query = self._query(query)
+        if not isinstance(chunks, list):
+            raise ValueError("chunks must be a list")
+        validated = [validate_retrieved_chunk(chunk) for chunk in chunks]
+        gate_override = bool(
+            validated
+            and max(chunk["score"] for chunk in validated)
+            >= self.gate.dense_threshold
+            and VERIFIED_DRAFT_GATE_OVERRIDE_RE.search(clean_query)
+        )
+        if not self.gate.sufficient(clean_query, validated) and not gate_override:
+            yield VerifiedStreamEvent(type="final", answer=self._refusal())
+            return
+
+        canonical = deterministic_policy_answer(clean_query, validated)
+        if canonical.get("refused"):
+            yield VerifiedStreamEvent(type="final", answer=self._refusal())
+            return
+        stream = getattr(self.client, "stream_generate", None)
+        if not callable(stream):
+            yield VerifiedStreamEvent(
+                type="abort",
+                answer=canonical,
+                reason="streaming_not_supported",
+            )
+            yield VerifiedStreamEvent(type="final", answer=canonical)
+            return
+
+        fragments = stream(
+            POLICY_STREAM_POLISH_PROMPT,
+            f"【已核验草稿】\n{canonical['answer_md']}",
+        )
+        try:
+            yield from verified_claim_stream(
+                fragments,
+                validated,
+                fallback=canonical,
+                validator=self.validator,
+                final_check=lambda answer: self._preserves_policy_facts(
+                    str(canonical["answer_md"]), answer
+                ),
+                cancelled=cancelled,
+            )
+        except StreamCancelledError as exc:
+            raise GenerationUnavailableError(
+                "verified school stream was cancelled",
+                code="stream_cancelled",
+            ) from exc
+
     def answer(self, query: str, chunks: list[dict[str, Any]]) -> AnswerResult:
         clean_query = self._query(query)
         if not isinstance(chunks, list):
@@ -379,6 +453,7 @@ __all__ = [
     "POLICY_DRAFT_POLISH_PROMPT",
     "POLICY_DRAFT_EXACT_PROMPT",
     "POLICY_LEAD_PROMPT",
+    "POLICY_STREAM_POLISH_PROMPT",
     "AdvancedGenerationService",
     "EvidenceGate",
     "answer",

@@ -68,7 +68,7 @@ python -m app.server
 ```
 
 - 浏览器打开 <http://127.0.0.1:8000> 可使用混合对话测试 Web。
-- `POST /ask` 与 `POST /ask/stream` 接收 `question`、可选 `college`、`cohort`、`major`、`session_id`；普通对话实时返回模型 `delta`，学校事实在完整校验后通过安全 `delta` 逐步展示，并在 `final` 事件交付带来源链接的全文。
+- `POST /ask` 与 `POST /ask/stream` 接收 `question`、可选 `college`、`cohort`、`major`、`session_id`；普通对话实时返回模型 `delta`，政策 RAG 在冻结证据后按完整声明验证并实时提交，结构化/缓存回答发送完整校验后的安全预览，最后都在 `final` 事件交付带来源链接的全文。
 - 普通知识、代码、写作和情绪交流为 `general_chat`，不会先检索或执行学校拒答门。
 - 培养方案、选课、推免、校内服务和学校网址为 `school_rag`；没有证据时不会回退通用模型。
 - `GET /source/{chunk_id}` 返回知识块完整原文及冻结元数据。
