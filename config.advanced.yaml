@@ -25,5 +25,7 @@ generation:
   refuse_th: 0.35
   max_retries: 2
   request_timeout_seconds: 60
+  byok_max_retries: 0
+  byok_request_timeout_seconds: 30
   max_context_chars: 7000
   max_chunk_chars: 1600

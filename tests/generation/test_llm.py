@@ -74,6 +74,43 @@ class LLMAdapterTests(unittest.TestCase):
 
         self.assertEqual(client.list_models(), ["glm-5", "qwen-plus"])
 
+    def test_qwen_thinking_toggle_is_forwarded_to_dashscope(self) -> None:
+        client = OpenAICompatibleClient(
+            "qwen3.5-plus",
+            api_key="test",
+            base_url="https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+            thinking_enabled=False,
+        )
+
+        self.assertEqual(
+            client._completion_options(),
+            {"extra_body": {"enable_thinking": False}},
+        )
+
+    def test_stream_ignores_provider_chunks_without_choices(self) -> None:
+        class Completions:
+            @staticmethod
+            def create(**_kwargs):
+                return iter(
+                    [
+                        SimpleNamespace(choices=[]),
+                        SimpleNamespace(
+                            choices=[
+                                SimpleNamespace(
+                                    delta=SimpleNamespace(content="回答")
+                                )
+                            ]
+                        ),
+                    ]
+                )
+
+        client = OpenAICompatibleClient("qwen3.5-plus", api_key="test")
+        client._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=Completions())
+        )
+
+        self.assertEqual(list(client.stream_generate("system", "user")), ["回答"])
+
 
 if __name__ == "__main__":
     unittest.main()

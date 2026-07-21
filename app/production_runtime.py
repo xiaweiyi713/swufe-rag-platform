@@ -67,8 +67,8 @@ def build_request_query_runtime(
     model = str(generation.get("llm", "deepseek-chat"))
     if isinstance(model_override, str) and model_override.strip():
         model = model_override.strip()
-    retries = int(generation.get("max_retries", 2))
-    timeout = float(generation.get("request_timeout_seconds", 60))
+    retries = int(generation.get("byok_max_retries", 0))
+    timeout = float(generation.get("byok_request_timeout_seconds", 30))
     key = api_key.strip()
 
     def client(*, temperature: float = 0.0) -> OpenAICompatibleClient:
@@ -82,7 +82,6 @@ def build_request_query_runtime(
             thinking_enabled=thinking_enabled,
         )
 
-    planner_client = client()
     answer_client = client()
     policy_client = client()
     general_client = client(temperature=float(generation.get("general_temperature", 0.7)))
@@ -95,11 +94,14 @@ def build_request_query_runtime(
         ),
     )
     return QueryPipelineRuntime(
-        understanding=QuestionUnderstandingService(planner_client),
+        # Program scope and routing are deterministic and schema-bound. One
+        # provider call is reserved for the final expression layer so a single
+        # App turn cannot fan out into several slow, retrying BYOK requests.
+        understanding=QuestionUnderstandingService(),
         presenter=AnswerPresenter(answer_client),
         academic_db=base_runtime.academic_db,
         capabilities=PipelineCapabilities(
-            planner_llm=True,
+            planner_llm=False,
             presenter_llm=True,
             policy_llm=True,
             general_llm=True,

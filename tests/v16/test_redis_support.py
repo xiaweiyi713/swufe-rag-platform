@@ -62,6 +62,9 @@ class FakeRedisLock:
             self.backend.lock_owners.pop(self.key)
             self.backend.condition.notify_all()
 
+    def owned(self) -> bool:
+        return self.backend.lock_owners.get(self.key) is self
+
 
 class FakeRedis:
     def __init__(self, backend: FakeRedisBackend | None = None) -> None:
@@ -233,6 +236,16 @@ def test_two_stores_serialize_the_same_session_with_distributed_lock() -> None:
         thread.join(1)
 
     assert timeline == ["first-enter", "first-exit", "second-enter"]
+
+
+def test_expired_session_lock_does_not_open_redis_circuit() -> None:
+    backend = FakeRedisBackend()
+    store = RedisSessionStore(FakeRedis(backend), lock_wait_seconds=1)
+
+    with store.guard("expired"):
+        backend.lock_owners.clear()
+
+    assert store.info()["circuit_open"] is False
 
 
 def test_session_guards_can_span_streaming_worker_threads() -> None:

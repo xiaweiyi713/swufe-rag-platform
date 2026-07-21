@@ -102,9 +102,11 @@ class OpenAICompatibleClient:
 
     def _completion_options(self) -> dict[str, object]:
         options: dict[str, object] = {}
+        model = self.model.lower()
+        base_url = self.base_url.lower()
         is_deepseek = (
-            "deepseek" in self.model.lower()
-            or "deepseek" in self.base_url.lower()
+            "deepseek" in model
+            or "deepseek" in base_url
         )
         if is_deepseek:
             options["extra_body"] = {
@@ -114,6 +116,13 @@ class OpenAICompatibleClient:
             }
             if self.thinking_enabled:
                 options["reasoning_effort"] = "high"
+        elif model.startswith("qwen") and (
+            "dashscope.aliyuncs.com" in base_url
+            or ".maas.aliyuncs.com" in base_url
+        ):
+            # Qwen 3.x hybrid models can enable reasoning by default. Keep the
+            # provider behavior aligned with the App's explicit thinking toggle.
+            options["extra_body"] = {"enable_thinking": self.thinking_enabled}
         return options
 
     def _system_prompt(self, prompt: str) -> str:
@@ -186,7 +195,12 @@ class OpenAICompatibleClient:
                 **options,
             )
             for chunk in stream:
-                content = chunk.choices[0].delta.content
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    # DashScope may emit usage-only terminal chunks.
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                content = getattr(delta, "content", None)
                 if isinstance(content, str) and content:
                     emitted = True
                     yield content

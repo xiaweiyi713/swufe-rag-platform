@@ -529,7 +529,14 @@ class RedisSessionStore(_ResilientRedisComponent):
                 yield
             finally:
                 try:
-                    distributed.release()
+                    owned = getattr(distributed, "owned", None)
+                    if callable(owned) and not owned():
+                        logger.warning(
+                            "Redis session lock expired before release; "
+                            "continuing without opening the Redis circuit"
+                        )
+                    else:
+                        distributed.release()
                 except Exception as exc:
                     self._warn_failure("session unlock", exc)
 

@@ -58,7 +58,7 @@ def build_request_query_runtime(
         model_override=model_override,
         thinking_enabled=thinking_enabled,
     )
-    runtime.understanding = QuestionUnderstandingService(runtime.understanding.client)
+    runtime.understanding = QuestionUnderstandingService()
     return runtime
 
 

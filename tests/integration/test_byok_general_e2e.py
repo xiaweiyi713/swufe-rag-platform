@@ -344,5 +344,5 @@ def test_school_stream_uses_web_reference_after_kb_refusal() -> None:
     assert final["web_sources"] == web_sources
     assert final["web_fallback"]["used"] is True
     assert final["final_output_source"] == "llm_web_fallback"
-    assert len(FakeOpenAIHandler.requests) == 2
+    assert len(FakeOpenAIHandler.requests) == 1
     assert FakeOpenAIHandler.requests[0]["model"] == "fake-chat"
