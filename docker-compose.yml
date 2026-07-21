@@ -45,9 +45,9 @@ services:
       # --- 服务 ---
       SWUFE_RAG_HOST: "0.0.0.0"
       SWUFE_RAG_PORT: "8000"
-      # 每个 worker 各自加载一份模型+索引(实测常驻 ~1.0GB),
-      # 按内存预算设置:8G 机器建议 2,16G 建议 4。
-      SWUFE_RAG_WORKERS: "${SWUFE_RAG_WORKERS:-2}"
+      # 每个 worker 都会复制模型和索引。2026-07-21 Docker CPU 实测单
+      # worker 常驻约 4.1GiB、4 路冷检索峰值约 5.23GiB；默认只启 1 个。
+      SWUFE_RAG_WORKERS: "${SWUFE_RAG_WORKERS:-1}"
       # 启动即在后台预热,加载完成前 /readyz 返回 503,nginx 不会打流量进来。
       SWUFE_RAG_EAGER_WARMUP: "${SWUFE_RAG_EAGER_WARMUP:-1}"
       # 在 nginx 后面:信任代理头,限流才能拿到真实客户端 IP。
@@ -86,7 +86,7 @@ services:
     command: >
       uvicorn app.server.application:app
       --host 0.0.0.0 --port 8000
-      --workers ${SWUFE_RAG_WORKERS:-2}
+      --workers ${SWUFE_RAG_WORKERS:-1}
       --proxy-headers --forwarded-allow-ips=${SWUFE_RAG_FORWARDED_ALLOW_IPS:-127.0.0.1}
       --timeout-keep-alive 75
     healthcheck:

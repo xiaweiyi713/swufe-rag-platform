@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-07-21T10:48:00+0800",
+  "environment": {
+    "runtime": "Docker Desktop CPU, one Uvicorn worker",
+    "docker_memory_limit_gib": 7.65,
+    "cache_namespaces_independent": true,
+    "rate_limit_disabled_for_benchmark": true,
+    "steady_memory_gib_observed": 4.1,
+    "peak_memory_gib_observed_2x8": 4.63,
+    "peak_memory_gib_observed_4x16": 5.23
+  },
+  "inputs": {
+    "2x8": "loadtest-post-repair-2x8-20260720.json",
+    "4x16": "loadtest-post-repair-4x16-20260721.json"
+  },
+  "comparison": {
+    "cold_rag": [
+      {"offered_concurrency": 1, "success_2x8": 12, "success_4x16": 12, "requests": 12, "p95_ms_2x8": 24893.73, "p95_ms_4x16": 20522.9},
+      {"offered_concurrency": 2, "success_2x8": 12, "success_4x16": 12, "requests": 12, "p95_ms_2x8": 34942.24, "p95_ms_4x16": 26606.6},
+      {"offered_concurrency": 4, "success_2x8": 6, "success_4x16": 12, "requests": 12, "p95_ms_2x8": 26723.56, "p95_ms_4x16": 50212.26},
+      {"offered_concurrency": 8, "success_2x8": 5, "success_4x16": 7, "requests": 12, "p95_ms_2x8": 30568.68, "p95_ms_4x16": 48260.84},
+      {"offered_concurrency": 12, "success_2x8": 5, "success_4x16": 7, "requests": 12, "p95_ms_2x8": 26481.67, "p95_ms_4x16": 41661.85}
+    ],
+    "mixed": [
+      {"offered_concurrency": 4, "success_2x8": 12, "success_4x16": 16, "requests": 16, "p95_ms_2x8": 31927.07, "p95_ms_4x16": 50202.09},
+      {"offered_concurrency": 8, "success_2x8": 12, "success_4x16": 14, "requests": 16, "p95_ms_2x8": 33412.09, "p95_ms_4x16": 50271.43},
+      {"offered_concurrency": 16, "success_2x8": 11, "success_4x16": 13, "requests": 16, "p95_ms_2x8": 28788.19, "p95_ms_4x16": 53685.87}
+    ],
+    "hot_cache_4x16": {"requests": 40, "successes": 40, "throughput_rps": 255.31, "p95_ms": 142.16},
+    "stream_cache_4x16": {"requests": 16, "successes": 16, "throughput_rps": 275.77, "p95_ms": 56.93}
+  },
+  "decision": {
+    "selected_max_concurrency": 4,
+    "selected_queue_size": 16,
+    "selected_queue_timeout_seconds": 8,
+    "selected_workers_on_8_gib": 1,
+    "reason": "4x16 materially improves completion rate while retaining bounded 429 overload shedding; it does not increase CPU-limited throughput and increases overloaded tail latency."
+  }
+}

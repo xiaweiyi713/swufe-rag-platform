@@ -59,7 +59,7 @@ RestrictSUIDSGID=true
 RestrictRealtime=true
 LockPersonality=true
 
-# --- 资源上限:每 worker 约 1.0GB,按 workers 数留足余量 ---
+# --- 单 worker 实测约 4.1GiB 常驻、5.23GiB 压测峰值 ---
 MemoryMax=6G
 MemoryHigh=5G
 

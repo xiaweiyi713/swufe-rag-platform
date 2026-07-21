@@ -17,18 +17,22 @@
 
 ## 一、服务器规格
 
-每个 worker 独立加载 BGE 模型 + FAISS 索引,**实测常驻约 1.0 GB**。
+每个 worker 独立加载 BGE 模型、重排模型和 FAISS 索引。2026-07-21
+在 Docker CPU、7.65 GiB 容器内存上实测:单 worker 预热后常驻约
+**4.1 GiB**,4 路冷检索时采样峰值约 **5.23 GiB**。
 
-| 配置 | 内存 | workers | 大致承载(活跃用户) |
+| 配置 | 内存 | workers | 冷检索建议 |
 |---|---|---|---|
-| 最低 | 4 GB | 1 | 30~50 |
-| 推荐 | 8 GB | 2 | 100~200 |
-| 宽裕 | 16 GB | 4 | 200~400 |
+| 最低 | 8 GB | 1 | 从执行 2 / 队列 8 开始 |
+| 推荐 | 16 GB | 1 | 执行 4 / 队列 16,再按目标机数据调整 |
+| 横向扩展 | 16 GB+ / 实例 | 1 / 实例 | Redis 共享会话,由负载均衡分流 |
 
 磁盘至少 **10 GB**:模型 1.5 G + 索引 627 M + 数据 807 M + 镜像与日志。
 
-> 承载力的瓶颈不是本地检索(实测单次 30 ms),而是 LLM 调用(6~15 秒)。
-> 由于是 BYOK,每个用户用自己的 Key,LLM 的费用与速率限制天然分摊。
+> 当前 CPU 环境的瓶颈是向量编码与重排,不是 Redis。冷 RAG 单路约
+> 0.08 RPS；4 路执行能提高完成率,但过载 p95 会升到约 50 秒。
+> 热答案缓存实测约 255 RPS、p95 约 142 ms。不要把注册用户数或
+> BYOK 供应商并发误写成本机 RAG 的承载能力。
 
 ---
 
@@ -205,8 +209,9 @@ curl -s https://your-domain/readyz | jq
 
 返回里三块值得盯:
 
-- `query_capacity` — `timed_out`/`rejected` 持续增长说明检索并发不够,
-  调大 `SWUFE_RAG_QUERY_MAX_CONCURRENCY`(云服务器纯 CPU,默认 4 偏保守)。
+- `query_capacity` — `timed_out`/`rejected` 持续增长表示过载。CPU 尚有
+  余量时才调大 `SWUFE_RAG_QUERY_MAX_CONCURRENCY`;CPU 已满时继续增加只会
+  拉长尾延迟,应扩实例或让客户端按 429 退避重试。
 - `rate_limit.rejected` — 增长快说明限流过严或有人在刷。
 - `redis.reachable` — 生产配置下为 false 时 `/readyz` 和问答入口均返回
   503；先恢复 Redis，不能用多 worker 进程内降级冒充正常服务。
@@ -216,7 +221,8 @@ curl -s https://your-domain/readyz | jq
 | 现象 | 调整 |
 |---|---|
 | 内存吃紧 | 减 `SWUFE_RAG_WORKERS` |
-| 检索排队(`queue_waits` 高) | 加 `SWUFE_RAG_QUERY_MAX_CONCURRENCY` |
+| 检索排队(`queue_waits` 高)且 CPU 有余量 | 加 `SWUFE_RAG_QUERY_MAX_CONCURRENCY` |
+| 检索排队且 CPU 已满 | 扩实例；保留 429 快速过载保护 |
 | 正常用户被限流 | 加 `SWUFE_RAG_RATE_LIMIT` |
 | 首问慢 | 确认 `SWUFE_RAG_EAGER_WARMUP=1` |
 

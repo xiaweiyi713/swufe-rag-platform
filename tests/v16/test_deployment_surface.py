@@ -152,6 +152,7 @@ def test_canonical_compose_gates_traffic_and_separates_production_proxy():
 
     assert app["environment"]["SWUFE_RAG_REQUIRE_REDIS"] == "1"
     assert "SWUFE_RAG_CACHE_VERSION" in app["environment"]
+    assert app["environment"]["SWUFE_RAG_WORKERS"].endswith(":-1}")
     assert any("127.0.0.1:" in port for port in app["ports"])
     assert "readyz" in " ".join(app["healthcheck"]["test"])
     assert nginx["profiles"] == ["production"]
