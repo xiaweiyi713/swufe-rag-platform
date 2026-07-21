@@ -27,10 +27,10 @@ X-LLM-API-Key: <临时密钥>
 
 密钥不能写入 JSON 请求体；`AskRequest` 继续使用 `extra="forbid"`，因此请求体中的 `api_key` 会返回 HTTP 422。
 
-流式端点返回 `application/x-ndjson`。普通对话的 DeepSeek 增量作为 `delta`
-事件实时转发，最后用 `final.response` 返回完整的兼容响应。学校事实只流式返回
-阶段状态，完成本地证据与引用校验后才在 `final.response` 交付全文；不会把完成后
-切块的文本冒充供应商 token 流。BYOK 不会绕过引用和拒答边界。
+流式端点返回 `application/x-ndjson`。普通对话的供应商增量作为 `delta`
+事件实时转发，最后用 `final.response` 返回完整的兼容响应。学校事实先完成本地证据
+与引用校验，再通过 `delta` 分片发送不含交互链接的安全预览，最后在
+`final.response` 交付完整 Markdown。BYOK 不会绕过引用和拒答边界。
 
 ## 生命周期与安全边界
 

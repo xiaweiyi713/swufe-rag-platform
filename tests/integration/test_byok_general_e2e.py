@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from academic_audit.database import AcademicDatabase
-from app.server.application import create_app
+from app.server.application import _stream_preview_text, create_app
 from generation.answer_presenter import AnswerPresenter
 from generation.general_chat import GeneralChatService
 from retrieval.index import load_chunks
@@ -337,10 +337,11 @@ def test_school_stream_uses_web_reference_after_kb_refusal() -> None:
     assert final["execution_path"] == "rag"
     assert final["refused"] is True
     assert final["citations"] == []
-    assert not [event for event in events if event["type"] == "delta"]
+    assert "".join(
+        event["text"] for event in events if event["type"] == "delta"
+    ) == _stream_preview_text(final["answer_md"])
     school_meta = next(event for event in events if event["type"] == "meta")
-    assert school_meta["answer_streaming"] is False
-    assert events[-2]["stage"] == "finalizing"
+    assert school_meta["answer_streaming"] is True
     assert final["web_sources"] == web_sources
     assert final["web_fallback"]["used"] is True
     assert final["final_output_source"] == "llm_web_fallback"

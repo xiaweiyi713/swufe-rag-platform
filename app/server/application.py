@@ -41,6 +41,39 @@ from swufe_rag.redis_support import (
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
 
+def _stream_preview_text(answer_md: str) -> str:
+    """Return display-safe incremental text for a validated school answer.
+
+    Source titles and physical page labels remain visible while the answer is
+    revealed. Interactive links stay exclusive to the final event so clients
+    never render half-written Markdown or URLs.
+    """
+
+    lines: list[str] = []
+    for raw_line in answer_md.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("#"):
+            stripped = stripped.lstrip("#").strip()
+        lines.append(stripped if stripped else "")
+
+    preview = "\n".join(lines)
+    preview = re.sub(
+        r"\s*·\s*\[下载原文件\]\([^\r\n)]*\)",
+        "",
+        preview,
+    )
+    preview = re.sub(
+        r"\[下载原文件\]\([^\r\n)]*\)",
+        "",
+        preview,
+    )
+    preview = re.sub(r"\[([^\]]+)\]\([^\s)]+(?:#[^\s)]*)?\)", r"\1", preview)
+    preview = re.sub(r"\*\*([^*]+)\*\*", r"\1", preview)
+    preview = re.sub(r"__([^_]+)__", r"\1", preview)
+    preview = re.sub(r"\n{3,}", "\n\n", preview)
+    return preview.strip()
+
+
 def _school_web_search_query(question: str) -> str:
     clean = question.strip()
     if re.search(r"西南财经大学|西财", clean):
@@ -768,6 +801,10 @@ def create_app(
                 separators=(",", ":"),
             ) + "\n"
 
+        def text_chunks(value: str, size: int = 24) -> Iterator[str]:
+            for start in range(0, len(value), size):
+                yield value[start : start + size]
+
         def events() -> Iterator[str]:
             lease = None
             web_sources: list[dict[str, str]] = []
@@ -910,20 +947,14 @@ def create_app(
                             "type": "meta",
                             "mode": payload.get("mode"),
                             "execution_path": payload.get("execution_path"),
-                            "answer_streaming": False,
+                            "answer_streaming": True,
                         }
                     )
-                    # School text is safe to expose only after the complete
-                    # evidence/citation validators have accepted it. Emitting
-                    # slices here would be post-hoc typewriter animation, not
-                    # provider streaming, and would misstate first-token latency.
-                    yield line(
-                        {
-                            "type": "status",
-                            "stage": "finalizing",
-                            "message": "学校事实与引用处理完成",
-                        }
+                    preview = _stream_preview_text(
+                        str(payload.get("answer_md") or "")
                     )
+                    for chunk in text_chunks(preview):
+                        yield line({"type": "delta", "text": chunk})
                     yield line({"type": "final", "response": payload})
             except GeneratorExit:
                 return

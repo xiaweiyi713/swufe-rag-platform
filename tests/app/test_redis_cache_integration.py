@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.server.application import create_app
+from app.server.application import _stream_preview_text, create_app
 from swufe_rag.orchestration import InMemorySessionStore
 from swufe_rag.redis_support import RedisAnswerCache
 
@@ -90,6 +90,34 @@ def _events(response) -> list[dict]:
     return [json.loads(line) for line in response.text.splitlines() if line]
 
 
+def test_school_stream_preview_keeps_source_labels_but_hides_interactive_links() -> None:
+    answer = (
+        "2025级网络空间安全专业毕业最低学分为 **150学分**[1]。\n\n"
+        "### 培养方案模块要求\n"
+        "| 模块 | 最低学分 |\n"
+        "|---|---:|\n"
+        "| 专业核心课 | 12 |\n\n"
+        "来源文件与页码：\n"
+        "- [1]《培养方案》，[原文件第717页](https://example.edu/a.pdf#page=717) · "
+        "[下载原文件](https://example.edu/a.pdf)\n"
+        "- [2]《学籍管理规定》，[原文件第6页](https://example.edu/b.pdf#page=6) · "
+        "[下载原文件](https://example.edu/b.pdf)"
+    )
+
+    preview = _stream_preview_text(answer)
+
+    assert preview.startswith(
+        "2025级网络空间安全专业毕业最低学分为 150学分[1]。\n\n"
+        "培养方案模块要求\n| 模块 | 最低学分 |"
+    )
+    assert "| 专业核心课 | 12 |" in preview
+    assert "来源文件与页码：" in preview
+    assert "- [1]《培养方案》，原文件第717页" in preview
+    assert "- [2]《学籍管理规定》，原文件第6页" in preview
+    assert "下载原文件" not in preview
+    assert "https://" not in preview
+
+
 def test_ask_cache_hit_hydrates_session_and_follow_up_context() -> None:
     runtime = CacheAwareRuntime()
     cache = RedisAnswerCache(StringRedis(), ttl_seconds=60)
@@ -137,10 +165,11 @@ def test_stream_endpoint_reuses_validated_answer_cache() -> None:
     assert first.status_code == hit.status_code == 200
     assert first_events[0]["stage"] == "retrieving"
     assert hit_events[0]["stage"] == "cache"
-    assert not [event for event in hit_events if event["type"] == "delta"]
+    assert "".join(
+        event["text"] for event in hit_events if event["type"] == "delta"
+    ) == "学业预警标准？的可信回答"
     school_meta = next(event for event in hit_events if event["type"] == "meta")
-    assert school_meta["answer_streaming"] is False
-    assert hit_events[-2]["stage"] == "finalizing"
+    assert school_meta["answer_streaming"] is True
     assert hit_events[-1]["type"] == "final"
     assert hit_events[-1]["response"]["answer_md"] == "学业预警标准？的可信回答"
     assert hit_events[-1]["response"]["answer_cache"]["hit"] is True
