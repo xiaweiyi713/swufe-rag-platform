@@ -18,9 +18,10 @@ enum LLMConfigStore {
     private static let modelKey = "swufeask.llm.model"
     private static let modelOptionsKey = "swufeask.llm.modelOptions"
     private static let modelOptionsProviderKey = "swufeask.llm.modelOptionsProvider"
+    private static let validatedKey = "swufeask.llm.validated.v2"
 
-    /// 当前配置;未配置(或缺 Key)时为 nil,后端走确定性降级模式。
-    static func current() -> Config? {
+    /// 已保存的配置。即使尚未通过真实生成验证，设置页仍可读取并修正它。
+    static func stored() -> Config? {
         let defaults = UserDefaults.standard
         guard let providerID = defaults.string(forKey: providerIDKey), !providerID.isEmpty,
               let baseURL = defaults.string(forKey: baseURLKey), !baseURL.isEmpty,
@@ -34,6 +35,16 @@ enum LLMConfigStore {
             baseURL: baseURL,
             model: model
         )
+    }
+
+    /// 只有通过真实 Chat Completions 验证的配置才会随问答请求发送。
+    static func current() -> Config? {
+        guard isValidated else { return nil }
+        return stored()
+    }
+
+    static var isValidated: Bool {
+        UserDefaults.standard.bool(forKey: validatedKey) && stored() != nil
     }
 
     static var hasAPIKey: Bool {
@@ -50,7 +61,8 @@ enum LLMConfigStore {
         baseURL: String,
         model: String,
         apiKey: String,
-        availableModels: [LLMModelOption] = []
+        availableModels: [LLMModelOption] = [],
+        validated: Bool
     ) {
         let defaults = UserDefaults.standard
         let selectedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -67,12 +79,13 @@ enum LLMConfigStore {
             defaults.set(providerID, forKey: modelOptionsProviderKey)
         }
         KeychainStore.write(apiKey, account: KeychainStore.llmAPIKeyAccount)
+        defaults.set(validated, forKey: validatedKey)
     }
 
     /// Models available to the active provider. Newly saved configurations use
     /// the API-discovered list; existing installs fall back to provider presets.
     static func availableModels() -> [LLMModelOption] {
-        guard let config = current() else { return [] }
+        guard let config = stored() else { return [] }
         let defaults = UserDefaults.standard
         var models: [LLMModelOption] = []
         if defaults.string(forKey: modelOptionsProviderKey) == config.providerID,
@@ -95,7 +108,13 @@ enum LLMConfigStore {
         let value = model.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, current() != nil else { return current() }
         UserDefaults.standard.set(value, forKey: modelKey)
+        UserDefaults.standard.set(false, forKey: validatedKey)
         return current()
+    }
+
+    /// 保留端点和 Key 供用户修正，但立即停止向问答请求发送凭证。
+    static func markUnvalidated() {
+        UserDefaults.standard.set(false, forKey: validatedKey)
     }
 
     /// 清除配置与 Key,回到后端降级模式。
@@ -107,13 +126,15 @@ enum LLMConfigStore {
         defaults.removeObject(forKey: modelKey)
         defaults.removeObject(forKey: modelOptionsKey)
         defaults.removeObject(forKey: modelOptionsProviderKey)
+        defaults.removeObject(forKey: validatedKey)
         KeychainStore.delete(KeychainStore.llmAPIKeyAccount)
     }
 
     /// 侧栏/设置页展示用摘要,如 "DeepSeek · deepseek-chat"。
     static var summary: String {
-        if let config = current() {
-            return "\(config.providerName) · \(config.model)"
+        if let config = stored() {
+            let suffix = isValidated ? config.model : "待验证"
+            return "\(config.providerName) · \(suffix)"
         }
         return "未配置 · 确定性降级模式"
     }

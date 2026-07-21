@@ -38,7 +38,8 @@ struct APIClient {
             let detail = (try? JSONDecoder().decode(APIErrorResponse.self, from: data))?.detailText
             throw RecoverableAPIError(
                 statusCode: http.statusCode,
-                message: detail ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode)
+                message: detail?.message ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode),
+                code: detail?.code
             )
         }
     }
@@ -47,6 +48,7 @@ struct APIClient {
 struct RecoverableAPIError: LocalizedError {
     let statusCode: Int
     let message: String
+    let code: String?
 
     var errorDescription: String? {
         message
@@ -55,14 +57,29 @@ struct RecoverableAPIError: LocalizedError {
 
 private struct StreamProtocolError: LocalizedError {
     let message: String
+    let code: String?
 
     var errorDescription: String? { message }
+
+    var allowsDeterministicFallback: Bool {
+        guard let code else { return false }
+        return [
+            "provider_authentication_failed",
+            "provider_permission_denied",
+            "provider_model_not_found"
+        ].contains(code)
+    }
 }
 
 /// FastAPI 标准错误体 `{"detail": ...}`。Pydantic 422 时 detail 是数组，
 /// 其余场景是字符串，两种都兼容。
 private struct APIErrorResponse: Decodable {
-    let detailText: String?
+    struct Detail {
+        let message: String
+        let code: String?
+    }
+
+    let detailText: Detail?
 
     enum CodingKeys: String, CodingKey {
         case detail
@@ -71,9 +88,14 @@ private struct APIErrorResponse: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         if let text = try? container.decode(String.self, forKey: .detail) {
-            detailText = text
+            detailText = Detail(message: text, code: nil)
+        } else if let value = try? container.decode(StructuredDetail.self, forKey: .detail) {
+            detailText = Detail(message: value.message, code: value.code)
         } else if let items = try? container.decode([ValidationItem].self, forKey: .detail) {
-            detailText = items.compactMap(\.msg).joined(separator: "；")
+            detailText = Detail(
+                message: items.compactMap(\.msg).joined(separator: "；"),
+                code: nil
+            )
         } else {
             detailText = nil
         }
@@ -81,6 +103,11 @@ private struct APIErrorResponse: Decodable {
 
     private struct ValidationItem: Decodable {
         let msg: String?
+    }
+
+    private struct StructuredDetail: Decodable {
+        let code: String?
+        let message: String
     }
 }
 
@@ -102,58 +129,28 @@ enum LLMModelDiscoveryError: LocalizedError {
 /// providers return `models` instead of `data`, so both shapes are accepted.
 struct LLMModelDiscovery {
     private struct Response: Decodable {
-        let data: [Item]?
-        let models: [Item]?
-    }
-
-    private struct Item: Decodable {
-        let id: String?
-        let name: String?
-        let ownedBy: String?
-        let displayName: String?
-
-        enum CodingKeys: String, CodingKey {
-            case id
-            case name
-            case ownedBy = "owned_by"
-            case displayName
-        }
-
-        var modelID: String? {
-            let raw = (id ?? name)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let raw, !raw.isEmpty else { return nil }
-            return raw.hasPrefix("models/") ? String(raw.dropFirst("models/".count)) : raw
-        }
-
-        var caption: String {
-            if let displayName, !displayName.isEmpty, displayName != modelID {
-                return displayName
-            }
-            if let ownedBy, !ownedBy.isEmpty {
-                return "Key 可用 · \(ownedBy)"
-            }
-            return "Key 可用"
-        }
+        let models: [String]
     }
 
     static func fetch(baseURL: String, apiKey: String) async throws -> [LLMModelOption] {
-        guard let url = modelsURL(baseURL),
+        guard URL(string: baseURL)?.host != nil,
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LLMModelDiscoveryError.invalidEndpoint
         }
 
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 20
-        request.setValue("Bearer \(apiKey.trimmingCharacters(in: .whitespacesAndNewlines))", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        var request = URLRequest(url: APIClient().baseURL.appending(path: "/llm/models"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "X-LLM-API-Key")
+        request.setValue(baseURL.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "X-LLM-Base-URL")
         let (data, response) = try await URLSession.shared.data(for: request)
         try APIClient.validate(response, data: data)
 
         let payload = try JSONDecoder().decode(Response.self, from: data)
-        let items = ((payload.data?.isEmpty == false ? payload.data : payload.models) ?? [])
-            .compactMap { item -> LLMModelOption? in
-                guard let modelID = item.modelID, isLikelyChatModel(modelID) else { return nil }
-                return LLMModelOption(name: modelID, caption: item.caption)
+        let items = payload.models.compactMap { raw -> LLMModelOption? in
+                let modelID = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !modelID.isEmpty, isLikelyChatModel(modelID) else { return nil }
+                return LLMModelOption(name: modelID, caption: "服务商返回")
             }
 
         var unique = [String: LLMModelOption]()
@@ -167,19 +164,6 @@ struct LLMModelDiscovery {
         return result
     }
 
-    private static func modelsURL(_ rawBaseURL: String) -> URL? {
-        let trimmed = rawBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard var components = URLComponents(string: trimmed),
-              components.scheme != nil,
-              components.host != nil else { return nil }
-
-        let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        components.path = "/" + ([path, "models"].filter { !$0.isEmpty }.joined(separator: "/"))
-        components.query = nil
-        components.fragment = nil
-        return components.url
-    }
-
     private static func isLikelyChatModel(_ modelID: String) -> Bool {
         let value = modelID.lowercased()
         let nonChatMarkers = [
@@ -188,6 +172,28 @@ struct LLMModelDiscovery {
             "image-gen", "video-generation", "-asr", "-ocr"
         ]
         return !nonChatMarkers.contains { value.contains($0) }
+    }
+}
+
+struct LLMConnectionValidation {
+    private struct Response: Decodable {
+        let valid: Bool
+        let model: String
+    }
+
+    static func validate(baseURL: String, apiKey: String, model: String) async throws {
+        var request = URLRequest(url: APIClient().baseURL.appending(path: "/llm/validate"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 45
+        request.setValue(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "X-LLM-API-Key")
+        request.setValue(baseURL.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "X-LLM-Base-URL")
+        request.setValue(model.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "X-LLM-Model")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try APIClient.validate(response, data: data)
+        let payload = try JSONDecoder().decode(Response.self, from: data)
+        guard payload.valid, payload.model == model.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            throw URLError(.badServerResponse)
+        }
     }
 }
 
@@ -288,21 +294,26 @@ struct AskAPIService {
                         case "final":
                             guard let response = envelope.response else {
                                 throw StreamProtocolError(
-                                    message: "流式回答缺少最终响应。"
+                                    message: "流式回答缺少最终响应。",
+                                    code: "stream_missing_final"
                                 )
                             }
                             receivedFinal = true
                             continuation.yield(.final(response))
                         case "error":
                             throw StreamProtocolError(
-                                message: envelope.message ?? "流式回答暂时不可用。"
+                                message: envelope.message ?? "流式回答暂时不可用。",
+                                code: envelope.errorCode
                             )
                         default:
                             continue
                         }
                     }
                     if !receivedFinal {
-                        throw StreamProtocolError(message: "流式连接提前结束。")
+                        throw StreamProtocolError(
+                            message: "流式连接提前结束。",
+                            code: "stream_ended_early"
+                        )
                     }
                     continuation.finish()
                 } catch {

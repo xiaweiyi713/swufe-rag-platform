@@ -6,7 +6,7 @@ import SwiftUI
 struct LLMSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
-    @State private var activeConfig = LLMConfigStore.current()
+    @State private var activeConfig = LLMConfigStore.stored()
     @State private var statusMessage: String?
 
     private var filteredProviders: [LLMProviderPreset] {
@@ -90,12 +90,19 @@ private struct ProviderDetailView: View {
     @State private var revealsKey = false
     @State private var isTesting = false
     @State private var testMessage: String?
+    @State private var validatedSignature: String?
     @FocusState private var keyFieldFocused: Bool
 
     private var canSubmit: Bool {
         !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
             && !model.trimmingCharacters(in: .whitespaces).isEmpty
             && URL(string: baseURL)?.host != nil
+    }
+
+    private var configurationSignature: String {
+        [baseURL, model, apiKey]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .joined(separator: "\u{0}")
     }
 
     private var filteredModelOptions: [LLMModelOption] {
@@ -218,6 +225,7 @@ private struct ProviderDetailView: View {
         .safeAreaInset(edge: .bottom) {
             ActionBar(
                 canSubmit: canSubmit,
+                canSave: canSubmit && validatedSignature == configurationSignature,
                 isTesting: isTesting,
                 test: { Task { await testConnection() } },
                 save: save
@@ -253,6 +261,7 @@ private struct ProviderDetailView: View {
                 usesDiscoveredModels = savedModels != preset.models
             }
         }
+        validatedSignature = LLMConfigStore.isValidated ? configurationSignature : nil
     }
 
     private func scheduleModelDiscovery() {
@@ -290,27 +299,36 @@ private struct ProviderDetailView: View {
             if !discovered.contains(where: { $0.name == model }) {
                 model = discovered.first?.name ?? model
             }
-            modelDiscoveryMessage = "已识别 \(discovered.count) 个可用对话模型,已自动选中当前列表第一项。"
+            modelDiscoveryMessage = "已读取 \(discovered.count) 个候选模型；保存前仍需验证所选模型能实际回答。"
         } catch {
             modelDiscoveryMessage = "暂时无法读取模型列表：\(error.localizedDescription) 仍可手动填写模型名。"
         }
     }
 
-    /// 用 OpenAI-compatible 的 GET /models 验证端点与 Key 连通,并同步权限内模型。
+    /// 通过后端发起最小真实生成，并同步服务商返回的模型列表。
     private func testConnection() async {
         isTesting = true
         defer { isTesting = false }
+        validatedSignature = nil
         do {
-            let discovered = try await LLMModelDiscovery.fetch(
+            try await LLMConnectionValidation.validate(
                 baseURL: baseURL,
-                apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                apiKey: apiKey,
+                model: model
             )
-            modelOptions = discovered
-            usesDiscoveredModels = true
-            if !discovered.contains(where: { $0.name == model }) {
-                model = discovered.first?.name ?? model
+            do {
+                let discovered = try await LLMModelDiscovery.fetch(
+                    baseURL: baseURL,
+                    apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+                modelOptions = discovered
+                usesDiscoveredModels = true
+                modelDiscoveryMessage = "已读取 \(discovered.count) 个候选模型。"
+            } catch {
+                modelDiscoveryMessage = "真实回答已通过，但服务商没有提供可读的模型列表。"
             }
-            testMessage = "连接成功,Key 可用,已识别 \(discovered.count) 个模型。"
+            validatedSignature = configurationSignature
+            testMessage = "真实回答验证成功，当前 Key、端点和模型可以启用。"
         } catch let error as RecoverableAPIError {
             testMessage = "服务返回 \(error.statusCode):\(error.message)"
         } catch {
@@ -319,15 +337,20 @@ private struct ProviderDetailView: View {
     }
 
     private func save() {
+        guard validatedSignature == configurationSignature else {
+            testMessage = "请先点“验证并刷新”，确认所选模型能实际回答。"
+            return
+        }
         LLMConfigStore.save(
             providerID: preset.id,
             providerName: preset.name,
             baseURL: baseURL,
             model: model,
             apiKey: apiKey,
-            availableModels: modelOptions
+            availableModels: modelOptions,
+            validated: true
         )
-        activeConfig = LLMConfigStore.current()
+        activeConfig = LLMConfigStore.stored()
         // 钥匙串写入可能失败(如构建未签名),回读校验后再报成功。
         if activeConfig != nil {
             statusMessage = "已启用 \(preset.name) · \(model),下次提问生效。"
@@ -383,6 +406,7 @@ private struct APIKeyInputBox: View {
 
 private struct ActionBar: View {
     let canSubmit: Bool
+    let canSave: Bool
     let isTesting: Bool
     let test: () -> Void
     let save: () -> Void
@@ -404,8 +428,8 @@ private struct ActionBar: View {
                     .background(Theme.Color.accent, in: .capsule)
             }
             .buttonStyle(.plain)
-            .opacity(!canSubmit || isTesting ? 0.4 : 1)
-            .disabled(!canSubmit || isTesting)
+            .opacity(!canSave || isTesting ? 0.4 : 1)
+            .disabled(!canSave || isTesting)
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)

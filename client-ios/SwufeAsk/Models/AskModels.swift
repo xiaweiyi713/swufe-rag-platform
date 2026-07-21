@@ -18,6 +18,7 @@ struct AskStreamEnvelope: Decodable {
     let executionPath: String?
     let response: AskResponse?
     let errorType: String?
+    let errorCode: String?
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -28,6 +29,7 @@ struct AskStreamEnvelope: Decodable {
         case executionPath = "execution_path"
         case response
         case errorType = "error_type"
+        case errorCode = "error_code"
     }
 }
 

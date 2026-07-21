@@ -74,7 +74,7 @@ struct LLMProviderPreset: Identifiable, Hashable {
             subtitle: "DashScope 兼容模式,中文校园场景友好",
             icon: "cloud",
             baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            endpointNote: "阿里云 DashScope OpenAI 兼容模式端点。",
+            endpointNote: "普通按量 Key 可用默认端点；sk-ws- 业务空间 Key 必须改成百炼 API Key 页面显示的专属 OpenAI compatible 地址。",
             keyPlaceholder: "sk-...",
             models: [
                 LLMModelOption(name: "qwen3.7-plus", caption: "旗舰通用模型,教务问答推荐默认"),
