@@ -9,6 +9,39 @@ from typing import Protocol
 from contracts import GenerationUnavailableError
 
 
+def _provider_error(operation: str, exc: Exception) -> GenerationUnavailableError:
+    error_type = type(exc).__name__
+    if error_type == "AuthenticationError":
+        return GenerationUnavailableError(
+            "模型服务鉴权失败：API Key 无效，或 Key 与 Base URL/业务空间不匹配。",
+            code="provider_authentication_failed",
+        )
+    if error_type == "PermissionDeniedError":
+        return GenerationUnavailableError(
+            "模型服务拒绝访问：当前 Key 没有该模型或业务空间的权限。",
+            code="provider_permission_denied",
+        )
+    if error_type == "NotFoundError":
+        return GenerationUnavailableError(
+            "所选模型不存在，或当前服务端点没有提供该模型。",
+            code="provider_model_not_found",
+        )
+    if error_type == "RateLimitError":
+        return GenerationUnavailableError(
+            "模型服务当前请求过多或额度不足，请稍后重试。",
+            code="provider_rate_limited",
+        )
+    if error_type in {"APITimeoutError", "ConnectTimeout", "ReadTimeout"}:
+        return GenerationUnavailableError(
+            "模型服务连接超时，请检查网络或稍后重试。",
+            code="provider_timeout",
+        )
+    return GenerationUnavailableError(
+        f"LLM provider {operation} failed: {error_type}",
+        code="provider_unavailable",
+    )
+
+
 class LLMClient(Protocol):
     def generate(self, system_prompt: str, user_prompt: str) -> str: ...
 
@@ -130,9 +163,7 @@ class OpenAICompatibleClient:
         except GenerationUnavailableError:
             raise
         except Exception as exc:
-            raise GenerationUnavailableError(
-                f"LLM provider request failed: {type(exc).__name__}"
-            ) from exc
+            raise _provider_error("request", exc) from exc
         if not isinstance(content, str) or not content.strip():
             raise GenerationUnavailableError("LLM provider returned an empty response")
         return content.strip()
@@ -162,9 +193,7 @@ class OpenAICompatibleClient:
         except GenerationUnavailableError:
             raise
         except Exception as exc:
-            raise GenerationUnavailableError(
-                f"LLM provider stream failed: {type(exc).__name__}"
-            ) from exc
+            raise _provider_error("stream", exc) from exc
         finally:
             close = getattr(stream, "close", None)
             if callable(close):
@@ -172,6 +201,20 @@ class OpenAICompatibleClient:
         if not emitted:
             raise GenerationUnavailableError("LLM provider returned an empty stream")
 
+    def list_models(self) -> list[str]:
+        """Return model IDs exposed by an OpenAI-compatible provider."""
+        try:
+            response = self._get_client().models.list()
+            values = {
+                str(getattr(item, "id", "")).strip()
+                for item in getattr(response, "data", [])
+                if str(getattr(item, "id", "")).strip()
+            }
+        except GenerationUnavailableError:
+            raise
+        except Exception as exc:
+            raise _provider_error("model discovery", exc) from exc
+        return sorted(values, key=str.casefold)
+
 
 __all__ = ["LLMClient", "OpenAICompatibleClient", "StreamingLLMClient"]
-

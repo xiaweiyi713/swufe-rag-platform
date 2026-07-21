@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.llm_url_policy import validate_request_llm_base_url
+from app.llm_url_policy import DEFAULT_LLM_PROVIDER_HOSTS, validate_request_llm_base_url
 from app.server.application import create_app
 
 
@@ -16,6 +16,13 @@ PUBLIC_DNS_RESULT = [
 FAKE_DNS_RESULT = [
     (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.3.93", 443)),
 ]
+
+
+def test_default_hosts_cover_dashscope_subscription_endpoints() -> None:
+    assert {
+        "coding.dashscope.aliyuncs.com",
+        "token-plan.cn-beijing.maas.aliyuncs.com",
+    } <= DEFAULT_LLM_PROVIDER_HOSTS
 
 
 def test_approved_https_provider_with_public_dns_is_allowed() -> None:

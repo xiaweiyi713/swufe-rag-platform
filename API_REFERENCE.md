@@ -459,6 +459,8 @@ python -m app.server
 | `GET` | `/options` | JSON | 可选学院、年级、块数量、运行模式 |
 | `POST` | `/ask` | `AskResponse` | 路由优先的统一问答接口 |
 | `POST` | `/ask/stream` | NDJSON | 与 `/ask` 同请求契约的流式问答接口 |
+| `POST` | `/llm/models` | JSON | 通过后端安全代理读取 BYOK 端点的模型列表 |
+| `POST` | `/llm/validate` | JSON | 用最小真实生成验证 Key、Base URL 与模型组合 |
 | `GET` | `/source/{chunk_id}` | `KnowledgeChunk` | 可信原文回查 |
 | `GET` | `/docs` | HTML | FastAPI Swagger 文档 |
 | `GET` | `/openapi.json` | JSON | OpenAPI Schema |
@@ -479,6 +481,8 @@ python -m app.server
 正式请求禁止额外字段。
 
 BYOK 请求可使用 `X-LLM-API-Key`、`X-LLM-Base-URL` 和 `X-LLM-Model`。
+客户端保存启用前应调用 `POST /llm/validate`；仅成功读取 `/models`
+不能证明所选模型具有 Chat Completions 权限。
 自定义端点必须是端口 443 的 HTTPS 地址、命中服务端精确域名白名单，且 DNS
 解析结果全部为公网地址；私网、回环、链路本地和云元数据地址会返回 HTTP 400。
 

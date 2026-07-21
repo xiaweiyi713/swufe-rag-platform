@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
+from contracts import GenerationUnavailableError
 from generation.llm import OpenAICompatibleClient
 
 
@@ -36,7 +38,42 @@ class LLMAdapterTests(unittest.TestCase):
 
         self.assertTrue(client.trust_environment_proxy)
 
+    def test_authentication_failure_has_actionable_safe_code(self) -> None:
+        AuthenticationError = type("AuthenticationError", (RuntimeError,), {})
+
+        class Completions:
+            @staticmethod
+            def create(**_kwargs):
+                raise AuthenticationError("secret provider response")
+
+        client = OpenAICompatibleClient("qwen-plus", api_key="test")
+        client._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=Completions())
+        )
+
+        with self.assertRaises(GenerationUnavailableError) as raised:
+            client.generate("system", "user")
+
+        self.assertEqual(raised.exception.code, "provider_authentication_failed")
+        self.assertIn("API Key", str(raised.exception))
+        self.assertNotIn("secret provider response", str(raised.exception))
+
+    def test_model_listing_returns_sorted_unique_ids(self) -> None:
+        client = OpenAICompatibleClient("qwen-plus", api_key="test")
+        client._client = SimpleNamespace(
+            models=SimpleNamespace(
+                list=lambda: SimpleNamespace(
+                    data=[
+                        SimpleNamespace(id="qwen-plus"),
+                        SimpleNamespace(id="glm-5"),
+                        SimpleNamespace(id="qwen-plus"),
+                    ]
+                )
+            )
+        )
+
+        self.assertEqual(client.list_models(), ["glm-5", "qwen-plus"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

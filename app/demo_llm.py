@@ -169,12 +169,21 @@ class DemoGeneralClient:
             "hey",
         }:
             return "你好！有什么我可以帮你的吗？"
+        if re.match(r"^(你好|您好|嗨|hello|hi|hey)", greeting) and any(
+            marker in question for marker in ("介绍", "你是谁", "什么助手")
+        ):
+            return "你好！我是西财教务问答助手，可以帮你查询培养方案、推免、学籍和课程考核等学校规定。"
         if greeting in {"谢谢", "谢谢你", "多谢", "感谢", "感谢你"}:
             return "不客气！很高兴能帮到你。"
         if "注意力机制" in question:
             return "注意力机制会根据当前任务，为输入中的不同信息分配不同权重。"
         if "快速排序" in question:
             return "快速排序通过选取基准值，把序列划分为较小和较大的两部分后递归处理。"
+        if re.search(r"(?:什么是|解释).{0,8}RAG", question, re.I):
+            return "RAG（检索增强生成）会先从可信资料中检索相关证据，再让模型依据这些证据组织回答。"
         if "压力" in question or "心情" in question:
             return "听起来你最近有些辛苦。可以先把最急的一件事拆成很小的一步，我们慢慢来。"
-        return f"当然可以。你问的是：{question}"
+        return (
+            "当前未启用通用对话模型。我仍可以回答培养方案、推免、学籍管理、"
+            "课程考核等西财教务问题。"
+        )

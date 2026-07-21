@@ -15,10 +15,12 @@ DEFAULT_LLM_PROVIDER_HOSTS = frozenset(
         "api.moonshot.cn",
         "api.openai.com",
         "ark.cn-beijing.volces.com",
+        "coding.dashscope.aliyuncs.com",
         "dashscope.aliyuncs.com",
         "generativelanguage.googleapis.com",
         "open.bigmodel.cn",
         "openrouter.ai",
+        "token-plan.cn-beijing.maas.aliyuncs.com",
     }
 )
 

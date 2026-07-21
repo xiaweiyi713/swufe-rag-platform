@@ -16,12 +16,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from academic_audit import CurriculumAuditService
+from app.llm_url_policy import validate_request_llm_base_url
 from app.runtime_factory import build_local_query_runtime, build_request_query_runtime
 from app.server.capacity import QueryCapacityError, QueryCapacityLimiter
 from app.server.health import readiness_report, redis_status
 from app.server.ratelimit import EXEMPT_PATHS, RateLimiter, client_identity
 from app.server.web_search import format_web_context, search_web
 from contracts import ContractError, GenerationUnavailableError, KnowledgeBaseNotReadyError
+from generation.llm import OpenAICompatibleClient
 from swufe_rag.redis_support import (
     RedisUnavailableError,
     SessionLockTimeoutError,
@@ -94,6 +96,15 @@ class AskRequest(StrictModel):
     session_id: str | None = Field(default=None, min_length=1, max_length=128)
     deep_thinking: bool = False
     web_search: bool = False
+
+
+class LLMModelsResponse(StrictModel):
+    models: list[str]
+
+
+class LLMValidationResponse(StrictModel):
+    valid: bool
+    model: str
 
 
 class CompletedCourseRequest(StrictModel):
@@ -489,6 +500,74 @@ def create_app(
         except (ContractError, KnowledgeBaseNotReadyError, FileNotFoundError) as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    def provider_client(
+        api_key: str | None,
+        base_url: str | None,
+        model: str | None,
+    ) -> OpenAICompatibleClient:
+        if not isinstance(api_key, str) or not api_key.strip():
+            raise HTTPException(status_code=400, detail="X-LLM-API-Key must not be blank")
+        clean_base_url = validate_request_llm_base_url(base_url)
+        if clean_base_url is None:
+            raise HTTPException(status_code=400, detail="X-LLM-Base-URL is required")
+        clean_model = model.strip() if isinstance(model, str) else ""
+        if not clean_model:
+            clean_model = "provider-model-discovery"
+        return OpenAICompatibleClient(
+            clean_model,
+            base_url=clean_base_url,
+            api_key=api_key.strip(),
+            max_retries=0,
+            timeout_seconds=20,
+        )
+
+    def provider_http_error(exc: GenerationUnavailableError) -> HTTPException:
+        code = getattr(exc, "code", "provider_unavailable")
+        status = {
+            "provider_authentication_failed": 401,
+            "provider_permission_denied": 403,
+            "provider_model_not_found": 404,
+            "provider_rate_limited": 429,
+            "provider_timeout": 504,
+        }.get(code, 502)
+        return HTTPException(
+            status_code=status,
+            detail={"code": code, "message": str(exc)},
+        )
+
+    @product.post("/llm/models", response_model=LLMModelsResponse)
+    def llm_models(
+        x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key", max_length=512),
+        x_llm_base_url: str | None = Header(default=None, alias="X-LLM-Base-URL", max_length=512),
+    ):
+        try:
+            client = provider_client(x_llm_api_key, x_llm_base_url, None)
+            return LLMModelsResponse(models=client.list_models())
+        except GenerationUnavailableError as exc:
+            raise provider_http_error(exc) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @product.post("/llm/validate", response_model=LLMValidationResponse)
+    def llm_validate(
+        x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key", max_length=512),
+        x_llm_base_url: str | None = Header(default=None, alias="X-LLM-Base-URL", max_length=512),
+        x_llm_model: str | None = Header(default=None, alias="X-LLM-Model", max_length=256),
+    ):
+        try:
+            client = provider_client(x_llm_api_key, x_llm_base_url, x_llm_model)
+            if x_llm_model is None or not x_llm_model.strip():
+                raise HTTPException(status_code=400, detail="X-LLM-Model is required")
+            client.generate(
+                "你是模型连接测试。",
+                "只回复两个大写英文字母 OK，不要输出其他内容。",
+            )
+            return LLMValidationResponse(valid=True, model=x_llm_model.strip())
+        except GenerationUnavailableError as exc:
+            raise provider_http_error(exc) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @product.post("/ask")
     def ask(
         request: AskRequest,
@@ -862,6 +941,7 @@ def create_app(
                         "type": "error",
                         "message": str(exc),
                         "error_type": type(exc).__name__,
+                        "error_code": getattr(exc, "code", None),
                     }
                 )
             except QueryCapacityError as exc:

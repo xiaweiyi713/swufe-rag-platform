@@ -16,7 +16,7 @@ from swufe_rag.api import retrieve, answer
 - `answer(query, chunks) -> dict`
 - B/C 返回对象不附加 HTTP 状态、耗时或调试字段。
 - 调试 API 的扩展字段只存在于 `/api/debug`，不改变 B/C 契约。
-- 正式 HTTP 入口为 `POST /ask`、`POST /ask/stream`、`GET /source/{chunk_id}` 与 `GET /options`，生产模式不会自动加载 fixture。
+- 正式 HTTP 入口为 `POST /ask`、`POST /ask/stream`、`POST /llm/models`、`POST /llm/validate`、`GET /source/{chunk_id}` 与 `GET /options`，生产模式不会自动加载 fixture。
 
 ## 快速体验 Demo
 

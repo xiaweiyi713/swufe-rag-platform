@@ -42,6 +42,10 @@ class KnowledgeBaseNotReadyError(RuntimeError):
 class GenerationUnavailableError(RuntimeError):
     """Raised when the configured LLM provider cannot generate a response."""
 
+    def __init__(self, message: str, *, code: str = "provider_unavailable") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 class CitationValidationError(ValueError):
     """Raised internally when an answer contains unsupported citations."""
@@ -253,4 +257,3 @@ def validate_answer_result(raw: Any) -> AnswerResult:
             raise ContractError(f"citation {index} must be a dictionary")
         _require_exact_keys(citation, CITATION_FIELDS)
     return raw  # type: ignore[return-value]
-
