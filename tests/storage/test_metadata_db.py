@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 import sqlite3
+import tempfile
 import unittest
 
-from retrieval.index import load_chunks
+from retrieval.index import file_sha256, load_chunks
 from storage.metadata_db import MetadataDB, _chunk_page_url
 
 
@@ -20,6 +21,18 @@ class MetadataDBTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.db.close()
+
+    def test_opening_current_schema_database_is_byte_stable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metadata.sqlite3"
+            first = MetadataDB(path)
+            first.close()
+            initial_hash = file_sha256(path)
+
+            second = MetadataDB(path)
+            second.close()
+
+            self.assertEqual(file_sha256(path), initial_hash)
 
     def test_sql_scope_is_applied_before_embedding_rows_are_returned(self) -> None:
         rows = self.db.candidate_rows(

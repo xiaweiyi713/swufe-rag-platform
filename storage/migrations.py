@@ -73,11 +73,12 @@ def apply_migrations(connection: sqlite3.Connection) -> None:
         raise RuntimeError(
             f"unsupported metadata schema version: {row[0]} (expected {SCHEMA_VERSION})"
         )
-    connection.execute(
-        "INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)",
-        (str(SCHEMA_VERSION),),
-    )
-    connection.commit()
+    if row is None:
+        connection.execute(
+            "INSERT INTO schema_meta(key, value) VALUES('schema_version', ?)",
+            (str(SCHEMA_VERSION),),
+        )
+        connection.commit()
 
 
 __all__ = ["SCHEMA_VERSION", "SCHEMA_SQL", "apply_migrations"]

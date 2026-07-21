@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "bundle_name": "swufe-rag-runtime-data",
-  "generated_at": "2026-07-20T15:34:01.374475+00:00",
+  "generated_at": "2026-07-21T02:57:26.161727+00:00",
   "artifact_contract": {
     "model_name": "BAAI/bge-large-zh-v1.5",
     "dimension": 1024,
@@ -22,7 +22,7 @@
     {
       "path": "data/metadata.sqlite3",
       "size": 64409600,
-      "sha256": "de89b171a997a3345963e38b4281f9c0d622ed418a7935474e324311fba14bd7"
+      "sha256": "c82bf6af18546a5bd1092a9da11b2e7c8a977db518e197b91f7431d23cee9475"
     },
     {
       "path": "data/curriculum_catalog_v2.json",
