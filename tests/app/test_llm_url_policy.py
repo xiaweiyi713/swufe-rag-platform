@@ -13,6 +13,9 @@ from app.server.application import create_app
 PUBLIC_DNS_RESULT = [
     (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443)),
 ]
+FAKE_DNS_RESULT = [
+    (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.3.93", 443)),
+]
 
 
 def test_approved_https_provider_with_public_dns_is_allowed() -> None:
@@ -21,6 +24,56 @@ def test_approved_https_provider_with_public_dns_is_allowed() -> None:
             validate_request_llm_base_url("https://api.deepseek.com/v1")
             == "https://api.deepseek.com/v1"
         )
+
+
+def test_fake_dns_requires_explicit_local_opt_in() -> None:
+    with (
+        patch.dict("os.environ", {"SWUFE_RAG_ALLOW_FAKE_DNS": "0"}),
+        patch("app.llm_url_policy.socket.getaddrinfo", return_value=FAKE_DNS_RESULT),
+        pytest.raises(ValueError, match="restricted network address"),
+    ):
+        validate_request_llm_base_url(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        )
+
+
+def test_approved_provider_accepts_fake_dns_with_explicit_local_opt_in() -> None:
+    with (
+        patch.dict("os.environ", {"SWUFE_RAG_ALLOW_FAKE_DNS": "1"}),
+        patch("app.llm_url_policy.socket.getaddrinfo", return_value=FAKE_DNS_RESULT),
+    ):
+        assert validate_request_llm_base_url(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        ) == "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+
+@pytest.mark.parametrize("resolved_ip", ["10.0.0.8", "169.254.169.254"])
+def test_fake_dns_opt_in_does_not_allow_private_or_metadata_addresses(
+    resolved_ip: str,
+) -> None:
+    result = [
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", (resolved_ip, 443)),
+    ]
+    with (
+        patch.dict("os.environ", {"SWUFE_RAG_ALLOW_FAKE_DNS": "1"}),
+        patch("app.llm_url_policy.socket.getaddrinfo", return_value=result),
+        pytest.raises(ValueError, match="restricted network address"),
+    ):
+        validate_request_llm_base_url("https://api.deepseek.com/v1")
+
+
+def test_fake_dns_opt_in_never_allows_reserved_ip_literals() -> None:
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "SWUFE_RAG_ALLOW_FAKE_DNS": "1",
+                "SWUFE_RAG_LLM_ALLOWED_HOSTS": "198.18.3.93",
+            },
+        ),
+        pytest.raises(ValueError, match="restricted network address"),
+    ):
+        validate_request_llm_base_url("https://198.18.3.93/v1")
 
 
 @pytest.mark.parametrize(

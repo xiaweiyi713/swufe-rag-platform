@@ -52,6 +52,10 @@ services:
       SWUFE_RAG_EAGER_WARMUP: "${SWUFE_RAG_EAGER_WARMUP:-1}"
       # 在 nginx 后面:信任代理头,限流才能拿到真实客户端 IP。
       SWUFE_RAG_TRUST_PROXY: "${SWUFE_RAG_TRUST_PROXY:-0}"
+      SWUFE_RAG_LLM_ALLOWED_HOSTS: "${SWUFE_RAG_LLM_ALLOWED_HOSTS:-}"
+      # Clash 等代理的 Fake-IP 模式会把公网域名解析到 198.18/15；仅本机
+      # 联调显式开启，生产保持 0。
+      SWUFE_RAG_ALLOW_FAKE_DNS: "${SWUFE_RAG_ALLOW_FAKE_DNS:-0}"
 
       # --- Redis(会话外置 + 答案缓存 + 限流计数)---
       SWUFE_RAG_REDIS_URL: "redis://redis:6379/0"

@@ -138,6 +138,7 @@ python -m app.server
 | `SWUFE_RAG_REDIS_URL` | 空 | 空时使用进程内会话且禁用答案缓存；支持 `redis://`/`rediss://` |
 | `SWUFE_RAG_REQUIRE_REDIS` | `0` | 设为 `1` 时 Redis 故障阻止就绪和问答；workers>1 时自动强制 |
 | `SWUFE_RAG_WORKERS` | `1` | HTTP worker 数；大于 1 时必须使用 Redis |
+| `SWUFE_RAG_ALLOW_FAKE_DNS` | `0` | 仅本机 Clash/Fake-IP 联调设为 `1`；生产保持 `0` |
 | `SWUFE_RAG_SESSION_TTL` | `259200` | 会话 TTL，秒 |
 | `SWUFE_RAG_ANSWER_CACHE_TTL` | `86400` | 已验证学校答案 TTL，秒 |
 | `SWUFE_RAG_SESSION_LOCK_TTL` | `180` | 同一会话分布式锁租期，秒；应长于最慢请求 |

@@ -843,6 +843,7 @@ original_title,corrected_title,decision,reason
 | `OPENAI_API_KEY` | 空 | DeepSeek/其他 OpenAI 兼容服务密钥 |
 | `OPENAI_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容服务地址 |
 | `SWUFE_RAG_LLM_ALLOWED_HOSTS` | 空 | 追加允许的 BYOK 厂商精确域名，逗号分隔 |
+| `SWUFE_RAG_ALLOW_FAKE_DNS` | `0` | 本机代理 Fake-IP 兼容；仅允许白名单 HTTPS 域名解析到 `198.18.0.0/15`，生产保持关闭 |
 | `OLLAMA_API_KEY` | `ollama` | Ollama 占位密钥 |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | 本地 Ollama OpenAI 兼容地址 |
 | `SWUFE_RAG_MODE` | `demo` | 调试服务模式：`demo` 或 `review` |

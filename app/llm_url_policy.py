@@ -22,6 +22,8 @@ DEFAULT_LLM_PROVIDER_HOSTS = frozenset(
     }
 )
 
+_FAKE_DNS_NETWORK = ipaddress.ip_network("198.18.0.0/15")
+
 
 def _normalize_hostname(value: str) -> str:
     candidate = value.strip().lower().rstrip(".")
@@ -41,6 +43,25 @@ def allowed_llm_provider_hosts() -> frozenset[str]:
         if value.strip()
     }
     return DEFAULT_LLM_PROVIDER_HOSTS | extra
+
+
+def _allow_fake_dns() -> bool:
+    return os.getenv("SWUFE_RAG_ALLOW_FAKE_DNS", "").strip() == "1"
+
+
+def _address_allowed(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    *,
+    hostname_is_literal: bool,
+) -> bool:
+    if address.is_global:
+        return True
+    return bool(
+        not hostname_is_literal
+        and _allow_fake_dns()
+        and isinstance(address, ipaddress.IPv4Address)
+        and address in _FAKE_DNS_NETWORK
+    )
 
 
 def _resolved_addresses(hostname: str, port: int) -> set[ipaddress.IPv4Address | ipaddress.IPv6Address]:
@@ -96,14 +117,19 @@ def validate_request_llm_base_url(base_url: str | None) -> str | None:
     if hostname not in allowed_llm_provider_hosts():
         raise ValueError("X-LLM-Base-URL provider host is not allowed")
 
+    hostname_is_literal = False
     try:
         literal = ipaddress.ip_address(hostname)
     except ValueError:
         addresses = _resolved_addresses(hostname, port)
     else:
+        hostname_is_literal = True
         addresses = {literal}
 
-    if any(not address.is_global for address in addresses):
+    if any(
+        not _address_allowed(address, hostname_is_literal=hostname_is_literal)
+        for address in addresses
+    ):
         raise ValueError("X-LLM-Base-URL resolves to a restricted network address")
     return clean
 
