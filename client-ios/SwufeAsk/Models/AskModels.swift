@@ -6,6 +6,7 @@ enum AskStreamEvent {
     case metadata(mode: String?, executionPath: String?)
     case status(stage: String?, message: String?)
     case delta(String)
+    case reset(String)
     case final(AskResponse)
 }
 

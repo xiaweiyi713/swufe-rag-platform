@@ -291,6 +291,8 @@ struct AskAPIService {
                             if let text = envelope.text, !text.isEmpty {
                                 continuation.yield(.delta(text))
                             }
+                        case "reset":
+                            continuation.yield(.reset(envelope.text ?? ""))
                         case "final":
                             guard let response = envelope.response else {
                                 throw StreamProtocolError(

@@ -20,6 +20,12 @@ private actor StreamRevealBuffer {
         inputFinished = true
     }
 
+    func reset() {
+        characters.removeAll(keepingCapacity: true)
+        readIndex = 0
+        inputFinished = false
+    }
+
     func nextStep() -> (step: Step?, isFinished: Bool) {
         let backlog = characters.count - readIndex
         guard backlog > 0 else {
@@ -400,6 +406,10 @@ final class ChatViewModel {
                     case let .delta(fragment):
                         receivedDelta = receivedDelta || !fragment.isEmpty
                         await revealBuffer.enqueue(fragment)
+                    case let .reset(replacement):
+                        await revealBuffer.reset()
+                        messages[index].text = replacement
+                        receivedDelta = !replacement.isEmpty
                     case let .final(response):
                         finalResponse = response
                         networkCompletedAt = performanceClock.now
