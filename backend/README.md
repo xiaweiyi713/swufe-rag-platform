@@ -38,6 +38,35 @@ python -m eval.demo_eval
 
 当前 Demo 基线：Recall@5 为 100%，范围污染为 0，20 题拒答准确率为 100%。这些指标仅证明程序与契约在模拟数据上可运行，不能替代真实教务文件验收。
 
+## 真实数据端到端复现
+
+### Tier 1：仓库内真实小切片
+
+`repro/tier1/` 包含计智学院 2023 级五份公开培养方案的 482 个真实知识块、来源登记和 SHA-256 清单。它使用固定的 `BAAI/bge-large-zh-v1.5` revision 重建索引，不需要 LLM Key：
+
+```bash
+# 国内网络可先执行：export HF_ENDPOINT=https://hf-mirror.com
+python -m scripts.reproduce_tier1 build --clean
+python -m scripts.reproduce_tier1 verify
+python -m scripts.reproduce_tier1 query "人工智能专业2023级毕业需要多少学分？"
+python -m scripts.reproduce_tier1 serve
+```
+
+`build` 从纯文本重新生成 FAISS 与 SQLite；`verify` 用真实问题检查范围过滤和权威文档命中；`query` 使用本地确定性回答验证来源绑定与引用，不会调用外部模型。
+
+### Tier 2：完整运行数据
+
+完整包发布在 [Hugging Face Dataset](https://huggingface.co/datasets/xiaweiyi/swufe-rag-runtime-data)，[GitHub Release](https://github.com/xiaweiyi713/swufe-rag-platform/releases/tag/data-2026-07-21) 是备用源。下载器会在安装前验证归档和包内每个文件：
+
+```bash
+python -m scripts.fetch_runtime_data
+python -m scripts.verify_migration_bundle
+```
+
+若需要指定源，可传 `--source huggingface` 或 `--source github`。发布版本、模型 revision、下载 URL 和归档摘要固定在 [`repro/releases.json`](repro/releases.json)；不需要从聊天记录或网盘链接寻找运行文件。
+
+混合检索、结构化培养方案查询、引用绑定和事实门均可无 Key 验证；只有可选的自然语言生成采用 BYOK。
+
 ## 模块 A 与真实数据审阅
 
 首批知识库包含 18 份校级本科制度/操作文件、计算机与人工智能学院 2023 级推免细则，以及 2024/2025 级计算机类培养方案。原始文件和 OCR 旁车只保存在本地 Git 忽略区；来源登记、审批决定和派生知识块进入仓库。

@@ -4,6 +4,8 @@ paths:
 
 retrieval:
   embed_model: BAAI/bge-large-zh-v1.5
+  # Exact public model snapshot used by reproducible index builds.
+  embed_revision: 79e7739b6ab944e86d6171e44d24c997fc1e0116
   query_prefix: "为这个句子生成表示以用于检索相关文章："
   top_k: 5
   # Keep the full evidence window: some policy questions need an

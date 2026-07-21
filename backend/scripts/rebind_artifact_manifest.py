@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -10,6 +11,9 @@ from retrieval.index import file_sha256
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--model-revision", default=None)
+    args = parser.parse_args()
     chunks_path = Path("data/chunks.jsonl")
     stored_path = Path("artifacts/chunks.json")
     manifest_path = Path("artifacts/manifest.json")
@@ -27,6 +31,8 @@ def main() -> None:
     if manifest.get("chunk_count") != len(current):
         raise RuntimeError("artifact manifest row count does not match stored chunks")
     manifest["chunks_sha256"] = file_sha256(chunks_path)
+    if args.model_revision:
+        manifest["model_revision"] = args.model_revision
     temporary = manifest_path.with_suffix(".json.tmp")
     temporary.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

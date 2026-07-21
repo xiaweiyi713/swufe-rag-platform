@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public BYOK HTTP header name, not a credential"
+regexTarget = "line"
+regexes = [
+  '''alias="X-LLM-API-Key"''',
+]

@@ -156,6 +156,7 @@ def build_index(
     manifest = {
         "contract_version": CONTRACT_VERSION,
         "model_name": encoder.model_name,
+        "model_revision": encoder.model_revision,
         "dimension": encoder.dimension,
         "chunk_count": len(chunks),
         "chunks_sha256": file_sha256(source),
@@ -199,6 +200,11 @@ def load_index(
         raise KnowledgeBaseNotReadyError("artifact contract version is incompatible")
     if manifest.get("model_name") != encoder.model_name:
         raise KnowledgeBaseNotReadyError("artifact embedding model does not match configuration")
+    stored_revision = manifest.get("model_revision")
+    if stored_revision is not None and stored_revision != encoder.model_revision:
+        raise KnowledgeBaseNotReadyError(
+            "artifact embedding model revision does not match configuration"
+        )
     if manifest.get("dimension") != encoder.dimension:
         raise KnowledgeBaseNotReadyError("artifact embedding dimension does not match encoder")
 
@@ -256,6 +262,7 @@ def main() -> None:
     parser.add_argument("--chunks", default="data/chunks.jsonl")
     parser.add_argument("--artifacts", default="artifacts")
     parser.add_argument("--model", default="BAAI/bge-large-zh-v1.5")
+    parser.add_argument("--revision", default=None)
     parser.add_argument("--device", default=None)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--fp32", action="store_true")
@@ -265,6 +272,7 @@ def main() -> None:
         args.artifacts,
         BGEEncoder(
             args.model,
+            revision=args.revision,
             device=args.device,
             batch_size=args.batch_size,
             use_fp16=False if args.fp32 else None,
@@ -275,4 +283,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

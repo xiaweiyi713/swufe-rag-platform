@@ -40,30 +40,31 @@
 
 ### 2.1 准备运行数据包
 
-`data/metadata.sqlite3`、`data/academic_v2.sqlite3` 和 `artifacts/` 不进入
-Git；单纯克隆仓库不能启动正式服务。发布者在已验证的构建机执行：
+`data/metadata.sqlite3`、`data/academic_v2.sqlite3` 和 `artifacts/` 不直接进入
+Git。新服务器克隆代码并安装依赖后，执行一条命令即可从固定发布源下载、
+校验并安装与代码配套的完整运行数据：
 
 ```bash
-python -m scripts.build_data_bundle_manifest \
-  --archive release/swufe-rag-runtime-data-20260720.tar.gz
+python -m scripts.fetch_runtime_data
 python -m scripts.verify_migration_bundle
 ```
 
-命令会生成归档、同名 `.sha256` 文件，以及提交到代码仓库的
-`deploy/data-bundle.manifest.json`。归档和 `.sha256` 应上传到受控对象存储或
-Release 附件，不能提交进 Git。
+下载器按 `repro/releases.json` 自动尝试 Hugging Face Dataset 和 GitHub
+Release，先核验归档 SHA-256，再拒绝路径穿越/额外文件，逐文件核验清单，
+所有文件准备完成后再逐文件原子替换到运行目录。默认还会执行 SQLite 与 FAISS/NumPy 语义检查；任一步
+失败都不会把半成品当作可运行数据安装。
 
-新服务器克隆代码后，先下载与当前提交配套的两个文件，再执行：
+需要强制指定镜像或只做安装前的轻量校验时：
 
 ```bash
-sha256sum -c swufe-rag-runtime-data-20260720.tar.gz.sha256
-tar -xzf swufe-rag-runtime-data-20260720.tar.gz -C .
-python -m scripts.verify_migration_bundle --checksums-only
+python -m scripts.fetch_runtime_data --source huggingface
+python -m scripts.fetch_runtime_data --source github --checksums-only
 ```
 
-安装项目依赖后再运行一次不带 `--checksums-only` 的完整验证；它会额外执行
-SQLite `quick_check`、表行数与关键培养方案事实检查，并读取 NumPy/FAISS
-验证向量维度和索引行数。任一步失败都不要启动或重启生产容器。
+发布者生成新版本时执行 `python -m scripts.build_data_bundle_manifest
+--archive release/<name>.tar.gz`，上传归档和 `.sha256` 后再更新
+`repro/releases.json`。模型权重不随数据包重复发布，固定模型 ID 与 revision
+也记录在该清单中。
 
 ### 2.2 启动服务
 
@@ -96,10 +97,20 @@ docker compose --profile production logs -f app
 tar czf hf-cache.tgz -C ~/.cache huggingface
 scp hf-cache.tgz user@server:~/ && ssh user@server 'tar xzf hf-cache.tgz -C ~/.cache'
 
-# 方式二:服务器上从 ModelScope 拉(国内直连稳定)
+# 方式二:服务器上从 ModelScope 拉(国内直连稳定；严格 revision 复现优先用 HF Mirror)
 pip install modelscope
-python -c "from modelscope import snapshot_download; snapshot_download('AI-ModelScope/bge-large-zh-v1.5')"
+modelscope download --model AI-ModelScope/bge-large-zh-v1.5 \
+  --local_dir "$HOME/.cache/modelscope/bge-large-zh-v1.5"
+export SWUFE_RAG_EMBED_MODEL_PATH="$HOME/.cache/modelscope/bge-large-zh-v1.5"
+
+# 方式三:HF 国内镜像，并固定与索引一致的 revision
+HF_ENDPOINT=https://hf-mirror.com hf download BAAI/bge-large-zh-v1.5 \
+  --revision 79e7739b6ab944e86d6171e44d24c997fc1e0116
 ```
+
+`SWUFE_RAG_EMBED_MODEL_PATH` 只改变模型从哪里加载；索引契约仍使用固定的
+`BAAI/bge-large-zh-v1.5` ID 与 revision，因此不会因为本地目录名不同而误判
+索引不兼容。
 
 ### 想要完全自包含的镜像(烤模型进去)
 

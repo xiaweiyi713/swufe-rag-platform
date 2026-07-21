@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "version": "2026-07-21",
+  "model": {
+    "id": "BAAI/bge-large-zh-v1.5",
+    "revision": "79e7739b6ab944e86d6171e44d24c997fc1e0116",
+    "dimension": 1024
+  },
+  "archive": {
+    "name": "swufe-rag-runtime-data-20260721.tar.gz",
+    "size": 537956303,
+    "sha256": "b4cb04c3f3e018907f39e405271d676fbdb16d7d4deec86ae195da1ab8c96934",
+    "manifest_sha256": "6855eb96ca480b3f9954e25b58c46248a3af416d03836409e7be40408e77b2c2",
+    "sources": {
+      "huggingface": "https://huggingface.co/datasets/xiaweiyi/swufe-rag-runtime-data/resolve/385bcecf6b921676077d660a4a56a3679854fb7a/swufe-rag-runtime-data-20260721.tar.gz?download=true",
+      "github": "https://github.com/xiaweiyi713/swufe-rag-platform/releases/download/data-2026-07-21/swufe-rag-runtime-data-20260721.tar.gz"
+    }
+  }
+}

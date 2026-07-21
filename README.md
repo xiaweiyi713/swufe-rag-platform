@@ -59,9 +59,9 @@ flowchart LR
 
 详细接口见 [`backend/API_REFERENCE.md`](backend/API_REFERENCE.md)，部署与运维见 [`backend/RUNBOOK.md`](backend/RUNBOOK.md) 和 [`backend/deploy/README.md`](backend/deploy/README.md)。
 
-## 快速开始
+## 三层复现路径
 
-### 1. 运行轻量 Demo
+### Tier 0：零下载 fixture Demo
 
 轻量 Demo 使用确定性 fixture，不下载向量模型、不调用付费 LLM，适合先验证 API 和页面：
 
@@ -77,7 +77,36 @@ python -m app.debug_server
 
 浏览器打开 <http://127.0.0.1:8000>。
 
-### 2. 运行后端测试
+### Tier 1：从真实公开文本重建小型 RAG
+
+仓库直接包含计智学院 2023 级五份真实培养方案的 482 个知识块。下面的命令会按固定的公开模型 revision 重建 FAISS 和来源数据库；不需要 LLM Key，CPU 也可完成：
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# 国内网络可在命令前加：export HF_ENDPOINT=https://hf-mirror.com
+python -m scripts.reproduce_tier1 build --clean
+python -m scripts.reproduce_tier1 verify
+python -m scripts.reproduce_tier1 query "计算机科学与技术专业2023级毕业需要多少学分？"
+```
+
+模型固定为 `BAAI/bge-large-zh-v1.5@79e7739b6ab944e86d6171e44d24c997fc1e0116`，不会把约 1.3 GB 的公开模型重复上传到本项目。切片构成、输入摘要和官方 URL 见 [`backend/repro/tier1/`](backend/repro/tier1/)。
+
+### Tier 2：一条命令恢复完整运行数据
+
+完整的 69,583 个知识块、SQLite 和 FAISS/NumPy 索引发布在 [Hugging Face Dataset](https://huggingface.co/datasets/xiaweiyi/swufe-rag-runtime-data)，并由 [GitHub Release](https://github.com/xiaweiyi713/swufe-rag-platform/releases/tag/data-2026-07-21) 提供备用下载源：
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m scripts.fetch_runtime_data
+python -m scripts.verify_migration_bundle
+```
+
+下载器会自动尝试两个发布源，先校验归档 SHA-256，再进行安全解包、逐文件校验、SQLite 完整性检查以及索引维度/行数检查；所有文件先在临时区准备完成，再逐文件原子替换到运行目录。
+
+### 运行后端测试
 
 ```bash
 cd backend
@@ -87,7 +116,7 @@ python -m scripts.rebuild_academic_database_v2
 python -m pytest -q
 ```
 
-### 3. 运行 iOS 客户端
+### 运行 iOS 客户端
 
 需要 macOS、Xcode 和 XcodeGen：
 
@@ -102,13 +131,11 @@ open SwufeAsk.xcodeproj
 
 ## 生产运行
 
-生产模式需要与当前代码版本匹配的运行数据包，其中包含 `metadata.sqlite3`、`academic_v2.sqlite3` 和 `artifacts/`。仅克隆 Git 仓库不足以启动正式 RAG 服务。
-
-准备好数据包后：
+生产模式需要与当前代码版本匹配的 `metadata.sqlite3`、`academic_v2.sqlite3` 和 `artifacts/`。Git 不保存这些可再生成的大文件，但仓库现在提供了可校验的一键恢复路径：
 
 ```bash
 cd backend
-python -m scripts.verify_migration_bundle --checksums-only
+python -m scripts.fetch_runtime_data
 cp deploy/.env.example .env
 docker compose --profile production up -d --build
 
@@ -136,11 +163,14 @@ python build_chunks.py
 
 ## 数据、密钥与安全
 
+- 混合检索、SQL 学业审计、来源绑定、引用和事实校验均不需要 LLM Key；Key 只用于可选的自然语言生成，并采用 BYOK。
 - 不要提交 `.env`、API Key、TLS 私钥、模型缓存、Xcode 构建目录或爬虫运行状态。
 - iOS 的 LLM Key 保存在系统 Keychain；后端只按请求使用 BYOK Key，不落盘、不写日志。
 - 学校事实无有效证据时必须拒答，不允许回退到通用模型补写校内事实。
 - 数据与索引发布必须通过 SHA-256 清单和 `verify_migration_bundle` 校验。
 - 爬虫只处理公开页面，保留限速，不抓取登录后内容。
+
+语料来源和再发布边界见 [`DATA_PROVENANCE.md`](DATA_PROVENANCE.md)。本项目不包含学生成绩、登录后内容、账号、模型权重或个人隐私数据。
 
 ## 开发约定
 

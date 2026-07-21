@@ -34,7 +34,13 @@ def build_manifest(root: Path) -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifact_contract": {
             key: artifact_contract.get(key)
-            for key in ("model_name", "dimension", "chunk_count", "chunks_sha256")
+            for key in (
+                "model_name",
+                "model_revision",
+                "dimension",
+                "chunk_count",
+                "chunks_sha256",
+            )
         },
         "files": entries,
     }

@@ -110,9 +110,17 @@ def scalar(connection: sqlite3.Connection, sql: str, params: tuple = ()) -> int:
     return int(value[0]) if value else 0
 
 
-def verify_semantics(root: Path) -> tuple[list[str], dict[str, int]]:
+def verify_semantics(
+    root: Path,
+    *,
+    require_repository_files: bool = True,
+) -> tuple[list[str], dict[str, int]]:
     errors: list[str] = []
-    required = (*REQUIRED_REPOSITORY_FILES, *BUNDLE_FILES)
+    required = (
+        (*REQUIRED_REPOSITORY_FILES, *BUNDLE_FILES)
+        if require_repository_files
+        else BUNDLE_FILES
+    )
     missing = [
         relative
         for relative in required

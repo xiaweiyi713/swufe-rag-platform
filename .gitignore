@@ -39,6 +39,9 @@ swufe-crawler/backup/
 swufe-crawler/output/
 swufe-crawler/state/
 
+# Reproducibility builds generated from committed Tier 1 source data
+backend/repro/tier1/runtime/
+
 # Xcode and Swift build output
 client-ios/build*/
 client-ios/DerivedData/

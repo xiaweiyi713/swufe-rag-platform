@@ -32,6 +32,10 @@ jobs:
         run: python -m compileall -q contracts.py retrieval generation app eval swufe_rag academic_audit storage scripts tests
       - name: Build generated academic database
         run: python -m scripts.rebuild_academic_database_v2
+      - name: Verify deterministic Tier 1 source slice
+        run: |
+          python -m scripts.build_tier1_dataset
+          git diff --exit-code -- repro/tier1/chunks.jsonl repro/tier1/sources.csv repro/tier1/manifest.json
       - name: Run full pytest suite
         env:
           PYTHONUTF8: "1"

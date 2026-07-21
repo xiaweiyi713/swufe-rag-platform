@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "tier": "tier1-real-slice",
+  "selection": {
+    "college": "计算机与人工智能学院",
+    "cohort": "2023",
+    "title_contains": "本科人才培养方案",
+    "status": "现行"
+  },
+  "model": {
+    "id": "BAAI/bge-large-zh-v1.5",
+    "revision": "79e7739b6ab944e86d6171e44d24c997fc1e0116",
+    "dimension": 1024
+  },
+  "upstream": {
+    "chunks_sha256": "9e1981104eba2de2e9429ccf8035cd3ed15d0b12aabaf6ab1abf35f43057a788",
+    "sources_sha256": "74749a7bd78ab420a13afe77332dde0c69aceaa1a3b38d71f82aeecc4dd01b60"
+  },
+  "files": {
+    "chunks.jsonl": {
+      "size": 543514,
+      "sha256": "5f6fc1ed637335a7b77d6b598d9bacc4193658ccccac5a0db5724f28bfe65e2e",
+      "rows": 482
+    },
+    "sources.csv": {
+      "size": 2032,
+      "sha256": "a59a51c2f1d0d920c06bfdbd70c9faf842f0bf78d6d2687babcbdaf6b7a3a83d",
+      "rows": 5
+    }
+  },
+  "documents": [
+    {
+      "doc_title": "信息管理与信息系统专业2023级本科人才培养方案",
+      "chunks": 94,
+      "page_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf",
+      "file_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf"
+    },
+    {
+      "doc_title": "电子商务专业2023级本科人才培养方案",
+      "chunks": 100,
+      "page_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf",
+      "file_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf"
+    },
+    {
+      "doc_title": "计算机科学与技术专业2023级本科人才培养方案",
+      "chunks": 96,
+      "page_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf",
+      "file_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf"
+    },
+    {
+      "doc_title": "人工智能专业2023级本科人才培养方案",
+      "chunks": 95,
+      "page_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf",
+      "file_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf"
+    },
+    {
+      "doc_title": "“智能金融”光华实验班2023级本科人才培养方案",
+      "chunks": 97,
+      "page_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf",
+      "file_url": "https://jwc.swufe.edu.cn/__local/F/63/53/9EB050AE2F67C23E94A9DD89156_F9F5676B_177F240.pdf?e=.pdf"
+    }
+  ]
+}

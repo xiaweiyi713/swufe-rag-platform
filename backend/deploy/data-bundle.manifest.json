@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "bundle_name": "swufe-rag-runtime-data",
-  "generated_at": "2026-07-21T02:57:26.161727+00:00",
+  "generated_at": "2026-07-21T12:45:39.721661+00:00",
   "artifact_contract": {
     "model_name": "BAAI/bge-large-zh-v1.5",
+    "model_revision": "79e7739b6ab944e86d6171e44d24c997fc1e0116",
     "dimension": 1024,
     "chunk_count": 69583,
     "chunks_sha256": "9e1981104eba2de2e9429ccf8035cd3ed15d0b12aabaf6ab1abf35f43057a788"
@@ -56,8 +57,8 @@
     },
     {
       "path": "artifacts/manifest.json",
-      "size": 325,
-      "sha256": "7c57bd7ba78ae7d04586a9df48c9b489e8c7189e655614a1fd2b42d67bb81895"
+      "size": 445,
+      "sha256": "34a25e06f855c6f72a1d14e5f1512e5f0723b66917b777ea4bec5dc21afaece7"
     }
   ]
 }

@@ -104,6 +104,7 @@ def _runtime_fingerprint(
         "manifest_chunks_sha256": manifest.get("chunks_sha256"),
         "index_backend": retriever.core.bundle.backend,
         "index_model": retriever.core.bundle.model_name,
+        "index_model_revision": getattr(encoder, "model_revision", None),
         "index_dimension": int(retriever.core.bundle.embeddings.shape[1]),
         "index_rows": int(retriever.core.bundle.embeddings.shape[0]),
         "faiss_rows": int(faiss_index.ntotal) if faiss_index is not None else None,
@@ -127,6 +128,19 @@ def _build_production_pipelines(
         raise ValueError("paths and retrieval config sections must be mappings")
     encoder = BGEEncoder(
         str(retrieval.get("embed_model", "BAAI/bge-large-zh-v1.5")),
+        revision=(
+            str(retrieval["embed_revision"])
+            if retrieval.get("embed_revision")
+            else None
+        ),
+        model_path=(
+            os.getenv("SWUFE_RAG_EMBED_MODEL_PATH")
+            or (
+                str(retrieval["embed_model_path"])
+                if retrieval.get("embed_model_path")
+                else None
+            )
+        ),
         query_prefix=str(
             retrieval.get(
                 "query_prefix",

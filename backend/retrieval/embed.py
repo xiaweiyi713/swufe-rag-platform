@@ -29,6 +29,9 @@ class Encoder(Protocol):
     def model_name(self) -> str: ...
 
     @property
+    def model_revision(self) -> str | None: ...
+
+    @property
     def dimension(self) -> int: ...
 
     def encode_documents(self, texts: Sequence[str]) -> np.ndarray: ...
@@ -44,6 +47,8 @@ class BGEEncoder:
         model_name: str = DEFAULT_MODEL_NAME,
         *,
         query_prefix: str = DEFAULT_QUERY_PREFIX,
+        revision: str | None = None,
+        model_path: str | None = None,
         device: str | None = None,
         batch_size: int = 64,
         use_fp16: bool | None = None,
@@ -51,6 +56,8 @@ class BGEEncoder:
         if batch_size < 1:
             raise ValueError("batch_size must be positive")
         self._model_name = model_name
+        self._model_revision = revision
+        self._model_path = str(model_path) if model_path else None
         self.query_prefix = query_prefix
         self.device = device
         self.batch_size = batch_size
@@ -60,6 +67,10 @@ class BGEEncoder:
     @property
     def model_name(self) -> str:
         return self._model_name
+
+    @property
+    def model_revision(self) -> str | None:
+        return self._model_revision
 
     def _load_model(self):
         if self._model is None:
@@ -71,7 +82,9 @@ class BGEEncoder:
                     "install requirements.txt"
                 ) from exc
             kwargs = {"device": self.device} if self.device else {}
-            model = SentenceTransformer(self.model_name, **kwargs)
+            if self.model_revision and not self._model_path:
+                kwargs["revision"] = self.model_revision
+            model = SentenceTransformer(self._model_path or self.model_name, **kwargs)
             actual_device = str(model.device)
             should_use_fp16 = self.use_fp16 is True or (
                 self.use_fp16 is None and actual_device.startswith("cuda")
@@ -81,7 +94,13 @@ class BGEEncoder:
 
     @property
     def dimension(self) -> int:
-        value = self._load_model().get_sentence_embedding_dimension()
+        model = self._load_model()
+        dimension_getter = getattr(model, "get_embedding_dimension", None)
+        value = (
+            dimension_getter()
+            if callable(dimension_getter)
+            else model.get_sentence_embedding_dimension()
+        )
         if value is None:
             raise RuntimeError("the embedding model did not report its dimension")
         return int(value)
@@ -123,6 +142,10 @@ class HashingEncoder:
         return f"fixture-hashing-{self.dimension}"
 
     @property
+    def model_revision(self) -> str | None:
+        return None
+
+    @property
     def dimension(self) -> int:
         return self._dimension
 
@@ -152,4 +175,3 @@ class HashingEncoder:
         if not query.strip():
             raise ValueError("query must not be blank")
         return self._encode(query.strip())
-
