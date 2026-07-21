@@ -15,7 +15,7 @@ https://github.com/xiaweiyi713/swufe-rag.git
 mkdir -p "back-end engineer"
 git clone https://github.com/xiaweiyi713/swufe-rag.git "back-end engineer/swufe-rag"
 git -C "back-end engineer/swufe-rag" fetch origin codex/rag-v16-repair
-git -C "back-end engineer/swufe-rag" checkout 21b9c74
+git -C "back-end engineer/swufe-rag" checkout b60e3e9
 ```
 
 后端提交变化后必须同步更新 `BACKEND_REVISION`。外层工作区目前没有配置远端，
