@@ -101,6 +101,24 @@ struct ScheduleView: View {
             } message: {
                 Text(importModel.errorMessage ?? "")
             }
+            .confirmationDialog(
+                "使用模型增强识别？",
+                isPresented: $importModel.needsVisionConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("使用当前模型识别") {
+                    importModel.confirmVisionImport()
+                }
+                Button("取消", role: .cancel) {
+                    importModel.cancelVisionImport()
+                }
+            } message: {
+                Text(
+                    "这张截图分辨率过低，本地 OCR 无法可靠读取。"
+                    + "继续后会自动裁掉顶部姓名和学号区域，再将课表区域发送给"
+                    + "\(LLMConfigStore.current()?.providerName ?? "当前模型服务商")识别。"
+                )
+            }
         }
     }
 

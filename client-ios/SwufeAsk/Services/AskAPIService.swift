@@ -377,6 +377,85 @@ struct AskAPIService {
         try APIClient.validate(response, data: data)
         return try decoder.decode(KnowledgeChunk.self, from: data)
     }
+
+    func parseScheduleImage(_ imageData: Data) async throws -> [ParsedCourse] {
+        guard let config = LLMConfigStore.current(),
+              let apiKey = LLMConfigStore.apiKey() else {
+            throw ScheduleVisionError.modelNotConfigured
+        }
+        var request = URLRequest(
+            url: client.baseURL.appending(path: "/schedule/parse-image")
+        )
+        request.httpMethod = "POST"
+        request.timeoutInterval = 75
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "X-LLM-API-Key")
+        request.setValue(config.baseURL, forHTTPHeaderField: "X-LLM-Base-URL")
+        request.setValue(config.model, forHTTPHeaderField: "X-LLM-Model")
+        request.httpBody = try JSONEncoder().encode(
+            ScheduleVisionPayload(
+                imageDataURL: "data:image/jpeg;base64,\(imageData.base64EncodedString())"
+            )
+        )
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try APIClient.validate(response, data: data)
+        let payload = try decoder.decode(ScheduleVisionResponse.self, from: data)
+        return payload.courses.map { course in
+            ParsedCourse(
+                name: course.name,
+                teacher: course.teacher,
+                location: course.location,
+                weekday: course.weekday,
+                startSection: course.startSection,
+                endSection: course.endSection,
+                weeks: course.weeks,
+                sectionsUncertain: false
+            )
+        }
+    }
+}
+
+enum ScheduleVisionError: LocalizedError {
+    case modelNotConfigured
+
+    var errorDescription: String? {
+        switch self {
+        case .modelNotConfigured:
+            "当前没有可用的视觉模型配置。"
+        }
+    }
+}
+
+private struct ScheduleVisionPayload: Encodable {
+    let imageDataURL: String
+
+    enum CodingKeys: String, CodingKey {
+        case imageDataURL = "image_data_url"
+    }
+}
+
+private struct ScheduleVisionResponse: Decodable {
+    struct Course: Decodable {
+        let name: String
+        let teacher: String
+        let location: String
+        let weekday: Int
+        let startSection: Int
+        let endSection: Int
+        let weeks: [Int]
+
+        enum CodingKeys: String, CodingKey {
+            case name
+            case teacher
+            case location
+            case weekday
+            case startSection = "start_section"
+            case endSection = "end_section"
+            case weeks
+        }
+    }
+
+    let courses: [Course]
 }
 
 /// V16 后端的 AskRequest 是 extra=forbid 严格模式,只发送契约允许的键;

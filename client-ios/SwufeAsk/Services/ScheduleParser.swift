@@ -108,7 +108,7 @@ enum ScheduleParser {
     // MARK: - 单元格 → 课程
 
     // 兼容 “1-16周”“1,3,5周”“2-16双周”“单周” 等连写形式。
-    private static let weeksAnchor = /(\d+[\d,，、\-~～]*[单双]?周|[单双]周)/
+    private static let weeksAnchor = /(\d+(?:[\-~～]\d+)?周?(?:[,，、]\d+(?:[\-~～]\d+)?周?)*[单双]?周|[单双]周)/
     private static let sectionRange = /(\d{1,2})[\-~～](\d{1,2})节/
     private static let sectionSingle = /第?(\d{1,2})节/
 
@@ -179,12 +179,13 @@ enum ScheduleParser {
         var endSection = 2
         var sectionsUncertain = true
         if let match = joined.firstMatch(of: sectionRange),
-           let low = Int(match.1), let high = Int(match.2), low <= high, high <= 15 {
+           let low = Int(match.1), let high = Int(match.2),
+           low >= 1, low <= high, high <= 12 {
             startSection = low
             endSection = high
             sectionsUncertain = false
         } else if let match = joined.firstMatch(of: sectionSingle),
-                  let section = Int(match.1), section <= 15 {
+                  let section = Int(match.1), section >= 1, section <= 12 {
             startSection = section
             endSection = section
             sectionsUncertain = false
@@ -303,5 +304,74 @@ enum ScheduleParser {
         if text.contains(/[楼馆场室区厅]/) { return true }
         // “通博B201”“H203”这类楼栋+房间号。
         return text.contains(/[A-Za-z]\d{2,}/) || text.contains(/\d{3,}教?室?$/)
+    }
+
+    /// PDF 文字层提供精确的课程名、节次与周次；Vision 仍负责星期列、
+    /// 教师和教室定位。按课程名与已有周次重叠度匹配，避免同名分段课串位。
+    static func reconcile(
+        _ courses: [ParsedCourse],
+        with hints: [ScheduleCourseHint]
+    ) -> [ParsedCourse] {
+        guard !courses.isEmpty, !hints.isEmpty else { return courses }
+        var available = Set(hints.indices)
+        return courses.map { original in
+            let courseName = chineseSignature(original.name)
+            let match = available.max { lhs, rhs in
+                hintScore(hints[lhs], course: original, signature: courseName)
+                    < hintScore(hints[rhs], course: original, signature: courseName)
+            }
+            guard let match,
+                  hintScore(hints[match], course: original, signature: courseName) >= 80 else {
+                return cleaned(original)
+            }
+            available.remove(match)
+            let hint = hints[match]
+            var course = cleaned(original)
+            course.name = hint.name
+            course.startSection = hint.startSection
+            course.endSection = hint.endSection
+            course.weeks = hint.weeks
+            course.sectionsUncertain = false
+            return course
+        }
+    }
+
+    private static func hintScore(
+        _ hint: ScheduleCourseHint,
+        course: ParsedCourse,
+        signature: String
+    ) -> Int {
+        let target = chineseSignature(hint.name)
+        var score = 0
+        if !signature.isEmpty, signature == target {
+            score += 100
+        } else if !signature.isEmpty,
+                  (signature.contains(target) || target.contains(signature)) {
+            score += 80
+        }
+        if course.startSection == hint.startSection,
+           course.endSection == hint.endSection {
+            score += 12
+        }
+        score += Set(course.weeks).intersection(hint.weeks).count
+        return score
+    }
+
+    private static func chineseSignature(_ value: String) -> String {
+        String(value.unicodeScalars.filter {
+            (0x4E00...0x9FFF).contains(Int($0.value))
+        })
+    }
+
+    private static func cleaned(_ original: ParsedCourse) -> ParsedCourse {
+        var course = original
+        course.teacher = (course.teacher.components(separatedBy: "课程").first ?? "")
+            .trimmingCharacters(
+            in: CharacterSet(charactersIn: " ；;:：,，/")
+        )
+        course.location = (course.location.components(separatedBy: "教师").first ?? "")
+        .replacingOccurrences(of: " ", with: "")
+        .trimmingCharacters(in: CharacterSet(charactersIn: "；;:：,，/"))
+        return course
     }
 }
