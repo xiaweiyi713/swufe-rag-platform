@@ -140,11 +140,33 @@ def _link(link: OfficialLink) -> dict[str, str]:
 def _source_appendix(citations: list[dict[str, Any]]) -> str:
     if not citations:
         return ""
-    lines = ["来源文件与页码："]
+
+    groups: list[dict[str, Any]] = []
+    group_indexes: dict[tuple[str, ...], int] = {}
     for citation in citations:
+        doc_title = str(citation.get("doc_title") or "未命名来源")
+        page_url = str(citation.get("page_url") or "").strip()
+        file_url = str(citation.get("file_url") or "").strip()
+        key = (
+            ("file", file_url)
+            if file_url
+            else ("source", doc_title, page_url)
+        )
+        if key not in group_indexes:
+            group_indexes[key] = len(groups)
+            groups.append({
+                "doc_title": doc_title,
+                "file_url": file_url,
+                "markers": [],
+                "pages": {},
+                "unpaged_url": page_url,
+            })
+        group = groups[group_indexes[key]]
+        marker = int(citation["marker"])
+        if marker not in group["markers"]:
+            group["markers"].append(marker)
+
         article = str(citation.get("article") or "")
-        page_url = str(citation.get("page_url") or "")
-        file_url = str(citation.get("file_url") or "")
         physical_page = citation.get("physical_page")
         try:
             page_number = int(physical_page) if physical_page is not None else None
@@ -155,13 +177,46 @@ def _source_appendix(citations: list[dict[str, Any]]) -> str:
             if match is None:
                 match = re.search(r"(?:#|[?&])page=(\d+)", page_url)
             page_number = int(match.group(1)) if match else None
-        page = f"原文件第{page_number}页" if page_number is not None else "页码未标注"
-        page_link = f"[{page}]({page_url})" if page_url else page
-        file_link = f"[下载原文件]({file_url})" if file_url else "原文件链接未登记"
+        if page_number is not None:
+            group["pages"].setdefault(page_number, page_url)
+
+    lines = ["来源文件与页码："]
+    for group in groups:
+        pages = sorted(group["pages"])
+        page_urls = {
+            group["pages"][page]
+            for page in pages
+            if group["pages"][page]
+        }
+        if pages and len(page_urls) <= 1:
+            page = f"原文件第{'、'.join(str(value) for value in pages)}页"
+            page_url = next(iter(page_urls), "")
+            page_link = f"[{page}]({page_url})" if page_url else page
+        elif pages:
+            page_parts = []
+            for page_number in pages:
+                label = f"原文件第{page_number}页"
+                page_url = group["pages"][page_number]
+                page_parts.append(
+                    f"[{label}]({page_url})" if page_url else label
+                )
+            page_link = "、".join(page_parts)
+        else:
+            page = "页码未标注"
+            page_url = group["unpaged_url"]
+            page_link = f"[{page}]({page_url})" if page_url else page
+        markers = "".join(f"[{marker}]" for marker in group["markers"])
+        file_url = group["file_url"]
+        file_link = (
+            f"[下载原文件]({file_url})"
+            if file_url
+            else "原文件链接未登记"
+        )
         lines.append(
-            f"- [{citation['marker']}]《{citation['doc_title']}》，{page_link} · {file_link}"
+            f"- {markers}《{group['doc_title']}》，{page_link} · {file_link}"
         )
     return "\n\n" + "\n".join(lines)
+
 
 class HybridRuntime:
     """Routes first, then invokes exactly one isolated answer branch."""

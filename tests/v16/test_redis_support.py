@@ -331,7 +331,7 @@ def test_answer_cache_round_trip_schema_and_key_isolation() -> None:
     cache.put(key_a, {**_valid_answer(), "answer_cache": {"hit": False}})
     assert cache.get(key_a)["answer_md"].startswith("需要完成")
     assert "answer_cache" not in cache.get(key_a)
-    assert json.loads(fake.data[key_a])["schema"] == 2
+    assert json.loads(fake.data[key_a])["schema"] == 3
     assert cache.get(key_b) is None
 
 
