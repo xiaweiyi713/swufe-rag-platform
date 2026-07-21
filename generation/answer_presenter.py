@@ -121,14 +121,14 @@ def _course_detail_summary(courses: list[CourseFact], question: str) -> str:
     for course in courses:
         parts = [
             f"{course.credits:g}\u5b66\u5206",
-            f"\u5f00\u8bfe\u5b66\u671f\u4e3a{course.semester}",
+            f"\u5f00\u8bfe\u5b66\u671f\u4e3a\u7b2c{course.semester}\u5b66\u671f",
             f"\u6027\u8d28\u4e3a{course.nature}",
             f"\u5c5e\u4e8e{course.module}",
         ]
         if include_hours:
-            parts.append(f"\u603b\u5b66\u65f6{course.total_hours:g}" if course.total_hours is not None else "\u603b\u5b66\u65f6\u672a\u6807\u6ce8")
-            parts.append(f"\u8bfe\u5802\u5b66\u65f6{course.teaching_hours:g}" if course.teaching_hours is not None else "\u8bfe\u5802\u5b66\u65f6\u672a\u6807\u6ce8")
-            parts.append(f"\u5b9e\u8df5\u5b66\u65f6{course.practice_hours:g}" if course.practice_hours is not None else "\u5b9e\u8df5\u5b66\u65f6\u672a\u6807\u6ce8")
+            parts.append(f"\u603b\u5b66\u65f6{course.total_hours:g}\u5b66\u65f6" if course.total_hours is not None else "\u603b\u5b66\u65f6\u672a\u6807\u6ce8")
+            parts.append(f"\u8bfe\u5802\u5b66\u65f6{course.teaching_hours:g}\u5b66\u65f6" if course.teaching_hours is not None else "\u8bfe\u5802\u5b66\u65f6\u672a\u6807\u6ce8")
+            parts.append(f"\u5b9e\u8df5\u5b66\u65f6{course.practice_hours:g}\u5b66\u65f6" if course.practice_hours is not None else "\u5b9e\u8df5\u5b66\u65f6\u672a\u6807\u6ce8")
         if include_department:
             parts.append(f"\u5f00\u8bfe\u5b66\u9662\u4e3a{course.department or '\u672a\u6807\u6ce8'}")
         values.append(f"{course.name}\uff08{course.code}\uff09\uff1a" + "\uff0c".join(parts) + _marker(course.evidence_id) + "\u3002")

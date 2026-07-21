@@ -36,6 +36,18 @@ def test_healthz_does_not_initialize_runtime() -> None:
     runtime.options.assert_not_called()
 
 
+def test_production_app_serves_documented_chat_assets() -> None:
+    client = TestClient(create_app(Mock()))
+
+    stylesheet = client.get("/assets/chat.css")
+    script = client.get("/assets/chat.js")
+
+    assert stylesheet.status_code == 200
+    assert stylesheet.headers["content-type"].startswith("text/css")
+    assert script.status_code == 200
+    assert script.headers["content-type"].startswith("application/javascript")
+
+
 def test_readyz_reports_mounted_assets(tmp_path: Path) -> None:
     paths = {
         "SWUFE_RAG_CHUNKS": tmp_path / "chunks.jsonl",

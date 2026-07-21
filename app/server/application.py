@@ -465,6 +465,16 @@ def create_app(
     def audit_ui():
         return FileResponse(STATIC_DIR / "academic_audit.html")
 
+    @product.get("/assets/chat.css", include_in_schema=False)
+    def chat_css():
+        return FileResponse(STATIC_DIR / "chat.css", media_type="text/css")
+
+    @product.get("/assets/chat.js", include_in_schema=False)
+    def chat_js():
+        return FileResponse(
+            STATIC_DIR / "chat.js", media_type="application/javascript"
+        )
+
     @product.get("/options")
     def options():
         try:

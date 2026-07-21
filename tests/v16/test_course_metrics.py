@@ -27,6 +27,15 @@ def test_course_hours_are_structured_fields() -> None:
     assert "17" in value
 
 
+def test_course_detail_summary_includes_natural_units() -> None:
+    detail = answer("人工智能专业2023级知识图谱与应用有多少学分，哪学期开？")
+    hours = answer("人工智能专业2023级创新程序设计实践的实践学时是多少？")
+
+    assert "3学分" in detail
+    assert "第6学期" in detail
+    assert "实践学时34学时" in hours
+
+
 def test_max_practice_hours_returns_only_ties() -> None:
     value = answer("计算机科学与技术专业2023级实践课程中，哪些课程实践学时最多？")
     assert "实践学时最多的是以下课程" in value

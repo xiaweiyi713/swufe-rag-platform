@@ -169,6 +169,8 @@ class DemoGeneralClient:
             "hey",
         }:
             return "你好！有什么我可以帮你的吗？"
+        if greeting in {"谢谢", "谢谢你", "多谢", "感谢", "感谢你"}:
+            return "不客气！很高兴能帮到你。"
         if "注意力机制" in question:
             return "注意力机制会根据当前任务，为输入中的不同信息分配不同权重。"
         if "快速排序" in question:
