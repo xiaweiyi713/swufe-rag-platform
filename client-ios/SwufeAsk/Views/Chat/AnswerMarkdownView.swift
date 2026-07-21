@@ -5,6 +5,7 @@ import SwiftUI
 struct AnswerMarkdownView: View {
     let source: String
     var isStreaming = false
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum Segment {
         case heading(String)
@@ -35,6 +36,7 @@ struct AnswerMarkdownView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .foregroundStyle(colorScheme == .dark ? Color.white : Color.primary)
     }
 
     private var segments: [Segment] {

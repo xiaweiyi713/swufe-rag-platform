@@ -128,14 +128,23 @@ struct SwufeLogoMark: View {
 
 /// A translucent, frosted "Liquid Glass" surface with a light-catching edge.
 struct LiquidGlass: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     var radius: CGFloat = Theme.Radius.md
     var elevated: Bool = true
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content
-                .glassEffect(.regular, in: .rect(cornerRadius: radius))
+            if colorScheme == .dark {
+                content
+                    .glassEffect(
+                        .regular.tint(Color.black.opacity(0.72)),
+                        in: .rect(cornerRadius: radius)
+                    )
+            } else {
+                content
+                    .glassEffect(.regular, in: .rect(cornerRadius: radius))
+            }
         } else {
             content
                 .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
@@ -243,26 +252,40 @@ struct ActionBlueCapsuleSurface: ViewModifier {
 }
 
 struct ActionBlueBubbleSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let radius: CGFloat
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content
-                .glassEffect(
-                    .regular.tint(Theme.Color.actionBlue),
-                    in: .rect(cornerRadius: radius)
-                )
+            if colorScheme == .dark {
+                content
+                    .glassEffect(
+                        .regular.tint(Color.white.opacity(0.10)),
+                        in: .rect(cornerRadius: radius)
+                    )
+            } else {
+                content
+                    .glassEffect(
+                        .regular.tint(Theme.Color.actionBlue),
+                        in: .rect(cornerRadius: radius)
+                    )
+            }
         } else {
             content
                 .background(
-                    Theme.Color.actionBlueGlass,
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.10)
+                        : Theme.Color.actionBlueGlass,
                     in: .rect(cornerRadius: radius)
                 )
                 .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
                 .overlay {
                     RoundedRectangle(cornerRadius: radius)
-                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+                        .strokeBorder(
+                            Color.white.opacity(colorScheme == .dark ? 0.16 : 0.28),
+                            lineWidth: 1
+                        )
                 }
         }
     }
