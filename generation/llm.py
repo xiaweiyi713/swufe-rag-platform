@@ -177,6 +177,43 @@ class OpenAICompatibleClient:
             raise GenerationUnavailableError("LLM provider returned an empty response")
         return content.strip()
 
+    def generate_with_image(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        image_data_url: str,
+    ) -> str:
+        """Generate text from one inline image through Chat Completions."""
+
+        try:
+            options = self._completion_options()
+            response = self._get_client().chat.completions.create(
+                model=self.model,
+                **({} if self.thinking_enabled else {"temperature": self.temperature}),
+                messages=[
+                    {"role": "system", "content": self._system_prompt(system_prompt)},
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_data_url},
+                            },
+                            {"type": "text", "text": user_prompt},
+                        ],
+                    },
+                ],
+                **options,
+            )
+            content = response.choices[0].message.content
+        except GenerationUnavailableError:
+            raise
+        except Exception as exc:
+            raise _provider_error("vision request", exc) from exc
+        if not isinstance(content, str) or not content.strip():
+            raise GenerationUnavailableError("LLM provider returned an empty response")
+        return content.strip()
+
     def stream_generate(
         self, system_prompt: str, user_prompt: str
     ) -> Iterator[str]:

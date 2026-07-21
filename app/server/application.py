@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+import base64
+import binascii
 import hashlib
 import json
 import logging
@@ -138,6 +140,90 @@ class LLMModelsResponse(StrictModel):
 class LLMValidationResponse(StrictModel):
     valid: bool
     model: str
+
+
+class ScheduleImageRequest(StrictModel):
+    image_data_url: str = Field(min_length=32, max_length=12_000_000)
+
+
+class ScheduleCourseResponse(StrictModel):
+    name: str = Field(min_length=1, max_length=120)
+    teacher: str = Field(default="", max_length=80)
+    location: str = Field(default="", max_length=120)
+    weekday: int = Field(ge=1, le=7)
+    start_section: int = Field(ge=1, le=12)
+    end_section: int = Field(ge=1, le=12)
+    weeks: list[int] = Field(min_length=1, max_length=25)
+
+
+class ScheduleParseResponse(StrictModel):
+    courses: list[ScheduleCourseResponse] = Field(min_length=1, max_length=80)
+
+
+SCHEDULE_VISION_SYSTEM_PROMPT = """你是大学课表图片结构化提取器。
+只读取图片中明确可见的课程，不补充常识，不猜造缺失信息。
+忽略表头中的姓名、学号、打印时间，以及没有固定星期和节次的“其他课程”。
+同一课程若因教师或周次不同分成多个时段，应分别输出。
+weekday 使用 1=星期一 至 7=星期日；节次只允许 1 至 12；weeks 展开为整数数组。
+只能输出一个 JSON 对象，不要 Markdown、解释或代码围栏。"""
+
+
+def _validated_schedule_image_data_url(value: str) -> str:
+    match = re.fullmatch(
+        r"data:(image/(?:jpeg|jpg|png));base64,([A-Za-z0-9+/=\r\n]+)",
+        value,
+        re.I,
+    )
+    if match is None:
+        raise ValueError("image_data_url must be a base64 JPEG or PNG data URL")
+    try:
+        encoded = re.sub(r"\s+", "", match.group(2))
+        decoded = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("image_data_url contains invalid base64 data") from exc
+    if len(decoded) > 8_000_000:
+        raise ValueError("schedule image must not exceed 8 MB")
+    if not (
+        decoded.startswith(b"\xff\xd8\xff")
+        or decoded.startswith(b"\x89PNG\r\n\x1a\n")
+    ):
+        raise ValueError("schedule image content does not match JPEG or PNG")
+    return value
+
+
+def _parse_schedule_vision_response(raw: str) -> ScheduleParseResponse:
+    clean = raw.strip()
+    clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.I)
+    clean = re.sub(r"\s*```$", "", clean)
+    start = clean.find("{")
+    end = clean.rfind("}")
+    if start < 0 or end <= start:
+        raise GenerationUnavailableError(
+            "视觉模型没有返回有效的课表 JSON。",
+            code="provider_invalid_schedule",
+        )
+    try:
+        payload = ScheduleParseResponse.model_validate_json(clean[start : end + 1])
+    except ValueError as exc:
+        raise GenerationUnavailableError(
+            "视觉模型返回的课表结构无效。",
+            code="provider_invalid_schedule",
+        ) from exc
+    normalized: list[ScheduleCourseResponse] = []
+    for course in payload.courses:
+        if course.end_section < course.start_section:
+            raise GenerationUnavailableError(
+                "视觉模型返回了无效的课程节次。",
+                code="provider_invalid_schedule",
+            )
+        weeks = sorted({week for week in course.weeks if 1 <= week <= 25})
+        if not weeks:
+            raise GenerationUnavailableError(
+                "视觉模型返回了无效的课程周次。",
+                code="provider_invalid_schedule",
+            )
+        normalized.append(course.model_copy(update={"weeks": weeks}))
+    return ScheduleParseResponse(courses=normalized)
 
 
 class CompletedCourseRequest(StrictModel):
@@ -551,7 +637,7 @@ def create_app(
             base_url=clean_base_url,
             api_key=api_key.strip(),
             max_retries=0,
-            timeout_seconds=20,
+            timeout_seconds=45,
         )
 
     def provider_http_error(exc: GenerationUnavailableError) -> HTTPException:
@@ -596,6 +682,42 @@ def create_app(
                 "只回复两个大写英文字母 OK，不要输出其他内容。",
             )
             return LLMValidationResponse(valid=True, model=x_llm_model.strip())
+        except GenerationUnavailableError as exc:
+            raise provider_http_error(exc) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @product.post("/schedule/parse-image", response_model=ScheduleParseResponse)
+    def parse_schedule_image(
+        request: ScheduleImageRequest,
+        x_llm_api_key: str | None = Header(
+            default=None, alias="X-LLM-API-Key", max_length=512
+        ),
+        x_llm_base_url: str | None = Header(
+            default=None, alias="X-LLM-Base-URL", max_length=512
+        ),
+        x_llm_model: str | None = Header(
+            default=None, alias="X-LLM-Model", max_length=256
+        ),
+    ):
+        try:
+            image_data_url = _validated_schedule_image_data_url(
+                request.image_data_url
+            )
+            if x_llm_model is None or not x_llm_model.strip():
+                raise HTTPException(status_code=400, detail="X-LLM-Model is required")
+            client = provider_client(
+                x_llm_api_key,
+                x_llm_base_url,
+                x_llm_model,
+            )
+            raw = client.generate_with_image(
+                SCHEDULE_VISION_SYSTEM_PROMPT,
+                """请提取这张课表中的全部固定上课时段，并严格返回：
+{"courses":[{"name":"课程名","teacher":"教师或空字符串","location":"地点或空字符串","weekday":1,"start_section":1,"end_section":2,"weeks":[1,2,3]}]}""",
+                image_data_url,
+            )
+            return _parse_schedule_vision_response(raw)
         except GenerationUnavailableError as exc:
             raise provider_http_error(exc) from exc
         except ValueError as exc:
