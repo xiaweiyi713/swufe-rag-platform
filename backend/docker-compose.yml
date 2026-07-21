@@ -1,0 +1,132 @@
+# 生产编排:app(uvicorn) + redis(会话/缓存/限流) + nginx(TLS 反代)
+#
+# 设计取舍:
+# - data/ 与 artifacts/ **只读挂载**而非烤进镜像。知识库更新(重新入库、
+#   换索引)不需要重建镜像,镜像也不会因为 1.4G 数据而膨胀。
+# - BGE 模型缓存同样挂载。宿主机上已经下好的 ~/.cache/huggingface 直接复用,
+#   容器内不联网下载(本项目的网络环境下 HuggingFace 直连不稳定)。
+#   若要做成完全自包含的镜像,见 deploy/README.md 的"烤模型进镜像"一节。
+# - app 不对外暴露端口,只有 nginx 暴露 80/443,减少攻击面。
+#
+# 启动:cp deploy/.env.example .env && 编辑 .env && docker compose up -d
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # 只监听容器网络内部,不发布到宿主机端口。
+    command: >
+      redis-server
+      --maxmemory ${REDIS_MAXMEMORY:-512mb}
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --appendonly no
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [swufe]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # 本机/iOS 模拟器联调入口；生产公网只开放 nginx 的 80/443。
+      - "127.0.0.1:${SWUFE_RAG_PORT:-8000}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # --- 服务 ---
+      SWUFE_RAG_HOST: "0.0.0.0"
+      SWUFE_RAG_PORT: "8000"
+      # 每个 worker 都会复制模型和索引。2026-07-21 Docker CPU 实测单
+      # worker 常驻约 4.1GiB、4 路冷检索峰值约 5.23GiB；默认只启 1 个。
+      SWUFE_RAG_WORKERS: "${SWUFE_RAG_WORKERS:-1}"
+      # 启动即在后台预热,加载完成前 /readyz 返回 503,nginx 不会打流量进来。
+      SWUFE_RAG_EAGER_WARMUP: "${SWUFE_RAG_EAGER_WARMUP:-1}"
+      # 在 nginx 后面:信任代理头,限流才能拿到真实客户端 IP。
+      SWUFE_RAG_TRUST_PROXY: "${SWUFE_RAG_TRUST_PROXY:-0}"
+      SWUFE_RAG_LLM_ALLOWED_HOSTS: "${SWUFE_RAG_LLM_ALLOWED_HOSTS:-}"
+      # Clash 等代理的 Fake-IP 模式会把公网域名解析到 198.18/15；仅本机
+      # 联调显式开启，生产保持 0。
+      SWUFE_RAG_ALLOW_FAKE_DNS: "${SWUFE_RAG_ALLOW_FAKE_DNS:-0}"
+
+      # --- Redis(会话外置 + 答案缓存 + 限流计数)---
+      SWUFE_RAG_REDIS_URL: "redis://redis:6379/0"
+      SWUFE_RAG_REQUIRE_REDIS: "1"
+      SWUFE_RAG_SESSION_TTL: "${SWUFE_RAG_SESSION_TTL:-259200}"
+      SWUFE_RAG_ANSWER_CACHE_TTL: "${SWUFE_RAG_ANSWER_CACHE_TTL:-86400}"
+      # 发布生成规则或知识库时递增,避免新代码读取旧答案。
+      SWUFE_RAG_CACHE_VERSION: "${SWUFE_RAG_CACHE_VERSION:-}"
+
+      # --- 限流与并发 ---
+      SWUFE_RAG_RATE_LIMIT: "${SWUFE_RAG_RATE_LIMIT:-30}"
+      SWUFE_RAG_RATE_WINDOW: "${SWUFE_RAG_RATE_WINDOW:-60}"
+      # 云服务器是纯 CPU,BGE 编码比本机 MPS 慢数倍,并发上限要比默认值大。
+      SWUFE_RAG_QUERY_MAX_CONCURRENCY: "${SWUFE_RAG_QUERY_MAX_CONCURRENCY:-4}"
+      SWUFE_RAG_QUERY_QUEUE_SIZE: "${SWUFE_RAG_QUERY_QUEUE_SIZE:-16}"
+
+      # --- 模型离线加载(镜像内不联网)---
+      SWUFE_RAG_ALLOW_MODEL_DOWNLOAD: "${SWUFE_RAG_ALLOW_MODEL_DOWNLOAD:-0}"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+      TRANSFORMERS_OFFLINE: "${TRANSFORMERS_OFFLINE:-1}"
+      # CPU 线程数:避免多 worker 之间争抢导致上下文切换开销。
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-2}"
+    volumes:
+      - ./data:/app/data:ro
+      - ./artifacts:/app/artifacts:ro
+      # 宿主机已下载好的模型缓存,容器只读复用。
+      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/home/swufe/.cache/huggingface
+      # 注意:不要给 /tmp/swufe-rag 挂命名卷。该路径在镜像里不存在,Docker
+      # 会以 root 创建卷,而容器跑在 uid 10001,entrypoint 的 cp 会 Permission
+      # denied 导致重启循环。这份 metadata 副本每次启动都从只读源重新生成,
+      # 本就不需要持久化,留在容器可写层(/tmp 为 1777)即可。
+    command: >
+      uvicorn app.server.application:app
+      --host 0.0.0.0 --port 8000
+      --workers ${SWUFE_RAG_WORKERS:-1}
+      --proxy-headers --forwarded-allow-ips=${SWUFE_RAG_FORWARDED_ALLOW_IPS:-127.0.0.1}
+      --timeout-keep-alive 75
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+    networks: [swufe]
+
+  nginx:
+    profiles: ["production"]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # 证书目录:certbot 签发后放这里(见 deploy/README.md)
+      - ./deploy/certs:/etc/nginx/certs:ro
+      - certbot-webroot:/var/www/certbot
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [swufe]
+
+volumes:
+  redis-data:
+  certbot-webroot:
+
+networks:
+  swufe:
+    driver: bridge

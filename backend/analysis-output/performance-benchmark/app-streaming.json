@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-07-18T16:01:00+08:00",
+  "methodology": {
+    "source": "iPhone 17 Pro simulator with configured DeepSeek deepseek-chat",
+    "sample_count": 11,
+    "transport": "application/x-ndjson streamed from POST /ask/stream",
+    "rendering": "each received delta is appended immediately; no local typewriter delay",
+    "contains_api_key_or_prompt_text": false,
+    "note": "This is an engineering smoke benchmark. Path sample sizes differ from the 25-sample non-streaming baseline."
+  },
+  "comparison_to_non_streaming_baseline": {
+    "general_llm_first_visible_ms": {
+      "before_p50": 2118.35,
+      "after_p50": 579.4,
+      "change_percent": -72.65,
+      "before_p95": 5934.66,
+      "after_p95": 1031.84,
+      "change_percent_p95": -82.61
+    },
+    "rag_first_visible_ms": {
+      "before_p50": 9456.63,
+      "after_p50": 2398.4,
+      "change_percent": -74.64
+    },
+    "sql_first_visible_ms": {
+      "before_p50": 5507.84,
+      "after_single_sample": 296.94,
+      "change_percent": -94.61
+    }
+  },
+  "by_execution_path": {
+    "general_llm": {
+      "count": 6,
+      "first_visible_ms": {
+        "min": 513.73,
+        "mean": 678.37,
+        "p50": 579.4,
+        "p95": 1031.84,
+        "max": 1127.1
+      },
+      "complete_ms": {
+        "min": 691.44,
+        "mean": 1499.84,
+        "p50": 911.8,
+        "p95": 3553.18,
+        "max": 4241.24
+      }
+    },
+    "rag": {
+      "count": 4,
+      "first_visible_ms": {
+        "min": 2322.1,
+        "mean": 3332.11,
+        "p50": 2398.4,
+        "p95": 5643.76,
+        "max": 6209.55
+      },
+      "complete_ms": {
+        "min": 2629.65,
+        "mean": 3935.5,
+        "p50": 3112.06,
+        "p95": 6348.15,
+        "max": 6888.23
+      }
+    },
+    "sql": {
+      "count": 1,
+      "first_visible_ms": 296.94,
+      "complete_ms": 805.29
+    }
+  },
+  "samples": [
+    {"trace": "24AE2F61", "path": "general_llm", "request_ms": 1489.0, "server_ms": 1374.16, "chars": 33, "first_visible_ms": 1127.1, "complete_ms": 1489.0},
+    {"trace": "9F69B0A9", "path": "general_llm", "request_ms": 4241.24, "server_ms": 4053.65, "chars": 1277, "first_visible_ms": 746.04, "complete_ms": 4241.24},
+    {"trace": "8DEDA686", "path": "sql", "request_ms": 805.29, "server_ms": 218.82, "chars": 582, "first_visible_ms": 296.94, "complete_ms": 805.29},
+    {"trace": "A89D7A65", "path": "rag", "request_ms": 6888.23, "server_ms": 6106.39, "chars": 844, "first_visible_ms": 6209.55, "complete_ms": 6888.23},
+    {"trace": "50149BCF", "path": "general_llm", "request_ms": 691.44, "server_ms": 570.9, "chars": 34, "first_visible_ms": 524.54, "complete_ms": 691.44},
+    {"trace": "458E451C", "path": "general_llm", "request_ms": 1049.81, "server_ms": 946.68, "chars": 124, "first_visible_ms": 607.83, "complete_ms": 1049.81},
+    {"trace": "B837068C", "path": "general_llm", "request_ms": 773.79, "server_ms": 745.23, "chars": 98, "first_visible_ms": 513.73, "complete_ms": 773.79},
+    {"trace": "E95662ED", "path": "general_llm", "request_ms": 753.78, "server_ms": 693.01, "chars": 39, "first_visible_ms": 550.96, "complete_ms": 753.78},
+    {"trace": "5C9156B5", "path": "rag", "request_ms": 3287.71, "server_ms": 2277.89, "chars": 1238, "first_visible_ms": 2322.1, "complete_ms": 3287.71},
+    {"trace": "FEE2B7C9", "path": "rag", "request_ms": 2936.41, "server_ms": 2380.49, "chars": 853, "first_visible_ms": 2437.58, "complete_ms": 2936.41},
+    {"trace": "9B31C7B8", "path": "rag", "request_ms": 2629.65, "server_ms": 2287.22, "chars": 598, "first_visible_ms": 2359.21, "complete_ms": 2629.65}
+  ]
+}

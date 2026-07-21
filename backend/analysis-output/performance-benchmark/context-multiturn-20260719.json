@@ -1,0 +1,159 @@
+{
+  "generated_at": "2026-07-19T01:10:33+0800",
+  "scenarios": {
+    "school_follow_up": [
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 6450.28,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      },
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 3879.91,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      },
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 1534.82,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      },
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 1746.44,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      }
+    ],
+    "scope_follow_up": [
+      {
+        "status": 200,
+        "path": "sql",
+        "mode": "school_rag",
+        "intent": "course_query",
+        "domain": "school",
+        "major": "人工智能专业",
+        "cohort": 2023,
+        "missing": [],
+        "latency": 10.53,
+        "answer": "### 2023级人工智能专业培养方案课程\n\n| 课程代码 | 课程名称 | 学分 | 学期 | 性质 | 模块 |\n| --- | --- | ---: | ---: | --- | --- |\n| CST419 | 人工智能实训Ⅱ[1] | 2 | 暑期学期3 | 必修 | （六）实践环节课 |\n| CST117 | 程序设计（C语言）[2] | 3 |"
+      },
+      {
+        "status": 200,
+        "path": "sql",
+        "mode": "school_rag",
+        "intent": "course_query",
+        "domain": "school",
+        "major": "人工智能专业",
+        "cohort": 2023,
+        "missing": [],
+        "latency": 424.0,
+        "answer": "### 2023级人工智能专业培养方案课程\n\n| 课程代码 | 课程名称 | 学分 | 学期 | 性质 | 模块 |\n| --- | --- | ---: | ---: | --- | --- |\n| CST213 | Python程序设计[1] | 2 | 3 | 选修 | （四）专业方向课 |\n| CST415 | 最优化方法[1] | 3 | 3 | "
+      },
+      {
+        "status": 200,
+        "path": "sql",
+        "mode": "school_rag",
+        "intent": "course_query",
+        "domain": "school",
+        "major": "人工智能专业",
+        "cohort": 2023,
+        "missing": [],
+        "latency": 4.52,
+        "answer": "按当前完整查询条件，结构化培养方案中没有匹配课程。"
+      }
+    ],
+    "general_follow_up": [
+      {
+        "status": 200,
+        "path": "general_llm",
+        "mode": "general_chat",
+        "intent": "general_chat",
+        "domain": "general",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 3.29,
+        "answer": "当然可以。你问的是：请用一句话解释什么是递归。"
+      },
+      {
+        "status": 200,
+        "path": "general_llm",
+        "mode": "general_chat",
+        "intent": "general_chat",
+        "domain": "general",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 3.88,
+        "answer": "当然可以。你问的是：再举一个生活中的例子。"
+      }
+    ],
+    "session_a": [
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 3.22,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      },
+      {
+        "status": 200,
+        "path": "rag",
+        "mode": "school_rag",
+        "intent": "policy",
+        "domain": "school",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 1337.7,
+        "answer": "1. 因病无法参加期末考试时，需准备校医院证明，或由心理健康教育中心签署意见[1]。\n2. 原则上最迟应在开考前2小时提交，考试开始后不再受理；确因突发事件无法提前办理时，应及时向学院教学秘书报备并在系统补交申请[2][3]。\n3. 登录本科新系统，在“报名申请”下进入“教学项目报名”提交申请；经学院教学秘书、教学副院长和教务处审核通过后，申请才生效[4]。"
+      }
+    ],
+    "session_b_without_context": [
+      {
+        "status": 200,
+        "path": "general_llm",
+        "mode": "general_chat",
+        "intent": "general_chat",
+        "domain": "general",
+        "major": null,
+        "cohort": null,
+        "missing": [],
+        "latency": 2.85,
+        "answer": "当然可以。你问的是：申请材料有哪些？"
+      }
+    ]
+  }
+}

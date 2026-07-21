@@ -1,0 +1,500 @@
+{
+  "generated_at": "2026-07-19T11:46:59+0800",
+  "base_url": "http://127.0.0.1:8001",
+  "methodology": {
+    "cold_requests": 12,
+    "mixed_requests": 16,
+    "cold_cache_bypassed_with_deep_thinking": true,
+    "hot_requests": 40
+  },
+  "cold_rag": [
+    {
+      "name": "cold-rag",
+      "concurrency": 1,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 0.83,
+      "wall_ms": 14518.97,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1209.87,
+        "p50": 1170.36,
+        "p95": 3167.83,
+        "max": 3418.77
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 1205.76,
+        "p50": 1166.26,
+        "p95": 3159.7,
+        "max": 3407.08
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 1601.61,
+        "p50": 1312.33,
+        "p95": 3219.34,
+        "max": 3397.06
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 2,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 1.19,
+      "wall_ms": 10097.19,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 1596.63,
+        "p50": 1955.74,
+        "p95": 2684.03,
+        "max": 2686.34
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 1592.89,
+        "p50": 1950.09,
+        "p95": 2680.62,
+        "max": 2682.72
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 2119.33,
+        "p50": 2039.11,
+        "p95": 2676.94,
+        "max": 2677.49
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 4,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 1.17,
+      "wall_ms": 10254.04,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 3089.41,
+        "p50": 4009.97,
+        "p95": 4843.01,
+        "max": 4863.69
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 2863.86,
+        "p50": 4003.54,
+        "p95": 4836.65,
+        "max": 4854.42
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 3812.7,
+        "p50": 4040.17,
+        "p95": 4838.38,
+        "max": 4851.22
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 1662.11,
+        "p50": 2167.18,
+        "p95": 2642.07,
+        "max": 2651.69
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 8,
+      "requests": 12,
+      "successes": 12,
+      "error_rate": 0.0,
+      "throughput_rps": 1.14,
+      "wall_ms": 10541.46,
+      "status_counts": {
+        "200": 12
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 4477.25,
+        "p50": 4736.51,
+        "p95": 9133.02,
+        "max": 9878.8
+      },
+      "server_ms": {
+        "count": 12,
+        "mean": 4469.76,
+        "p50": 4731.15,
+        "p95": 9129.31,
+        "max": 9874.58
+      },
+      "retrieval_ms": {
+        "count": 9,
+        "mean": 5948.12,
+        "p50": 6385.55,
+        "p95": 9328.05,
+        "max": 9869.41
+      },
+      "capacity_wait_ms": {
+        "count": 9,
+        "mean": 3679.94,
+        "p50": 4666.14,
+        "p95": 6620.06,
+        "max": 6776.97
+      },
+      "errors": []
+    },
+    {
+      "name": "cold-rag",
+      "concurrency": 12,
+      "requests": 12,
+      "successes": 10,
+      "error_rate": 0.1667,
+      "throughput_rps": 1.03,
+      "wall_ms": 9742.45,
+      "status_counts": {
+        "200": 10,
+        "429": 2
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 12,
+        "mean": 4724.83,
+        "p50": 5109.35,
+        "p95": 8801.89,
+        "max": 9741.64
+      },
+      "server_ms": {
+        "count": 10,
+        "mean": 4054.59,
+        "p50": 3667.26,
+        "p95": 8962.19,
+        "max": 9730.9
+      },
+      "retrieval_ms": {
+        "count": 7,
+        "mean": 5776.29,
+        "p50": 5145.1,
+        "p95": 9208.33,
+        "max": 9720.39
+      },
+      "capacity_wait_ms": {
+        "count": 7,
+        "mean": 3241.12,
+        "p50": 2282.82,
+        "p95": 7142.45,
+        "max": 7998.63
+      },
+      "errors": [
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 2
+          }
+        },
+        {
+          "status": 429,
+          "type": null,
+          "error": {
+            "code": "query_capacity_exhausted",
+            "reason": "queue_timeout",
+            "message": "当前检索请求较多，请稍后重试。",
+            "active": 2,
+            "waiting": 1
+          }
+        }
+      ]
+    }
+  ],
+  "mixed": [
+    {
+      "name": "mixed",
+      "concurrency": 4,
+      "requests": 16,
+      "successes": 16,
+      "error_rate": 0.0,
+      "throughput_rps": 2.28,
+      "wall_ms": 7028.18,
+      "status_counts": {
+        "200": 16
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 1439.1,
+        "p50": 132.77,
+        "p95": 4496.85,
+        "max": 4977.53
+      },
+      "server_ms": {
+        "count": 16,
+        "mean": 1279.99,
+        "p50": 45.75,
+        "p95": 4491.79,
+        "max": 4971.79
+      },
+      "retrieval_ms": {
+        "count": 7,
+        "mean": 2866.31,
+        "p50": 2641.81,
+        "p95": 4775.64,
+        "max": 4966.74
+      },
+      "capacity_wait_ms": {
+        "count": 7,
+        "mean": 1034.52,
+        "p50": 147.21,
+        "p95": 2414.88,
+        "max": 2450.59
+      },
+      "errors": []
+    },
+    {
+      "name": "mixed",
+      "concurrency": 8,
+      "requests": 16,
+      "successes": 16,
+      "error_rate": 0.0,
+      "throughput_rps": 2.14,
+      "wall_ms": 7472.97,
+      "status_counts": {
+        "200": 16
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 2072.88,
+        "p50": 100.39,
+        "p95": 6365.37,
+        "max": 7376.66
+      },
+      "server_ms": {
+        "count": 16,
+        "mean": 2065.77,
+        "p50": 93.56,
+        "p95": 6361.64,
+        "max": 7371.25
+      },
+      "retrieval_ms": {
+        "count": 7,
+        "mean": 4660.69,
+        "p50": 5265.52,
+        "p95": 6963.99,
+        "max": 7367.77
+      },
+      "capacity_wait_ms": {
+        "count": 7,
+        "mean": 2723.48,
+        "p50": 2884.08,
+        "p95": 5214.04,
+        "max": 5216.67
+      },
+      "errors": []
+    },
+    {
+      "name": "mixed",
+      "concurrency": 16,
+      "requests": 16,
+      "successes": 16,
+      "error_rate": 0.0,
+      "throughput_rps": 1.92,
+      "wall_ms": 8321.08,
+      "status_counts": {
+        "200": 16
+      },
+      "cache_hits": 0,
+      "client_ms": {
+        "count": 16,
+        "mean": 2402.02,
+        "p50": 183.84,
+        "p95": 7789.37,
+        "max": 8318.34
+      },
+      "server_ms": {
+        "count": 16,
+        "mean": 2386.72,
+        "p50": 169.07,
+        "p95": 7772.02,
+        "max": 8299.62
+      },
+      "retrieval_ms": {
+        "count": 7,
+        "mean": 5341.84,
+        "p50": 4557.01,
+        "p95": 8075.71,
+        "max": 8285.96
+      },
+      "capacity_wait_ms": {
+        "count": 7,
+        "mean": 3072.33,
+        "p50": 2542.39,
+        "p95": 6601.31,
+        "max": 7479.46
+      },
+      "errors": []
+    }
+  ],
+  "hot_warm": {
+    "name": "hot-warm",
+    "concurrency": 1,
+    "requests": 1,
+    "successes": 1,
+    "error_rate": 0.0,
+    "throughput_rps": 1.49,
+    "wall_ms": 673.34,
+    "status_counts": {
+      "200": 1
+    },
+    "cache_hits": 0,
+    "client_ms": {
+      "count": 1,
+      "mean": 673.16,
+      "p50": 673.16,
+      "p95": 673.16,
+      "max": 673.16
+    },
+    "server_ms": {
+      "count": 1,
+      "mean": 662.2,
+      "p50": 662.2,
+      "p95": 662.2,
+      "max": 662.2
+    },
+    "retrieval_ms": {
+      "count": 1,
+      "mean": 656.81,
+      "p50": 656.81,
+      "p95": 656.81,
+      "max": 656.81
+    },
+    "capacity_wait_ms": {
+      "count": 1,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  },
+  "hot_cache": {
+    "name": "hot-cache",
+    "concurrency": 32,
+    "requests": 40,
+    "successes": 40,
+    "error_rate": 0.0,
+    "throughput_rps": 575.87,
+    "wall_ms": 69.46,
+    "status_counts": {
+      "200": 40
+    },
+    "cache_hits": 40,
+    "client_ms": {
+      "count": 40,
+      "mean": 43.35,
+      "p50": 48.29,
+      "p95": 57.31,
+      "max": 61.02
+    },
+    "server_ms": {
+      "count": 40,
+      "mean": 20.87,
+      "p50": 21.16,
+      "p95": 36.27,
+      "max": 42.06
+    },
+    "retrieval_ms": {
+      "count": 40,
+      "mean": 656.81,
+      "p50": 656.81,
+      "p95": 656.81,
+      "max": 656.81
+    },
+    "capacity_wait_ms": {
+      "count": 40,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  },
+  "stream_cache": {
+    "name": "stream-cache",
+    "concurrency": 16,
+    "requests": 16,
+    "successes": 16,
+    "error_rate": 0.0,
+    "throughput_rps": 342.69,
+    "wall_ms": 46.69,
+    "status_counts": {
+      "200": 16
+    },
+    "cache_hits": 16,
+    "client_ms": {
+      "count": 16,
+      "mean": 38.18,
+      "p50": 37.96,
+      "p95": 42.07,
+      "max": 46.42
+    },
+    "server_ms": {
+      "count": 16,
+      "mean": 7.31,
+      "p50": 5.67,
+      "p95": 13.51,
+      "max": 34.83
+    },
+    "retrieval_ms": {
+      "count": 16,
+      "mean": 656.81,
+      "p50": 656.81,
+      "p95": 656.81,
+      "max": 656.81
+    },
+    "capacity_wait_ms": {
+      "count": 16,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "errors": []
+  }
+}

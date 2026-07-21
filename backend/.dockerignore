@@ -1,0 +1,23 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+*.log
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.DS_Store
+
+# Runtime data is mounted read-only by Compose. Keeping it outside the image
+# makes knowledge-base refreshes independent from application builds.
+data
+artifacts
+analysis-output
+
+tests
+eval
+handoff
+demo
+*.md
+Dockerfile*

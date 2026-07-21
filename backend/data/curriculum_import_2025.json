@@ -1,0 +1,495 @@
+{
+  "schema_version": 1,
+  "cohort": 2025,
+  "imported_at": "2026-07-19",
+  "official_page_url": "https://jwc.swufe.edu.cn/info/1005/37211.htm",
+  "official_file_url": "https://jwc.swufe.edu.cn/__local/D/73/5F/5B57901AAC6C1EF0E7E6716A7CB_84F36B39_E34A33.zip",
+  "official_archive": {
+    "path": "/Users/xuwenyao/swufe-rag/back-end engineer/swufe-rag/tmp/official-2025/2025.zip",
+    "sha256": "be50a0124eca1faa0d798a7989e39e39d1390628d75d5f07addca86618a8e828",
+    "pdf_count": 52,
+    "content_verified": true
+  },
+  "source_bundle_root": "/Users/xuwenyao/Downloads/2025级本科人才培养方案20251024/2025级本科人才培养方案20251024/2025级本科人才培养方案20251024/25级本科人才培养方案",
+  "source_pdf_count": 52,
+  "full_book": {
+    "file": "school/25级培养方案.pdf",
+    "sha256": "c00e84c6bdd1da03be8fc6fb7740f61a1ccc6001a3c154b95824b930f73f68a6",
+    "page_count": 1120,
+    "included_pdf_count": 51,
+    "excluded_pdf_count": 1,
+    "section_sidecar": "school/25级培养方案.pdf.sections.json",
+    "section_sidecar_sha256": "1c6765db0389bf059750216accd7916d14714b39c2cc891a701691dff820bd1c"
+  },
+  "documents": [
+    {
+      "relative_path": "0西南财经大学本科专业人才培养方案原则性意见（2025年版）/西南财经大学本科专业人才培养方案原则性意见（2025年版）.pdf",
+      "sha256": "1aec0090d9af56a99e3010a21c534d0ea4ad169d4f6ff52a9d3785f37c515774",
+      "page_count": 16,
+      "included_in_full_book": false,
+      "section_title": "西南财经大学本科专业人才培养方案原则性意见(2025年版)人才培养方案",
+      "exclusion_reason": "already registered as a standalone source",
+      "aggregate_start_page": null,
+      "aggregate_end_page": null
+    },
+    {
+      "relative_path": "1基础学科拔尖实验班/1数字经济（基础学科拔尖实验班）.pdf",
+      "sha256": "4e19fca555cdd30b1656ed395008e6cf8c4804dbfdaab715b17b1937d4f5cde6",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "数字经济(基础学科拔尖实验班)人才培养方案",
+      "aggregate_start_page": 1,
+      "aggregate_end_page": 22
+    },
+    {
+      "relative_path": "1基础学科拔尖实验班/2计算机科学与技术（基础学科拔尖实验班）.pdf",
+      "sha256": "f99d2b6c8c06680ffc0d1d4c5ea92f759b0930d24f532a7a9251016221142978",
+      "page_count": 27,
+      "included_in_full_book": true,
+      "section_title": "计算机科学与技术(基础学科拔尖实验班)人才培养方案",
+      "aggregate_start_page": 23,
+      "aggregate_end_page": 49
+    },
+    {
+      "relative_path": "1基础学科拔尖实验班/3数学与应用数学（基础学科拔尖实验班）.pdf",
+      "sha256": "c363e4ba1ad0c1bf58050639e6ae19cb2ae3909fc9f0736a08216fffc94cbcf5",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "数学与应用数学(基础学科拔尖实验班)人才培养方案",
+      "aggregate_start_page": 50,
+      "aggregate_end_page": 71
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/20252025工商管理（智能商务与管理实验班）.pdf",
+      "sha256": "8dd886f258e3f25fceaaaa9f41f9659f0db3d2d547d0e8ff885bf00ffbc70dcd",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "智能商务与管理实验班人才培养方案",
+      "aggregate_start_page": 72,
+      "aggregate_end_page": 92
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/20252025税收学（数字财税实验班）.pdf",
+      "sha256": "75a77ed5d553f1a8db38932af7fa39ba79b61bc5af2a344a5ccd84e76171a418",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "税收学(数字财税实验班)人才培养方案",
+      "aggregate_start_page": 93,
+      "aggregate_end_page": 113
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/20252025经济统计学（金融统计与风险管理实验班）.pdf",
+      "sha256": "6b481e40c2f926a4810aeb0d6294ac486c728de0547c21d17187cb78d6fc54b3",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "金融统计与风险管理实验班人才培养方案",
+      "aggregate_start_page": 114,
+      "aggregate_end_page": 133
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/20252025金融数学（金融数学实验班）.pdf",
+      "sha256": "f79774c0bca2932b0fde1377fa17e7802e1e707cd5edffb35905431526ff44e0",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "金融数学(财经科技创新实验班)人才培养方案",
+      "aggregate_start_page": 134,
+      "aggregate_end_page": 153
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/2025250281会计学（大数据会计实验班）(0281).pdf",
+      "sha256": "e36351d89344f310a53ffb0e56bc845adc53eee7b0de8195e11489a95e4964a6",
+      "page_count": 23,
+      "included_in_full_book": true,
+      "section_title": "会计学(大数据会计实验班)专业人才培养方案",
+      "aggregate_start_page": 154,
+      "aggregate_end_page": 176
+    },
+    {
+      "relative_path": "2实验班/1财经科技创新实验班/2025250381金融学（大数据与财富管理实验班）(0381).pdf",
+      "sha256": "a496c7e00c05b20b51b464dce08809ab8b8262c728b615b21a59ae6b4563000b",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "大数据与财富管理实验班人才培养方案",
+      "aggregate_start_page": 177,
+      "aggregate_end_page": 196
+    },
+    {
+      "relative_path": "2实验班/2国际组织人才实验班.pdf",
+      "sha256": "0848a862cc77af36d021bf5fefcc924e1d71efe174da80b93318831010ea3ea9",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "国际组织人才实验班人才培养方案",
+      "aggregate_start_page": 197,
+      "aggregate_end_page": 217
+    },
+    {
+      "relative_path": "2实验班/3经管国际化创新实验班.pdf",
+      "sha256": "caef42fdd476527764e564b74b5494b9fc1b6482530499a4b20120dfad4c16fd",
+      "page_count": 32,
+      "included_in_full_book": true,
+      "section_title": "经管国际化创新实验班人才培养方案",
+      "aggregate_start_page": 218,
+      "aggregate_end_page": 249
+    },
+    {
+      "relative_path": "2实验班/4大健康管理实验班.pdf",
+      "sha256": "bd1224ef34bb5ec0c3479451aea62e3cfd99678e283719e73651c84903912089",
+      "page_count": 24,
+      "included_in_full_book": true,
+      "section_title": "大健康管理实验班人才培养方案",
+      "aggregate_start_page": 250,
+      "aggregate_end_page": 273
+    },
+    {
+      "relative_path": "3金融学院/1金融学类.pdf",
+      "sha256": "ea2b4ce80c0f8b76d5e6cb96dd0708639cdac831424dce3dbb07a0444817070e",
+      "page_count": 29,
+      "included_in_full_book": true,
+      "section_title": "金融学类专业人才培养方案",
+      "aggregate_start_page": 274,
+      "aggregate_end_page": 302
+    },
+    {
+      "relative_path": "3金融学院/2金融学类（保险方向）.pdf",
+      "sha256": "b8d165e5cddcc16f49e1b48bf248cc485d9ebb7646c1beedd093b7fccf228bcf",
+      "page_count": 23,
+      "included_in_full_book": true,
+      "section_title": "金融学类(保险方向)专业人才培养方案",
+      "aggregate_start_page": 303,
+      "aggregate_end_page": 325
+    },
+    {
+      "relative_path": "3金融学院/3金融学（智能金融与区块链金融）(0326).pdf",
+      "sha256": "691a8bb09c39b1c80c9779236702986f58da019e1c0e78476f8b2f8d8aad4391",
+      "page_count": 19,
+      "included_in_full_book": true,
+      "section_title": "西南财经大学——电子科技大学联合学士学位金融学(智能金融与区块链金融)专业人才培养方案",
+      "aggregate_start_page": 326,
+      "aggregate_end_page": 344
+    },
+    {
+      "relative_path": "3金融学院/4金融工程.pdf",
+      "sha256": "1284eb5711a16e724c36d29871fbf3ef7d89e83e9b6d7a97a1ddd44a113eb8dd",
+      "page_count": 19,
+      "included_in_full_book": true,
+      "section_title": "金融工程专业人才培养方案",
+      "aggregate_start_page": 345,
+      "aggregate_end_page": 363
+    },
+    {
+      "relative_path": "3金融学院/5金融科技.pdf",
+      "sha256": "d2544112a632841ff4e237dd4c886dd81a5c26f8d4d2a62a160a3e98f3e296a2",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "金融科技专业人才培养方案",
+      "aggregate_start_page": 364,
+      "aggregate_end_page": 383
+    },
+    {
+      "relative_path": "3金融学院/6精算学.pdf",
+      "sha256": "5ba6cc86615ce8590c51975e0a2277ad090da5b9d98e6f118650409b6f9edbcf",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "精算学专业人才培养方案",
+      "aggregate_start_page": 384,
+      "aggregate_end_page": 403
+    },
+    {
+      "relative_path": "4经济学院/1经济学（国家经济学基础人才培养基地班）.pdf",
+      "sha256": "a1e4c1d8832587d57ca5134daf35a564fcfaf904153a31984bcfc7163cbfbb79",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "经济学专业(国家经济学基础人才培养基地班)人才培养方案",
+      "aggregate_start_page": 404,
+      "aggregate_end_page": 425
+    },
+    {
+      "relative_path": "4经济学院/2经济学（经济学拔尖学生培养基地班）.pdf",
+      "sha256": "24ed338e5434dfcc78ad40db954e41f8c6f731f0f68b9a0061eeb224684912e9",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "经济学专业(国家经济学拔尖学生培养基地班)人才培养方案",
+      "aggregate_start_page": 426,
+      "aggregate_end_page": 447
+    },
+    {
+      "relative_path": "5会计学院/1工商管理类（会计学院）.pdf",
+      "sha256": "6b1d34d4e234c8185e7751077c7f644dbe88dd8048c2757bf3b4cd4d387a12e8",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "工商管理类(会计学院)专业人才培养方案",
+      "aggregate_start_page": 448,
+      "aggregate_end_page": 467
+    },
+    {
+      "relative_path": "5会计学院/2会计学（注册会计师专门化方向).pdf",
+      "sha256": "86a22f8db32ecae0909390f05e3ad4bbab2f9d97fb265093bf756ce9f1798687",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "会计学(注册会计师专门化方向)专业人才培养方案",
+      "aggregate_start_page": 468,
+      "aggregate_end_page": 488
+    },
+    {
+      "relative_path": "5会计学院/3会计学（双语实验班）.pdf",
+      "sha256": "0ce4a5138a3412a25f0177c92e3304090ade1cc3589bd00b33c1525c0d34d3e4",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "会计学(双语实验班)专业人才培养方案",
+      "aggregate_start_page": 489,
+      "aggregate_end_page": 508
+    },
+    {
+      "relative_path": "5会计学院/4会计学（中外合作办学）.pdf",
+      "sha256": "fe8ece84abf7fa5ccf9317424a8f34ce563377c42997a2355f6fc76834b38c33",
+      "page_count": 19,
+      "included_in_full_book": true,
+      "section_title": "会计学(中外合作办学)专业人才培养方案",
+      "aggregate_start_page": 509,
+      "aggregate_end_page": 527
+    },
+    {
+      "relative_path": "6统计学院/1统计学类(2025统计学类).pdf",
+      "sha256": "4fd602d0885ffb330ee33274aa634f9f8f8b9941f2605be6b5d8b289ea0576ff",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "统计学类专业人才培养方案",
+      "aggregate_start_page": 528,
+      "aggregate_end_page": 548
+    },
+    {
+      "relative_path": "6统计学院/2经济统计学.pdf",
+      "sha256": "7875764949e47a02173715dec0a207dfc47bfcd9ef434c40f0fedf6f8b419542",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "经济统计学专业人才培养方案",
+      "aggregate_start_page": 549,
+      "aggregate_end_page": 569
+    },
+    {
+      "relative_path": "7工商管理学院/1工商管理类.pdf",
+      "sha256": "328d3182925f30fa43d63d499bcabd2150d4df8d2107c7cd5dbff70c8ff44ceb",
+      "page_count": 31,
+      "included_in_full_book": true,
+      "section_title": "工商管理类专业人才培养方案",
+      "aggregate_start_page": 570,
+      "aggregate_end_page": 600
+    },
+    {
+      "relative_path": "7工商管理学院/2市场营销（金融服务与营销）.pdf",
+      "sha256": "2c859b743efdb5a255386f8e1207ae80c4c0e3ca4ebcd2c41cbd7ef33aa5f340",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "市场营销(金融服务与营销)专业人才培养方案",
+      "aggregate_start_page": 601,
+      "aggregate_end_page": 621
+    },
+    {
+      "relative_path": "8财政税务学院/20252025财政学类.pdf",
+      "sha256": "6d64584f975fdad1ca4675d85214ead8a03a4b6ec19f701240ff8176475103c6",
+      "page_count": 27,
+      "included_in_full_book": true,
+      "section_title": "财政学类专业人才培养方案",
+      "aggregate_start_page": 622,
+      "aggregate_end_page": 648
+    },
+    {
+      "relative_path": "9国际商学院/1经济与贸易类.pdf",
+      "sha256": "a68611837dceaec21dfaf17258a6cde9a3d3478564c4440dba1ff5c08a73a2a9",
+      "page_count": 23,
+      "included_in_full_book": true,
+      "section_title": "经济与贸易类专业人才培养方案",
+      "aggregate_start_page": 649,
+      "aggregate_end_page": 671
+    },
+    {
+      "relative_path": "9国际商学院/2国际商务（中外）2025.pdf",
+      "sha256": "81748cb91d30378c7f695651c097ca4d062647aa654ffca490d97f530a9d412e",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "国际商务(中外合作办学)专业人才培养方案",
+      "aggregate_start_page": 672,
+      "aggregate_end_page": 692
+    },
+    {
+      "relative_path": "10管理科学与工程学院/20252025管理科学与工程类.pdf",
+      "sha256": "dd35ab3d6de8a0cedc6d17470030e09b12c74cab58dca5d999a50606bceb4482",
+      "page_count": 24,
+      "included_in_full_book": true,
+      "section_title": "管理科学与工程类专业人才培养方案",
+      "aggregate_start_page": 693,
+      "aggregate_end_page": 716
+    },
+    {
+      "relative_path": "11计算机与人工智能学院/20252025计算机类(2025计算机类).pdf",
+      "sha256": "75b9897222d5fdf15399ffd1899db83f4a05cc167282ef952c250cdbcbdf14c2",
+      "page_count": 29,
+      "included_in_full_book": true,
+      "section_title": "计算机类专业人才培养方案",
+      "aggregate_start_page": 717,
+      "aggregate_end_page": 745
+    },
+    {
+      "relative_path": "12法学院/1法学.pdf",
+      "sha256": "1c1e66c5b526f95b5c43e89b532d51b7b48c2ac2083836af0801830de59706c2",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "法学专业人才培养方案",
+      "aggregate_start_page": 746,
+      "aggregate_end_page": 767
+    },
+    {
+      "relative_path": "12法学院/2法学（法学与会计学双学位）.pdf",
+      "sha256": "5f802e0aaaffba662e94a9806a5ef153f0853a26c737025c62f5ed4ff8189351",
+      "page_count": 24,
+      "included_in_full_book": true,
+      "section_title": "法学与会计双学位专业人才培养方案",
+      "aggregate_start_page": 768,
+      "aggregate_end_page": 791
+    },
+    {
+      "relative_path": "12法学院/3法学（法学与国际商务双学位）.pdf",
+      "sha256": "3e872d7b3e9b48bdb64dba2472f8eef64f2253125514ec310529f6068692a27b",
+      "page_count": 25,
+      "included_in_full_book": true,
+      "section_title": "法学与国际商务双学位专业人才培养方案",
+      "aggregate_start_page": 792,
+      "aggregate_end_page": 816
+    },
+    {
+      "relative_path": "12法学院/4法学（法学与金融学双学位）.pdf",
+      "sha256": "19a0806d449df248e4e319bff7372e28f42769065ef33d5821f574eb8b1d2690",
+      "page_count": 24,
+      "included_in_full_book": true,
+      "section_title": "法学与金融学双学位专业人才培养方案",
+      "aggregate_start_page": 817,
+      "aggregate_end_page": 840
+    },
+    {
+      "relative_path": "13外国语学院/20252025外国语言文学类.pdf",
+      "sha256": "688a0043d431b1c2d5a56a517da22606f3041167822107bb0d81a6972757979b",
+      "page_count": 28,
+      "included_in_full_book": true,
+      "section_title": "外国语言文学类专业人才培养方案",
+      "aggregate_start_page": 841,
+      "aggregate_end_page": 868
+    },
+    {
+      "relative_path": "14公共管理学院/20252025公共管理类.pdf",
+      "sha256": "4bb7886e14e2b716a76fed2aae99b93073d1b3855d3bb371778a070c4ab25f4e",
+      "page_count": 25,
+      "included_in_full_book": true,
+      "section_title": "公共管理类专业人才培养方案",
+      "aggregate_start_page": 869,
+      "aggregate_end_page": 893
+    },
+    {
+      "relative_path": "15数学学院/1数学与应用数学（数学与经济学双学位）.pdf",
+      "sha256": "d19487caed613b53743b83a266ba9ad06569b71b38eade717d32095e0f68e4ac",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "数学与应用数学(数学与经济学双学位)专业人才培养方案",
+      "aggregate_start_page": 894,
+      "aggregate_end_page": 915
+    },
+    {
+      "relative_path": "15数学学院/2金融数学.pdf",
+      "sha256": "8bbed90d8e6b9ec446f2909fcc075d260a40c19d9e4305148c629dff3a479c32",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "金融数学专业人才培养方案",
+      "aggregate_start_page": 916,
+      "aggregate_end_page": 936
+    },
+    {
+      "relative_path": "16人文与艺术学院/1数字媒体艺术.pdf",
+      "sha256": "8811e6e580927439dcf5e239bf872835f0c1a5590fe77102f61bbef0b3928dfe",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "数字媒体艺术专业人才培养方案",
+      "aggregate_start_page": 937,
+      "aggregate_end_page": 958
+    },
+    {
+      "relative_path": "16人文与艺术学院/2汉语言文学.pdf",
+      "sha256": "be337c0424b88093a34b820b6dde33bc5ea7317776957d672c2c70e2ac1042a9",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "汉语言文学专业人才培养方案",
+      "aggregate_start_page": 959,
+      "aggregate_end_page": 978
+    },
+    {
+      "relative_path": "16人文与艺术学院/3网络与新媒体.pdf",
+      "sha256": "a95dea86b4f031ff00ad4ae6eb4e20c83f60832d685791e4315833977398f46f",
+      "page_count": 22,
+      "included_in_full_book": true,
+      "section_title": "网络与新媒体专业人才培养方案",
+      "aggregate_start_page": 979,
+      "aggregate_end_page": 1000
+    },
+    {
+      "relative_path": "16人文与艺术学院/4新闻学.pdf",
+      "sha256": "3c1326880f288716fdefa3f4ebc2c577a126ce5d5a8b80ae209fb2b924dcbdba",
+      "page_count": 21,
+      "included_in_full_book": true,
+      "section_title": "新闻学专业人才培养方案",
+      "aggregate_start_page": 1001,
+      "aggregate_end_page": 1021
+    },
+    {
+      "relative_path": "17特拉华数据科学学院/20252025信息管理与信息系统（信息系统与数据管理）.pdf",
+      "sha256": "3edbed181107f2806cffc1447a3bb060202ac220e1c3edf79dc2de1015fb2e7b",
+      "page_count": 19,
+      "included_in_full_book": true,
+      "section_title": "信息管理与信息系统(信息系统与数据管理方向)专业人才培养方案",
+      "aggregate_start_page": 1022,
+      "aggregate_end_page": 1040
+    },
+    {
+      "relative_path": "17特拉华数据科学学院/20252025物流管理（运营管理与商务分析）.pdf",
+      "sha256": "5e0596538f55d461d6633082b83189831adf77d4e1c961a338305db06b20cf21",
+      "page_count": 19,
+      "included_in_full_book": true,
+      "section_title": "物流管理(运营管理与商务分析方向)专业人才培养方案",
+      "aggregate_start_page": 1041,
+      "aggregate_end_page": 1059
+    },
+    {
+      "relative_path": "17特拉华数据科学学院/20252025金融数学（金融服务与量化分析）.pdf",
+      "sha256": "3db1dbd7249f91987fc7fad6894c7c04be3583ed5b10c477df4cad48f7f50ecc",
+      "page_count": 20,
+      "included_in_full_book": true,
+      "section_title": "金融数学(金融服务与量化分析方向)专业人才培养方案",
+      "aggregate_start_page": 1060,
+      "aggregate_end_page": 1079
+    },
+    {
+      "relative_path": "18辅修学位教学计划/2025级财务管理专业辅修学位课程（从第13页开始）.pdf",
+      "sha256": "8b3b4d29e3b0eeb112d8b4ac323f1e42144bf4f4af3b3ce97c3b11dd5371e6c2",
+      "page_count": 15,
+      "included_in_full_book": true,
+      "section_title": "财务管理专业辅修学位人才培养方案",
+      "aggregate_start_page": 1080,
+      "aggregate_end_page": 1094
+    },
+    {
+      "relative_path": "18辅修学位教学计划/2025级金融学专业辅修学位课程(从16页开始）.pdf",
+      "sha256": "247ecf52eac7cadcb9356b841f4d36630e4643b7cdb76893ea6d3be4b9411fc6",
+      "page_count": 25,
+      "included_in_full_book": true,
+      "section_title": "金融学专业辅修学位人才培养方案",
+      "aggregate_start_page": 1095,
+      "aggregate_end_page": 1119
+    },
+    {
+      "relative_path": "18辅修学位教学计划/西南财经大学2025级本科辅修专业教学计划.pdf",
+      "sha256": "7f063d4f22709904ab036ef6faa0bb1fadb698b528f45eea8555d1c387664f6b",
+      "page_count": 1,
+      "included_in_full_book": true,
+      "section_title": "西南财经大学2025级本科辅修专业教学计划人才培养方案",
+      "aggregate_start_page": 1120,
+      "aggregate_end_page": 1120
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "case_count": 100,
+  "passed": 100,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "failure_checks": {},
+  "failed_ids": [],
+  "elapsed_seconds": 67.98,
+  "mode": "HTTP final candidate_k=50 corrected annual art policy"
+}

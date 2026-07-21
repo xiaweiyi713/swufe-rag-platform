@@ -1,0 +1,53 @@
+{
+  "expected_count": 5,
+  "actual_count": 5,
+  "passed": 4,
+  "failed": 1,
+  "unexpected_ids": [],
+  "failures": [
+    {
+      "id": "thesis",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "answer missing '学术不端检测'",
+        "answer missing '论文答辩'",
+        "citation_count=0, expected >= 2",
+        "citation title missing '毕业论文'"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "id": "thesis",
+      "passed": false,
+      "errors": [
+        "path='sql', expected 'rag'",
+        "answer missing '学术不端检测'",
+        "answer missing '论文答辩'",
+        "citation_count=0, expected >= 2",
+        "citation title missing '毕业论文'"
+      ]
+    },
+    {
+      "id": "empty_classroom",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "sports_hours_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "club_registration_unknown",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "id": "diploma_replacement_unknown",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

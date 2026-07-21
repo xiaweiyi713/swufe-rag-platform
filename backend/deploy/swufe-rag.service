@@ -1,0 +1,67 @@
+# 不用 Docker 时的进程守护方案。
+#
+# 安装:
+#   sudo cp deploy/swufe-rag.service /etc/systemd/system/
+#   sudo cp deploy/.env.example /etc/swufe-rag.env   # 然后编辑
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now swufe-rag
+#
+# 查看:  systemctl status swufe-rag
+#         journalctl -u swufe-rag -f
+
+[Unit]
+Description=SWUFE 教务 RAG 问答服务
+Documentation=file:///opt/swufe-rag/deploy/README.md
+After=network-online.target redis-server.service
+Wants=network-online.target
+# Redis 是可选依赖(连不上会降级为进程内存),故用 Wants 而非 Requires。
+
+[Service]
+Type=exec
+User=swufe
+Group=swufe
+WorkingDirectory=/opt/swufe-rag
+
+EnvironmentFile=/etc/swufe-rag.env
+Environment=PYTHONUNBUFFERED=1
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+
+ExecStart=/opt/swufe-rag/.venv/bin/uvicorn app.server.application:app \
+    --host 127.0.0.1 --port 8000 \
+    --workers ${SWUFE_RAG_WORKERS} \
+    --proxy-headers --forwarded-allow-ips=127.0.0.1 \
+    --timeout-keep-alive 75
+
+# 冷启动要加载 1.5G 模型 + 627M 索引,给足时间再判定启动失败。
+TimeoutStartSec=300
+# 优雅停机:等在途的 LLM 请求(最长约 15s)结束。
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+Restart=always
+RestartSec=5
+# 5 分钟内连续失败 5 次则停止重试,避免无意义的重启风暴刷爆日志。
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# --- 安全加固 ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# 只允许写运行时目录(SQLite 迁移副本、日志)
+ReadWritePaths=/opt/swufe-rag/logs /var/tmp/swufe-rag
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+# --- 单 worker 实测约 4.1GiB 常驻、5.23GiB 压测峰值 ---
+MemoryMax=6G
+MemoryHigh=5G
+
+[Install]
+WantedBy=multi-user.target

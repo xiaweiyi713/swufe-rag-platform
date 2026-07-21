@@ -1,0 +1,52 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+deploy/certs/*.pem
+deploy/letsencrypt/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Model and package caches
+.cache/
+models/
+
+# Generated retrieval artifacts
+artifacts/*
+!artifacts/.gitkeep
+*.faiss
+*.npy
+*.npz
+*.tmp
+
+# Module A local source material and generated OCR/reports
+data/raw/*
+!data/raw/.gitkeep
+data/ocr/
+data/ingest_report.json
+data/*.sqlite3
+data/*.sqlite3-shm
+data/*.sqlite3-wal
+
+# Runtime output
+logs/
+eval/output/
+tmp/
+release/
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
