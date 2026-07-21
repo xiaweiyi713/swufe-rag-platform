@@ -69,6 +69,45 @@ def module_audit(
         remaining = None
         if required is not None and completion_known:
             remaining = 0.0 if claimed else max(0.0, float(required) - completed_credits)
+        rule_text = str(requirement.get("rule_text") or "")
+        scoped_rows = module_rows or rows
+        major = str(scoped_rows[0].get("major") or "") if scoped_rows else ""
+        major_stem = major.removesuffix("专业")
+        constraints: list[dict[str, Any]] = []
+        for clause in re.split(r"[；;。]", rule_text):
+            if major_stem and _compact(major_stem) not in _compact(clause):
+                continue
+            names = re.findall(r"《([^》]+)》", clause)
+            if not names or not re.search(r"至少选修|必须选修", clause):
+                continue
+            candidates = [
+                row
+                for row in module_rows
+                if any(
+                    _compact(name) in _compact(clean_course_name(row.get("course_name")))
+                    or _compact(clean_course_name(row.get("course_name"))) in _compact(name)
+                    for name in names
+                )
+            ]
+            candidate_codes = {str(row.get("course_code") or "") for row in candidates}
+            done_codes = {str(row.get("course_code") or "") for row in done}
+            any_of = bool(re.search(r"至少.*(?:一门|其中一门)", clause))
+            satisfied = (
+                bool(candidate_codes & done_codes)
+                if any_of
+                else bool(candidate_codes) and candidate_codes <= done_codes
+            )
+            constraints.append(
+                {
+                    "text": re.sub(r"\s+", "", clause).strip(),
+                    "type": "any_of" if any_of else "all_of",
+                    "course_codes": sorted(candidate_codes),
+                    "satisfied": satisfied,
+                    "missing_course_codes": (
+                        [] if satisfied else sorted(candidate_codes - done_codes)
+                    ),
+                }
+            )
         results.append(
             {
                 "module": module,
@@ -80,6 +119,7 @@ def module_audit(
                 "completed_course_codes": [str(row.get("course_code") or "") for row in done],
                 "completed_by_unverified_claim": claimed,
                 "completion_known": completion_known,
+                "constraints": constraints,
             }
         )
     return results
@@ -107,14 +147,49 @@ def feasibility(
     *,
     completed_courses: list[str],
     completed_module_claims: list[str],
+    completed_scope_rows: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
-    blocking = unavoidable_after(rows, deadline_semester)
-    if not completed_courses and not completed_module_claims:
-        status = "insufficient_input"
-        reason = "缺少已修课程或模块信息，无法核算普通课程能否在截止学期前完成。"
-    elif blocking:
+    matched, _ = match_completed_courses(rows, completed_courses)
+    completed_keys = {
+        (str(row.get("course_code") or ""), str(row.get("semester") or ""))
+        for row in [*matched, *completed_scope_rows]
+    }
+    completed_modules = {_compact(value) for value in completed_module_claims}
+    blocking = [
+        row
+        for row in unavoidable_after(rows, deadline_semester)
+        if (
+            (str(row.get("course_code") or ""), str(row.get("semester") or ""))
+            not in completed_keys
+            and not any(value in _compact(row.get("module")) for value in completed_modules)
+        )
+    ]
+    fixed = [
+        row
+        for row in blocking
+        if semester_positions(row.get("semester"))
+        and min(semester_positions(row.get("semester"))) >= deadline_semester
+    ]
+    flexible = [row for row in blocking if row not in fixed]
+    fixed_classroom = [
+        row
+        for row in fixed
+        if float(row.get("weekly_hours") or 0) > 0
+        or float(row.get("teaching_hours") or 0) > 0
+    ]
+    fixed_tasks = [row for row in fixed if row not in fixed_classroom]
+    if fixed_classroom:
         status = "infeasible"
-        reason = "培养方案仍在大四安排必修、实习、论文或实践环节，不能据此承诺大四完全没有教学活动。"
+        reason = "培养方案在大四仍安排固定必修课堂课程，不能实现大四完全不排课。"
+    elif fixed_tasks:
+        status = "no_regular_classes_but_tasks_remain"
+        reason = (
+            "培养方案在大四没有固定必修课堂课程，但仍有毕业实习、毕业论文等"
+            "必须完成的非普通课堂任务；不能把“不上课”理解为“没有培养任务”。"
+        )
+    elif flexible:
+        status = "conditional"
+        reason = "未发现大四固定必修课堂课，但仍需确认跨学期必修任务是否已在此前完成。"
     else:
         status = "feasible"
         reason = "按培养方案记录，未发现截止学期后仍必须完成的结构化课程。"
@@ -123,6 +198,15 @@ def feasibility(
         "operational_feasibility": "unknown",
         "reason": reason,
         "blocking_course_codes": [str(row.get("course_code") or "") for row in blocking],
+        "fixed_classroom_course_codes": [
+            str(row.get("course_code") or "") for row in fixed_classroom
+        ],
+        "fixed_non_classroom_task_codes": [
+            str(row.get("course_code") or "") for row in fixed_tasks
+        ],
+        "flexible_requirement_codes": [
+            str(row.get("course_code") or "") for row in flexible
+        ],
         "data_boundary": "实际能否提前选课仍取决于当学期开课目录、先修要求和选课规则。",
     }
 

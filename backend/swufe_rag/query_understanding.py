@@ -7,7 +7,11 @@ import re
 from typing import Any
 
 from generation.llm import LLMClient
-from swufe_rag.query_plan_schema import AcademicStage, UnderstandingDraft
+from swufe_rag.query_plan_schema import (
+    AcademicStage,
+    CompletedScopeClaim,
+    UnderstandingDraft,
+)
 
 
 SCHOOL_RE = re.compile(
@@ -229,6 +233,70 @@ def _completed_segment(question: str) -> list[str]:
     return [item.strip() for item in re.split(r"[、,，和及]", segment) if item.strip()]
 
 
+_SEMESTER_COUNT = {
+    "一": 1,
+    "二": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+}
+_COMPLETED_SCOPE_RE = re.compile(
+    r"前\s*([一二三四五六七八1-8])\s*个?\s*学期(?:内|的)?"
+    r"(?P<scope>.{0,16}?(?:专业选修|自由选修|非必修|选修|必修)(?:课|课程|科目)?)"
+    r"(?:我)?(?:都|全部|全都)?(?:已经|已)?"
+    r"(?P<status>学完|修完|完成|通过|选了|选完)"
+)
+
+
+def _completed_scope(
+    question: str,
+) -> tuple[list[CompletedScopeClaim], int | None]:
+    """Parse explicit all-courses-before-semester completion claims."""
+
+    match = _COMPLETED_SCOPE_RE.search(question)
+    if match is None:
+        return [], None
+    token = match.group(1)
+    completed_through = int(token) if token.isdigit() else _SEMESTER_COUNT[token]
+    if completed_through >= 8:
+        relation = "all_program"
+        target_semester = None
+    else:
+        relation = "before_target_semester"
+        target_semester = completed_through + 1
+
+    scope = match.group("scope")
+    course_natures = []
+    if "选修" in scope or "非必修" in scope:
+        course_natures.append("选修")
+    elif "必修" in scope:
+        course_natures.append("必修")
+    course_modules = []
+    if "专业选修" in scope:
+        course_modules.append("专业选修课")
+    elif "自由选修" in scope:
+        course_modules.append("自由选修课")
+    status_text = match.group("status")
+    status = (
+        "passed"
+        if status_text == "通过"
+        else "selected"
+        if status_text in {"选了", "选完"}
+        else "completed"
+    )
+    return [
+        CompletedScopeClaim(
+            semester_relation=relation,
+            course_natures=course_natures,
+            course_modules=course_modules,
+            status=status,
+        )
+    ], target_semester
+
+
 def deterministic_understanding(question: str, **scope: Any) -> UnderstandingDraft:
     if EXPLICIT_GENERAL_CHAT_RE.fullmatch(question) or _explicit_general_task(question):
         domain = "general"
@@ -287,6 +355,7 @@ def deterministic_understanding(question: str, **scope: Any) -> UnderstandingDra
     if policy or promotion:
         outputs.append("policy_explanation")
 
+    completed_scopes, completed_scope_target = _completed_scope(question)
     relation = None
     if "下学期" in question:
         relation = "next_semester"
@@ -294,6 +363,10 @@ def deterministic_understanding(question: str, **scope: Any) -> UnderstandingDra
         relation = "before_year_4"
     elif re.search(r"大四|最后一年", question):
         relation = "during_year_4"
+    if completed_scope_target is not None:
+        # The senior-year phrase is the avoidance goal; the next unfinished
+        # semester is the target for the completed-range calculation.
+        relation = None
 
     domains: list[str] = []
     if re.search(r"英语|外语", question):
@@ -340,14 +413,26 @@ def deterministic_understanding(question: str, **scope: Any) -> UnderstandingDra
         major_mention=_major_mention(question) or scope.get("major"),
         cohort_mention=cohort,
         current_stage=_stage(question),
-        explicit_semesters=_semesters(question),
+        explicit_semesters=list(
+            dict.fromkeys(
+                [
+                    *_semesters(question),
+                    *(
+                        [completed_scope_target]
+                        if completed_scope_target is not None
+                        else []
+                    ),
+                ]
+            )
+        ),
         target_relation=relation,
         course_codes=[value.upper() for value in COURSE_CODE_RE.findall(question)],
         subject_domain_mentions=domains,
         course_nature_mentions=natures,
         course_module_mentions=modules,
-        completed_course_mentions=_completed_segment(question),
+        completed_course_mentions=([] if completed_scopes else _completed_segment(question)),
         completed_module_claims=completed_modules,
+        completed_scope_claims=completed_scopes,
         goal_mentions=[value for value in ("avoid_year_4_courses" if re.search(r"大四不想上课|大四不排课", question) else None,) if value],
         information_scope=info_scope,
         confidence=0.88,

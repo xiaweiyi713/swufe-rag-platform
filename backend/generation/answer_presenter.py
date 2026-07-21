@@ -158,8 +158,17 @@ def _semester_course_sections(
     label = "、".join(f"第{value}学期" for value in semesters)
     sections: list[str] = []
     if exact:
+        elective_only = all("必修" not in course.nature for course in exact)
+        title = "选修候选课程（非必修清单）" if elective_only else "明确安排课程"
+        note = (
+            "> 这些课程是培养方案中的可选课池，不代表每门都必须修读；"
+            "是否还要选，应以对应模块的剩余学分和附加选课条件为准。\n\n"
+            if elective_only
+            else ""
+        )
         sections.append(
-            f"### {scope}{label}明确安排课程\n\n"
+            f"### {scope}{label}{title}\n\n"
+            + note
             + _course_table(
                 exact,
                 include_hours=show_hours,
@@ -185,7 +194,7 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
     scope = f"{query.cohort}级{query.major}" if query.cohort and query.major else "当前查询"
 
     sections: list[str] = []
-    show_hours = bool(re.search(r"学时", query.original_question))
+    show_hours = bool(re.search(r"学时|上课|排课", query.original_question))
     show_department = bool(re.search(r"哪个学院|开课学院|由.*学院", query.original_question))
 
     minimum = next(
@@ -384,9 +393,44 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
             else:
                 sections.append("在截止学期之前没有查询到符合全部条件的结构化课程记录。")
         elif name == "list_unavoidable_courses_after_semester" and courses:
-            sections.append(
-                "### 截止学期后仍安排的必修或实践环节\n\n" + _course_table(courses)
-            )
+            deadline = int(result.get("deadline_semester") or query.deadline_semester or 7)
+            fixed = [
+                course
+                for course in courses
+                if semester_values(course.semester)
+                and min(semester_values(course.semester)) >= deadline
+            ]
+            flexible = [course for course in courses if course not in fixed]
+            classroom = [
+                course
+                for course in fixed
+                if float(course.weekly_hours or 0) > 0
+                or float(course.teaching_hours or 0) > 0
+            ]
+            tasks = [course for course in fixed if course not in classroom]
+            if classroom:
+                sections.append(
+                    "### 大四固定必修课堂课程\n\n"
+                    + _course_table(classroom, include_hours=True)
+                )
+            else:
+                sections.append(
+                    "### 大四是否需要常规上课\n\n"
+                    "培养方案在第7、8学期没有安排固定的必修课堂课程。"
+                )
+            if tasks:
+                sections.append(
+                    "### 必须完成但不是常规课堂的任务\n\n"
+                    "> 这些任务不按普通周课表上课，但仍是毕业要求，不能理解为不用完成。\n\n"
+                    + _course_table(tasks, include_hours=True)
+                )
+            if flexible:
+                sections.append(
+                    "### 需核对是否已完成的跨学期必修任务\n\n"
+                    "> 这些项目可在第1—8学期范围内完成，并不等于一定留到大四；"
+                    "如果此前已经完成，就不会形成大四负担。\n\n"
+                    + _course_table(flexible, include_hours=True)
+                )
         elif name == "audit_completed_courses":
             assumed_ids = list(result.get("assumed_scope_record_ids") or [])
             if assumed_ids:
@@ -399,12 +443,39 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
 
             modules = result.get("modules") or []
             if modules:
+                visible_modules = [
+                    module
+                    for module in modules
+                    if module.get("completion_known")
+                    or module.get("completed_by_unverified_claim")
+                ]
+                conclusions: list[str] = []
+                for module in visible_modules:
+                    required = module.get("required_credits")
+                    completed = module.get("completed_credits")
+                    remaining = module.get("remaining_credits")
+                    if required is not None and completed is not None and remaining is not None:
+                        if remaining == 0:
+                            conclusions.append(
+                                f"- {module['module']}已按你的完成范围匹配 **{completed:g} 学分**，"
+                                f"达到最低 **{required:g} 学分**，后续同模块选修课不再是补足学分的必选项。"
+                            )
+                        else:
+                            conclusions.append(
+                                f"- {module['module']}已匹配 **{completed:g} 学分**，"
+                                f"距离最低要求还差 **{remaining:g} 学分**。"
+                            )
+                    for constraint in module.get("constraints") or []:
+                        state = "已满足" if constraint.get("satisfied") else "尚未满足"
+                        conclusions.append(f"- 附加选课条件{state}：{constraint['text']}。")
+                if conclusions:
+                    sections.append("### 核算结论\n\n" + "\n".join(conclusions))
                 lines = [
                     "### 学分进度核算",
                     "| 模块 | 要求学分 | 已匹配学分 | 剩余学分 | 核验状态 |",
                     "|---|---:|---:|---:|---|",
                 ]
-                for module in modules:
+                for module in visible_modules:
                     required = module.get("required_credits")
                     remaining = module.get("remaining_credits")
                     completed = module.get("completed_credits")
@@ -425,7 +496,8 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
                         f"{completed_display} | {remaining_display} | "
                         f"{status} |"
                     )
-                sections.append("\n".join(lines))
+                if visible_modules:
+                    sections.append("\n".join(lines))
 
     feasible = packet.audit.get("feasibility")
     if feasible:
@@ -434,6 +506,8 @@ def deterministic_body(plan: ExecutionPlan, packet: EvidencePacket) -> str:
             "feasible": "培养方案层面可行",
             "infeasible": "无法做到大四完全没有教学活动",
             "insufficient_input": "需要补充已修课程后才能完成个性化判断",
+            "conditional": "可以避免固定课堂，但需核对跨学期任务",
+            "no_regular_classes_but_tasks_remain": "大四没有固定必修课堂，但仍有毕业任务",
         }.get(status, "尚不能判断")
         sections.append(
             f"### 可行性结论\n\n**{label}。**{feasible.get('reason', '')}\n\n"

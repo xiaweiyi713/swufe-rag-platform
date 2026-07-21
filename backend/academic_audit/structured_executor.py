@@ -268,6 +268,7 @@ def execute_plan(
     packet.coverage.requirements = bool(requirement_rows)
     course_by_id: dict[str, CourseFact] = {}
     requirement_by_id: dict[str, RequirementFact] = {}
+    assumed_completed_rows: list[dict[str, Any]] = []
 
     def add_courses(rows: list[dict[str, Any]]) -> list[str]:
         ids: list[str] = []
@@ -344,14 +345,15 @@ def execute_plan(
                         row for row in candidates
                         if semester_positions(row.get("semester"))
                         and (
-                            min(semester_positions(row.get("semester"))) < boundary
+                            max(semester_positions(row.get("semester"))) < boundary
                             if relation in {"before_current_semester", "before_target_semester"}
-                            else min(semester_positions(row.get("semester"))) <= boundary
+                            else max(semester_positions(row.get("semester"))) <= boundary
                         )
                     ]
                 candidates = _filter_rows(candidates, claim)
                 scope_rows.extend(candidates)
             scope_rows = _deduplicate(scope_rows)
+            assumed_completed_rows = scope_rows
             matched = _deduplicate([*matched, *scope_rows])
             modules = module_audit(
                 all_rows,
@@ -402,6 +404,7 @@ def execute_plan(
                 int(args["deadline_semester"]),
                 completed_courses=args.get("completed_courses", []),
                 completed_module_claims=args.get("completed_module_claims", []),
+                completed_scope_rows=assumed_completed_rows,
             )
             packet.audit["feasibility"] = value
             result.update(value)

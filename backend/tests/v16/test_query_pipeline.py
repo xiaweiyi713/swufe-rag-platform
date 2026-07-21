@@ -500,6 +500,65 @@ def test_completed_module_claim_is_not_treated_as_transcript() -> None:
     assert list_operation.arguments["exclude_modules"] == ["专业方向课"]
 
 
+def test_completed_first_five_semesters_audits_electives_and_classroom_load() -> None:
+    question = (
+        "我现在把前五个学期的选修课都学完了，我现在大四不想上课，"
+        "大三下怎么选课才能达到学分要求？"
+    )
+    database = AcademicDatabase("data/academic_v2.sqlite3")
+    draft = deterministic_understanding(
+        question,
+        college="计算机与人工智能学院",
+        cohort="2024",
+        major="网络空间安全专业",
+    )
+    draft = _repair_draft_conflicts(draft, question)
+    normalized = normalize_query(draft, question, database=database)
+    plan = build_execution_plan(normalized)
+
+    assert normalized.target_semesters == [6]
+    assert len(normalized.completed_scope_claims) == 1
+    claim = normalized.completed_scope_claims[0]
+    assert claim.semester_relation == "before_target_semester"
+    assert claim.course_natures == ["选修"]
+    assert claim.status == "completed"
+    assert "audit_completed_courses" in [value.name for value in plan.operations]
+
+    packet = execute_plan(
+        plan,
+        database=database,
+        metadata=MetadataDB("data/metadata.sqlite3"),
+    )
+    audit = next(
+        value
+        for value in packet.operation_results
+        if value["operation"] == "audit_completed_courses"
+    )
+    assert audit["assumed_scope_credits"] == 8
+    assert len(audit["assumed_scope_record_ids"]) == 4
+    professional = next(
+        value for value in audit["modules"] if "专业选修课" in value["module"]
+    )
+    assert professional["completed_credits"] == 8
+    assert professional["remaining_credits"] == 0
+    assert professional["constraints"][0]["satisfied"] is True
+
+    assert packet.audit["feasibility"]["curriculum_feasibility"] == (
+        "no_regular_classes_but_tasks_remain"
+    )
+    assert packet.audit["feasibility"]["fixed_classroom_course_codes"] == []
+    assert set(packet.audit["feasibility"]["fixed_non_classroom_task_codes"]) == {
+        "PRT110",
+        "PRT111",
+    }
+    answer = deterministic_body(plan, packet)
+    assert "达到最低 **8 学分**" in answer
+    assert "附加选课条件已满足" in answer
+    assert "选修候选课程（非必修清单）" in answer
+    assert "没有安排固定的必修课堂课程" in answer
+    assert "毕业实习" in answer and "毕业论文" in answer
+
+
 def test_progress_executor_never_returns_raw_table_text() -> None:
     database, _, _, plan = pipeline(
         "2023级人工智能专业如果大四不想上课，都要在大四前修读什么选修课？"
