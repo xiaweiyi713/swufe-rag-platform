@@ -1,7 +1,7 @@
 # 西南财大教务 RAG 项目全量审计报告
 
 - 审计日期：2026-07-15
-- 仓库：`https://github.com/ZorIgn/swufe-rag.git`
+- 当前归档仓库：`https://github.com/xiaweiyi713/swufe-rag-platform`（本报告形成于 monorepo 合并前）
 - 分支：`main`
 - 需求基线：`西南财大教务RAG问答系统项目计划书.docx`
 - 数据基线：新版 `data.zip`、旧版 `swufe-rag-数据模块-交接(1).zip` 与工作区 `data/`

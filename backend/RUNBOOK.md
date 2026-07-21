@@ -219,7 +219,7 @@ python -m scripts.merge_curriculum_cohort \
 
 ## GitHub 协作
 
-主仓：`https://github.com/ZorIgn/swufe-rag`
+主仓：`https://github.com/xiaweiyi713/swufe-rag-platform`（克隆后进入 `backend/`）
 
 - 所有人从 `main` 创建功能分支。
 - 提交 Pull Request 前运行全部测试。

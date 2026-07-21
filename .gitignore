@@ -1,39 +1,57 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!**/.env.example
+config.local.yaml
+deploy/certs/*.pem
+
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.pyd
 .venv/
 venv/
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# 本地运行产物
-logs/
-eval/results/
-*.log
-
-# 向量索引与模型缓存(模块B产物,体积大,不入库)
-retrieval/index/
+# Generated RAG artifacts and model caches
 *.faiss
 *.npy
 *.npz
 .cache/
+models/
+release/
 
-# 本地私密配置(API Key 等)
-config.local.yaml
-.env
-.env.docker
+# Runtime output
+logs/
+eval/results/
+eval/output/
+tmp/
+*.log
 
-# iOS 客户端构建产物
+# Crawler state, output and rollback bundles
+swufe-crawler/backup/
+swufe-crawler/output/
+swufe-crawler/state/
+
+# Xcode and Swift build output
 client-ios/build*/
 client-ios/DerivedData/
 *.xcarchive/
 xcuserdata/
 *.xcuserdatad/
+.swiftpm/
 
-# 独立后端仓库 checkout（见 REPOSITORY.md）
+# Pre-monorepo backend checkout retained locally as a safety copy
 back-end engineer/swufe-rag/
 
-# 编辑器与系统
+# Editors and operating systems
+.claude/
 .DS_Store
 .idea/
 .vscode/

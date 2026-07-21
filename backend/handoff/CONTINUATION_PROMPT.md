@@ -35,8 +35,8 @@
 在新电脑上必须从主仓克隆，不能在源码快照目录直接 `git init`，也不能创建与远端无关的历史：
 
 ```powershell
-git clone https://github.com/ZorIgn/swufe-rag.git swufe-rag
-cd swufe-rag
+git clone https://github.com/xiaweiyi713/swufe-rag-platform.git
+cd swufe-rag-platform/backend
 git switch main
 git pull --ff-only origin main
 git status
@@ -307,7 +307,7 @@ git switch -c feature/<清晰任务名>
 3. 更新 `ENGINEERING_LOG.md`；
 4. 使用清晰的小粒度提交；
 5. 合并或发起 Pull Request；
-6. 推送到 `ZorIgn/swufe-rag`；
+6. 推送到 `xiaweiyi713/swufe-rag-platform`；
 7. 禁止强制推送 `main`；
 8. 禁止使用 `--allow-unrelated-histories` 覆盖队友历史。
 

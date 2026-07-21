@@ -99,9 +99,15 @@ def main() -> int:
     parser.add_argument("--rollback", metavar="BACKUP_DIR", help="从备份目录恢复后端数据")
     args = parser.parse_args()
 
-    with Path(args.config).open(encoding="utf-8") as handle:
+    config_path = Path(args.config).expanduser().resolve()
+    with config_path.open(encoding="utf-8") as handle:
         config = yaml.safe_load(handle)
-    backend = Path(config["backend_dir"])
+    configured_backend = Path(config["backend_dir"]).expanduser()
+    backend = (
+        configured_backend
+        if configured_backend.is_absolute()
+        else (config_path.parent / configured_backend).resolve()
+    )
 
     if args.rollback:
         return rollback(backend, Path(args.rollback))

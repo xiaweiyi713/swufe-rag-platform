@@ -1,8 +1,8 @@
 # 西财教务问答 iOS 客户端（SwufeAsk）
 
-原生 SwiftUI 客户端，对接 swufe-rag 正式 HTTP 接口（V16，见
-`back-end engineer/FRONTEND_API_V16.md`；兼容冻结契约 `API_REFERENCE.md` v1.1）。
-后端在 macOS 的启动与联调记录见 `back-end engineer/RUN_ON_MAC_2026-07-18.md`。
+原生 SwiftUI 客户端，对接 swufe-rag 正式 HTTP 接口。当前接口以
+[`../backend/API_REFERENCE.md`](../backend/API_REFERENCE.md) 为准；V16 交接记录见
+[`../backend/handoff/FRONTEND_API_V16.md`](../backend/handoff/FRONTEND_API_V16.md)。
 
 V16 对接要点：`/options` 的 `majors_by_cohort` 与
 `major_colleges_by_cohort` 驱动「提问范围」的学院、年级、专业双向联动；
@@ -28,15 +28,17 @@ open SwufeAsk.xcodeproj
 `http://192.168.1.5:8000`）；Info.plist 已开 `NSAllowsLocalNetworking` 并带本地网络
 权限说明，首次请求时同意「本地网络」授权即可。
 
-后端也可从仓库根目录通过 Docker Compose 启动：
+后端可在 monorepo 的 `backend/` 目录通过 Docker Compose 启动：
 
 ```bash
-docker compose --env-file .env.docker up --build -d
+cd ../backend
+cp deploy/.env.example .env
+docker compose --profile production up --build -d
 ```
 
-模拟器访问容器时仍使用 `http://127.0.0.1:8000`；详细说明见根目录 `DOCKER.md`。
+模拟器访问容器时仍使用 `http://127.0.0.1:8000`；生产运行前必须恢复与代码版本匹配的运行数据包，详见 [`../backend/deploy/README.md`](../backend/deploy/README.md)。
 
-后端侧启动正式服务：`python -m app.server`（见仓库根 README / API_REFERENCE.md）。
+后端侧启动正式服务：`python -m app.server`（在 `backend/` 中执行）。
 
 ## 与后端接口的对应
 
@@ -57,7 +59,7 @@ docker compose --env-file .env.docker up --build -d
 - **引用溯源**：`citations` 逐条列在回答下方，点击调 `/source/{chunk_id}`
   展示条款全文、回答引用的原句高亮、官网通知页/原始文件链接。
 - **检索详情**：`retrieved` 以“检索到 N 条相关条款”入口收起，含融合排序分数与摘要；
-  摘要字段兼容 `summary`（API_REFERENCE.md）与 `snippet`（根 README D-4）两种命名。
+  摘要字段兼容 `summary` 与旧版 `snippet` 两种命名。
 - **拒答**：`refused=true` 时回答区显示“证据不足”标签，`official_links` 单独成卡。
   `OfficialLink` 字段后端尚未冻结，客户端做全可选宽松解码（title/label/doc_title +
   url/page_url/file_url 按优先级取值），后端定稿后可在 `Models/AskModels.swift` 收紧。

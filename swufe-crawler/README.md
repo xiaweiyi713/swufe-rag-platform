@@ -4,7 +4,7 @@
 用与后端一致的 bge-large-zh-v1.5 向量化,然后**安全合并**进 swufe-rag 的
 RAG 知识库,让教务问答能回答"最近有什么通知/新闻"这类时效性问题。
 
-完全独立于主项目:代码、状态、增量产物都在本目录;对后端数据只做
+爬虫是 monorepo 的独立模块:代码、状态、增量产物都在本目录;对 `../backend` 只做
 "备份 + 追加 + 末尾提交 manifest"的合并,可一键回滚。
 
 ## 流水线
@@ -29,10 +29,10 @@ index.faiss}`、`data/metadata.sqlite3`(sources+chunks,embedding_row 顺延),
 ## 手动运行
 
 ```bash
-cd /Users/xuwenyao/swufe-rag/swufe-crawler
+cd swufe-rag-platform/swufe-crawler
 .venv/bin/python crawler.py                 # 抓新文章
 .venv/bin/python build_chunks.py            # 切块
-BACKEND=".../back-end engineer/swufe-rag"   # 见 config.yaml
+BACKEND="../backend"                        # 见 config.yaml
 HF_HUB_OFFLINE=1 "$BACKEND/.venv/bin/python" embed_chunks.py
 "$BACKEND/.venv/bin/python" merge_into_rag.py           # dry-run 预览
 "$BACKEND/.venv/bin/python" merge_into_rag.py --apply   # 执行合并
@@ -44,7 +44,7 @@ HF_HUB_OFFLINE=1 "$BACKEND/.venv/bin/python" embed_chunks.py
 ## 每天定时
 
 ```bash
-./install_schedule.sh     # 安装 launchd 任务,每天 07:30 自动跑(含后端重启)
+./install_schedule.sh     # 按当前绝对路径生成并安装 launchd 任务
 ```
 
 日志在 `logs/launchd.log`。卸载:

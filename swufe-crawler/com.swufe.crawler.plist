@@ -7,7 +7,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/xuwenyao/swufe-rag/swufe-crawler/run_daily.sh</string>
+        <string>__CRAWLER_DIR__/run_daily.sh</string>
         <string>--restart-backend</string>
     </array>
     <key>StartCalendarInterval</key>
@@ -18,8 +18,8 @@
         <integer>30</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/xuwenyao/swufe-rag/swufe-crawler/logs/launchd.log</string>
+    <string>__CRAWLER_DIR__/logs/launchd.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/xuwenyao/swufe-rag/swufe-crawler/logs/launchd.log</string>
+    <string>__CRAWLER_DIR__/logs/launchd.log</string>
 </dict>
 </plist>

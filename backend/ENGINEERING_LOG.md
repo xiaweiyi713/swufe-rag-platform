@@ -4,11 +4,11 @@
 
 ## 项目基线
 
-- 主仓：<https://github.com/ZorIgn/swufe-rag>
+- 主仓：<https://github.com/xiaweiyi713/swufe-rag-platform>（后端位于 `backend/`）
 - 默认分支：`main`
-- 本轮开发分支：`feature/rag-refinement`
+- 当前集成基线：monorepo `main`
 - 稳定基线标签：`local-bc-v1`（此前 B/C 契约版本）
-- 当前数据状态：没有真实教务知识库；生产 `data/chunks.jsonl` 保持空占位。
+- 当前数据状态：70 个登记来源、69,583 个生产知识块；大型运行索引通过独立数据包交付。
 - Demo 数据：`tests/fixtures/chunks.jsonl`，24 条，所有 ID 以 `fixture_` 开头。
 - 公共门面：`from swufe_rag.api import retrieve, answer`
 
@@ -191,7 +191,7 @@ OK
 ### 接管审计
 
 - 按 `START_HERE.txt` 校验交付包，9 项 SHA-256 全部匹配。
-- 从 `https://github.com/ZorIgn/swufe-rag.git` 重新 clone；接管时 `origin/main` HEAD 为 `b284de2be51ea88ae93322741bf3c13c65797d5d`，`8007637` 是其祖先。
+- 从当时的旧主仓重新 clone；接管时 `origin/main` HEAD 为 `b284de2be51ea88ae93322741bf3c13c65797d5d`，`8007637` 是其祖先。该历史现已通过 subtree 并入 monorepo。
 - 原始计划书以只读方式提取并逐页检查，共 12 页；接口、模块分工、验收指标与仓库交接文档一致。
 - `shixun.rar` 是包含 `.git`、旧 `.venv`、缓存和交付包的旧工作目录快照；其中 `main` 同样指向 `b284de2`。它只用于审计，没有被当作正式仓库或运行环境。
 - 正式 `data/chunks.jsonl` 仍为空，`data/sources.csv` 只有表头，真实知识库尚未到位。

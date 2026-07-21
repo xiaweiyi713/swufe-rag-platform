@@ -47,8 +47,8 @@ Get-FileHash -Algorithm SHA256 .\repository\swufe-rag-source-*.zip
 
 ```powershell
 cd E:\school
-git clone https://github.com/ZorIgn/swufe-rag.git swufe-rag
-cd swufe-rag
+git clone https://github.com/xiaweiyi713/swufe-rag-platform.git
+cd swufe-rag-platform/backend
 git switch main
 git pull --ff-only origin main
 git status

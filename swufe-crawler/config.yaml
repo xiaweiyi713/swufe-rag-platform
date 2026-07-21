@@ -1,8 +1,8 @@
 # swufe-crawler 配置
-# 独立于 swufe-rag 主项目;只在 merge 步骤按“追加+备份”方式写后端知识库。
+# 位于 swufe-rag monorepo;只在 merge 步骤按“追加+备份”方式写后端知识库。
 
 # 后端项目根目录(chunks.jsonl / artifacts / metadata.sqlite3 所在)
-backend_dir: "/Users/xuwenyao/swufe-rag/back-end engineer/swufe-rag"
+backend_dir: "../backend"
 
 # 抓取站点。列表页里形如 info/<栏目>/<文章>.htm 的链接会被识别为文章。
 sites:

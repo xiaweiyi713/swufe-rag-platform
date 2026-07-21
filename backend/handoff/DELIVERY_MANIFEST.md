@@ -1,9 +1,11 @@
 # swufe-rag 交付清单
 
+> 历史交付记录：当前项目已迁入 `xiaweiyi713/swufe-rag-platform` monorepo，后端位于 `backend/`。当前操作以仓库根 README 为准。
+
 ## 交付身份
 
 - 项目：西南财大教务 RAG 问答系统
-- 主仓：<https://github.com/ZorIgn/swufe-rag>
+- 当前主仓：<https://github.com/xiaweiyi713/swufe-rag-platform>
 - 权威分支：`main`
 - 功能基线：`8007637 docs: record main delivery`
 - 历史稳定标签：`local-bc-v1`

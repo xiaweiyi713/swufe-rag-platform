@@ -3,6 +3,14 @@
 > 规则:每次合入 `dev` / `main` 的改动都追加一条,**先写记录再提交**,commit 与记录一一对应。
 > 集成期间接口相关的任何变动(哪怕一个字段名)必须记录并同步到组内。
 
+## [2026-07-21] main
+
+- chore: 将外层 `main → dev → feat/frontend` 历史快进到最新 iOS 客户端版本。
+- chore: 以 Git subtree 将正式后端 `codex/rag-v16-repair@4f78dfb` 的完整历史并入 `backend/`。
+- refactor: 统一生产目录为 `backend/`、`client-ios/` 和 `swufe-crawler/`；早期 mock 骨架与旧双仓交接资料移入 `legacy/`、`docs/archive/`。
+- docs: 重写根 README，统一开发、测试、部署、数据安全与爬虫入口。
+- ci: 将后端测试工作流提升到 monorepo 根目录，并按 `backend/` 工作目录运行。
+
 ## [2026-07-14] dev
 
 - feat: providers 切换层与 FastAPI 后端——app/providers.py 定义 Retriever/Generator 抽象基类(签名严格=契约2/3)+ mock/real 工厂(real 为薄适配层,B/C 未就位时报错并给指引);mock/mock_provider.py 实现契约2过滤逻辑+简易字符相似度检索(开方拉伸对齐 refuse_th 语义)与关键词路由生成;app/server.py 实现 POST /ask(含 refuse_th 前置拒答保险、分段计时)、GET /source/{chunk_id}、GET /meta、静态托管、统一 500 错误处理、请求日志落盘 logs/requests.jsonl
@@ -18,4 +26,4 @@
 
 - chore: 初始化主仓骨架——目录结构(data/ingest/retrieval/generation/app/mock/eval)、.gitignore、config.yaml(契约5+模块D扩展键)、requirements.txt(按模块分节,由D统一维护)
 - docs: README 写入冻结的接口契约1~5、模块D对契约的具体化约定(D-1~D-6,待A/B/C确认)、运行方法、评分标准、协作规范与各模块并入指引
-- 历史备注:当时的旧上游为空仓库且 D 无 push 权限；当前归属与克隆地址以 `REPOSITORY.md` 为准。
+- 历史备注:这是合并前的初始骨架记录；当前仓库结构与入口以根 README 为准。
