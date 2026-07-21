@@ -71,20 +71,36 @@ def build_request_query_runtime(
     timeout = float(generation.get("byok_request_timeout_seconds", 30))
     key = api_key.strip()
 
-    def client(*, temperature: float = 0.0) -> OpenAICompatibleClient:
+    def client(
+        *,
+        temperature: float = 0.0,
+        thinking_override: bool | None = None,
+        timeout_override: float | None = None,
+    ) -> OpenAICompatibleClient:
         return OpenAICompatibleClient(
             model,
             base_url=request_base_url,
             api_key=key,
             temperature=temperature,
             max_retries=retries,
-            timeout_seconds=timeout,
-            thinking_enabled=thinking_enabled,
+            timeout_seconds=timeout if timeout_override is None else timeout_override,
+            thinking_enabled=(
+                thinking_enabled
+                if thinking_override is None
+                else thinking_override
+            ),
         )
 
     answer_client = client()
     policy_client = client()
     general_client = client(temperature=float(generation.get("general_temperature", 0.7)))
+    web_fallback_client = client(
+        temperature=float(generation.get("general_temperature", 0.7)),
+        thinking_override=False,
+        timeout_override=float(
+            generation.get("byok_web_fallback_timeout_seconds", 15)
+        ),
+    )
     grounded = AdvancedGenerationService(
         policy_client,
         refuse_th=float(generation.get("refuse_th", 0.35)),
@@ -111,6 +127,7 @@ def build_request_query_runtime(
         school_retrieve=base_runtime.school_retrieve,
         school_answer=grounded.answer_polished,
         general_chat=GeneralChatService(general_client),
+        web_fallback_chat=GeneralChatService(web_fallback_client),
         metadata_db=base_runtime.metadata_db,
         sessions=base_runtime.sessions,
         runtime_mode=f"{base_runtime.mode}+request-llm",

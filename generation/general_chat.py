@@ -92,6 +92,36 @@ class GeneralChatService:
     ) -> str:
         """Generate a clearly non-authoritative answer from public snippets only."""
 
+        prompt = self._school_web_fallback_prompt(question, sources)
+        return self.client.generate(
+            SCHOOL_WEB_FALLBACK_SYSTEM_PROMPT,
+            prompt,
+        ).strip()
+
+    def stream_school_web_fallback(
+        self,
+        question: str,
+        sources: Sequence[dict[str, Any]],
+    ) -> Iterator[str]:
+        """Read the public-reference answer through the provider stream."""
+
+        prompt = self._school_web_fallback_prompt(question, sources)
+        stream = getattr(self.client, "stream_generate", None)
+        if not callable(stream):
+            yield self.client.generate(
+                SCHOOL_WEB_FALLBACK_SYSTEM_PROMPT,
+                prompt,
+            ).strip()
+            return
+        yield from stream(SCHOOL_WEB_FALLBACK_SYSTEM_PROMPT, prompt)
+
+    @staticmethod
+    def _school_web_fallback_prompt(
+        question: str,
+        sources: Sequence[dict[str, Any]],
+    ) -> str:
+        """Build the only prompt allowed to contain untrusted web snippets."""
+
         clean_sources = [
             {
                 "title": str(source.get("title") or "")[:180],
@@ -111,10 +141,7 @@ class GeneralChatService:
             },
             ensure_ascii=False,
         )
-        return self.client.generate(
-            SCHOOL_WEB_FALLBACK_SYSTEM_PROMPT,
-            prompt,
-        ).strip()
+        return prompt
 
 
 def service_from_config(

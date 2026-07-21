@@ -43,6 +43,14 @@ TOPICS = (
 )
 
 
+SCHOOL_OVERVIEW_RE = re.compile(
+    r"(?:介绍|了解|讲讲|说说).{0,16}(?:西南财经大学|西财)"
+    r"(?:\s*[吧呗吗呢呀啊？。！]*)$|"
+    r"(?:西南财经大学|西财).{0,12}(?:简介|概况|是什么学校|怎么样)"
+    r"(?:\s*[吧呗吗呢呀啊？。！]*)$"
+)
+
+
 EVIDENCE_TOPIC_GATES = (
     (re.compile(r"奖学金"), re.compile(r"奖学金|奖助"), re.compile(r"奖学金"), "奖学金"),
     (re.compile(r"助学金"), re.compile(r"助学金|奖助"), re.compile(r"助学金"), "助学金"),
@@ -455,6 +463,7 @@ class QueryPipelineRuntime(HybridRuntime):
         academic_db: AcademicDatabase,
         capabilities: PipelineCapabilities | None = None,
         query_context: QueryContextStore | None = None,
+        web_fallback_chat: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -462,6 +471,7 @@ class QueryPipelineRuntime(HybridRuntime):
         self.presenter = presenter
         self.academic_db = academic_db
         self.capabilities = capabilities or PipelineCapabilities()
+        self.web_fallback_chat = web_fallback_chat or self.general_chat
         self.query_context = query_context or QueryContextStore.empty()
         self._last_queries = self.query_context.last_queries
         self._pending_queries = self.query_context.pending_queries
@@ -788,7 +798,46 @@ class QueryPipelineRuntime(HybridRuntime):
             return payload
 
         started = time.perf_counter()
-        body = self.general_chat.answer_school_web_fallback(question, web_sources)
+        try:
+            service = getattr(self, "web_fallback_chat", self.general_chat)
+            if service.supports_streaming:
+                body = "".join(
+                    service.stream_school_web_fallback(
+                        question, web_sources
+                    )
+                ).strip()
+            else:
+                body = service.answer_school_web_fallback(
+                    question, web_sources
+                )
+        except GenerationUnavailableError as exc:
+            generation_ms = round((time.perf_counter() - started) * 1000, 2)
+            timings = dict(payload.get("timings") or {})
+            timings["web_search_ms"] = round(float(search_ms), 2)
+            timings["web_fallback_generation_ms"] = generation_ms
+            llm_stages = dict(payload.get("llm_stages") or {})
+            llm_stages["web_fallback_generation"] = True
+            return {
+                **payload,
+                "web_sources": list(web_sources),
+                "web_fallback": {
+                    "attempted": True,
+                    "used": False,
+                    "reason": exc.code,
+                    "source_count": len(web_sources),
+                    "search_ms": round(float(search_ms), 2),
+                    "generation_ms": generation_ms,
+                },
+                "fallback_reason": f"web_fallback_{exc.code}",
+                "llm_stages": llm_stages,
+                "timings": timings,
+                "latency_ms": round(
+                    float(payload.get("latency_ms") or 0)
+                    + float(search_ms)
+                    + generation_ms,
+                    2,
+                ),
+            }
         body = re.sub(r"\[([^\]]+)]\(https?://[^)]+\)", r"\1", body)
         body = re.sub(r"https?://\S+", "", body).strip()
         if not body:
@@ -907,6 +956,17 @@ class QueryPipelineRuntime(HybridRuntime):
             if article_like:
                 request["article_like"] = article_like
             requests.append(request)
+        if SCHOOL_OVERVIEW_RE.search(question):
+            for title_like in (
+                "%西南财经大学简介%",
+                "%学校概况%",
+                "%西南财经大学章程%",
+            ):
+                requests.append({
+                    "cohort": None,
+                    "title_like": title_like,
+                    "limit": 24,
+                })
         # Year-scoped curriculum questions should cite the matching official
         # curriculum principle before a later course-recognition notice. The
         # latter is useful for current enrollment guidance, but it has no
@@ -1109,6 +1169,12 @@ class QueryPipelineRuntime(HybridRuntime):
                 {chunk["chunk_id"]: chunk for chunk in enriched}.values()
             )
             retrieval_source = "authoritative_metadata"
+        elif SCHOOL_OVERVIEW_RE.search(contextual_question):
+            # This request needs a school-profile source, not a semantically
+            # similar news item. An exact metadata miss is conclusive and lets
+            # the public-reference fallback start without a costly rerank.
+            chunks = []
+            retrieval_source = "authoritative_profile_unavailable"
         elif self._retrieval_capacity is None:
             chunks = retrieve_chunks()
             retrieval_source = "semantic_retrieval"

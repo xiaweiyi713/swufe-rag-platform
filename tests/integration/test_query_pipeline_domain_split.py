@@ -210,6 +210,34 @@ def test_recognized_policy_uses_authoritative_metadata_without_vector_retrieval(
     assert retriever.calls == []
 
 
+def test_school_overview_metadata_miss_skips_semantic_retrieval() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
+    retriever = RecordingRetriever()
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(general_llm=True, model="test-chat"),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=retriever,
+        school_answer=lambda *_: (_ for _ in ()).throw(AssertionError("no chunks")),
+        general_chat=GeneralChatService(RecordingGeneralClient()),
+        metadata_db=metadata,
+        runtime_mode="school-overview-fast-miss-test",
+    )
+    try:
+        result = runtime.handle_question("给我介绍一下你们西南财经大学呗")
+    finally:
+        metadata.close()
+
+    assert result["mode"] == "school_rag"
+    assert result["refused"] is True
+    assert result["rag"]["retrieval_source"] == "authoritative_profile_unavailable"
+    assert result["rag"]["retrieval_ms"] < 100
+    assert retriever.calls == []
+
+
 def test_elliptical_follow_up_reuses_school_context_instead_of_general_model() -> None:
     chunks = load_chunks(FIXTURE_PATH)
     metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)

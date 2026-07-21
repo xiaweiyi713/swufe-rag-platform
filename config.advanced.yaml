@@ -27,5 +27,6 @@ generation:
   request_timeout_seconds: 60
   byok_max_retries: 0
   byok_request_timeout_seconds: 30
+  byok_web_fallback_timeout_seconds: 15
   max_context_chars: 7000
   max_chunk_chars: 1600

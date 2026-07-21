@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from app.server.application import create_app
+from contracts import GenerationUnavailableError
 from generation.general_chat import GeneralChatService
 from swufe_rag.query_pipeline import PipelineCapabilities, QueryPipelineRuntime
 
@@ -62,6 +63,109 @@ def test_runtime_web_fallback_stays_separate_from_school_citations() -> None:
     assert "### 联网参考" in result["answer_md"]
     assert "invented.invalid" not in result["answer_md"]
     assert "example.edu/notice" not in client.calls[0][1]
+
+
+class StreamingWebReferenceClient:
+    def __init__(self) -> None:
+        self.stream_calls: list[tuple[str, str]] = []
+
+    def generate(self, *_args) -> str:
+        raise AssertionError("streaming provider must not use blocking generate")
+
+    def stream_generate(self, system_prompt: str, user_prompt: str):
+        self.stream_calls.append((system_prompt, user_prompt))
+        yield "从公开信息看，"
+        yield "相关信息仍应以学校官网为准。"
+
+
+def test_runtime_web_fallback_reads_provider_stream() -> None:
+    client = StreamingWebReferenceClient()
+    runtime = object.__new__(QueryPipelineRuntime)
+    runtime.capabilities = PipelineCapabilities(general_llm=True, model="test-chat")
+    runtime.general_chat = GeneralChatService(client)
+    original = {
+        "mode": "school_rag",
+        "answer_md": "当前知识库中没有检索到足够的可靠政策证据。",
+        "citations": [],
+        "refused": True,
+        "validation": {"passed": False},
+    }
+    sources = [{"title": "学校官网", "snippet": "学校公开介绍。"}]
+
+    result = runtime.attach_school_web_fallback(
+        "介绍一下西南财经大学",
+        original,
+        web_sources=sources,
+    )
+
+    assert result["web_fallback"]["used"] is True
+    assert "从公开信息看" in result["answer_md"]
+    assert len(client.stream_calls) == 1
+
+
+def test_runtime_web_fallback_uses_dedicated_chat_service() -> None:
+    primary = WebReferenceClient()
+    fallback = StreamingWebReferenceClient()
+    runtime = object.__new__(QueryPipelineRuntime)
+    runtime.capabilities = PipelineCapabilities(general_llm=True, model="test-chat")
+    runtime.general_chat = GeneralChatService(primary)
+    runtime.web_fallback_chat = GeneralChatService(fallback)
+    original = {
+        "mode": "school_rag",
+        "answer_md": "当前知识库中没有检索到足够的可靠政策证据。",
+        "citations": [],
+        "refused": True,
+        "validation": {"passed": False},
+    }
+
+    result = runtime.attach_school_web_fallback(
+        "介绍一下西南财经大学",
+        original,
+        web_sources=[{"title": "学校官网", "snippet": "学校公开介绍。"}],
+    )
+
+    assert result["web_fallback"]["used"] is True
+    assert primary.calls == []
+    assert len(fallback.stream_calls) == 1
+
+
+class TimeoutWebReferenceClient:
+    def generate(self, *_args) -> str:
+        raise AssertionError("streaming provider must not use blocking generate")
+
+    def stream_generate(self, *_args):
+        if False:
+            yield ""
+        raise GenerationUnavailableError(
+            "模型服务连接超时，请检查网络或稍后重试。",
+            code="provider_timeout",
+        )
+
+
+def test_runtime_web_fallback_timeout_returns_safe_refusal() -> None:
+    runtime = object.__new__(QueryPipelineRuntime)
+    runtime.capabilities = PipelineCapabilities(general_llm=True, model="test-chat")
+    runtime.general_chat = GeneralChatService(TimeoutWebReferenceClient())
+    original = {
+        "mode": "school_rag",
+        "answer_md": "当前知识库中没有检索到足够的可靠政策证据。",
+        "citations": [],
+        "refused": True,
+        "validation": {"passed": False},
+    }
+    sources = [{"title": "学校官网", "snippet": "学校公开介绍。"}]
+
+    result = runtime.attach_school_web_fallback(
+        "介绍一下西南财经大学",
+        original,
+        web_sources=sources,
+    )
+
+    assert result["answer_md"] == original["answer_md"]
+    assert result["web_sources"] == sources
+    assert result["web_fallback"]["used"] is False
+    assert result["web_fallback"]["reason"] == "provider_timeout"
+    assert result["fallback_reason"] == "web_fallback_provider_timeout"
 
 
 class RefusingSchoolRuntime:
