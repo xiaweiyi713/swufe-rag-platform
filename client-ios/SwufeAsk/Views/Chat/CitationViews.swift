@@ -98,27 +98,30 @@ struct AnswerAttachments: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 6)
-            ForEach(message.citations) { citation in
+            ForEach(citationGroups) { group in
                 Button {
-                    sourceTarget = SourceSheetTarget(chunkID: citation.chunkID, quote: citation.quote)
+                    sourceTarget = SourceSheetTarget(
+                        chunkID: group.primary.chunkID,
+                        quote: group.primary.quote
+                    )
                 } label: {
                     HStack(alignment: .top, spacing: 8) {
-                        Text("\(citation.marker)")
-                            .font(.caption2.weight(.bold))
+                        Image(systemName: "doc.text.fill")
+                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(Theme.Color.onAccent)
                             .frame(width: 17, height: 17)
                             .background(Theme.Color.accent, in: .circle)
                             .padding(.top, 1)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(citation.docTitle)
+                            Text(group.primary.docTitle)
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.primary)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
-                            Text(citation.article)
+                            Text(group.summary)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                                .lineLimit(2)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
@@ -131,7 +134,7 @@ struct AnswerAttachments: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                if citation.id != message.citations.last?.id {
+                if group.id != citationGroups.last?.id {
                     Divider().overlay(Theme.Color.cardStroke)
                 }
             }
@@ -139,6 +142,10 @@ struct AnswerAttachments: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .liquidGlass(radius: Theme.Radius.sm, elevated: false)
+    }
+
+    private var citationGroups: [CitationFileGroup] {
+        CitationFileGroup.group(message.citations)
     }
 
     private var officialLinks: some View {
@@ -197,6 +204,54 @@ struct AnswerAttachments: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .liquidGlass(radius: Theme.Radius.sm, elevated: false)
+    }
+}
+
+private struct CitationFileGroup: Identifiable {
+    let id: String
+    var citations: [Citation]
+
+    var primary: Citation { citations[0] }
+
+    var summary: String {
+        let markers = citations
+            .map(\.marker)
+            .reduce(into: [Int]()) { values, marker in
+                if !values.contains(marker) { values.append(marker) }
+            }
+            .sorted()
+            .map { "[\($0)]" }
+            .joined()
+        let pages = citations
+            .compactMap(\.physicalPage)
+            .reduce(into: [Int]()) { values, page in
+                if !values.contains(page) { values.append(page) }
+            }
+            .sorted()
+        let pageText = pages.isEmpty
+            ? "页码未标注"
+            : "原文件第\(pages.map(String.init).joined(separator: "、"))页"
+        return "引用 \(markers) · \(pageText)"
+    }
+
+    static func group(_ citations: [Citation]) -> [CitationFileGroup] {
+        var groups: [CitationFileGroup] = []
+        var indexes: [String: Int] = [:]
+        for citation in citations {
+            let fileURL = citation.fileURL.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let key = fileURL.isEmpty
+                ? "source:\(citation.docTitle)|\(citation.pageURL)"
+                : "file:\(fileURL)"
+            if let index = indexes[key] {
+                groups[index].citations.append(citation)
+            } else {
+                indexes[key] = groups.count
+                groups.append(CitationFileGroup(id: key, citations: [citation]))
+            }
+        }
+        return groups
     }
 }
 
