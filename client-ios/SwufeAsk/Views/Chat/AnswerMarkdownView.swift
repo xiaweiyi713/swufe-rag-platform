@@ -20,18 +20,21 @@ struct AnswerMarkdownView: View {
                 case .heading(let title):
                     Text(title)
                         .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 2)
                 case .table(let table):
                     AnswerTableView(table: table)
                 case .text(let text):
                     Text(inlineMarkdown: text)
                         .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                 case .sourceFile(let text, let fileURL):
                     SourceFileReference(text: text, fileURL: fileURL)
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var segments: [Segment] {
@@ -404,6 +407,8 @@ private struct SourceFileReference: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(inlineMarkdown: text)
                 .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
 
             Link(destination: fileURL) {
@@ -423,6 +428,7 @@ private struct SourceFileReference: View {
             .frame(minHeight: 44, alignment: .leading)
             .accessibilityHint("打开学校官方原始文件")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)
     }
 }
