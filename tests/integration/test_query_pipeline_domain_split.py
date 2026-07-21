@@ -362,6 +362,42 @@ def test_curriculum_follow_up_inherits_major_scope() -> None:
     assert "major" not in result["normalized_query"]["missing_fields"]
 
 
+def test_module_credit_follow_up_returns_the_requested_requirement() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=RecordingRetriever(),
+        school_answer=lambda *_: {"answer_md": "", "citations": [], "refused": True},
+        general_chat=GeneralChatService(RecordingGeneralClient()),
+        metadata_db=metadata,
+        runtime_mode="module-credit-follow-up-test",
+    )
+    try:
+        runtime.handle_question(
+            "毕业需要修满多少学分？",
+            college="计算机与人工智能学院",
+            cohort="2024",
+            major="网络空间安全专业",
+            session_id="module-credit-follow-up",
+        )
+        result = runtime.handle_question(
+            "其中专业选修课最低需要多少学分？",
+            session_id="module-credit-follow-up",
+        )
+    finally:
+        metadata.close()
+
+    assert result["execution_path"] == "sql"
+    assert result["normalized_query"]["primary_intent"] == "graduation_requirement"
+    assert result["normalized_query"]["course_modules"] == ["专业选修课"]
+    assert "8" in result["answer_md"]
+
+
 def test_school_turn_breaks_stale_general_model_history() -> None:
     chunks = load_chunks(FIXTURE_PATH)
     metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)

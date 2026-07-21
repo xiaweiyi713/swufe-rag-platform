@@ -208,7 +208,12 @@ def _major_mention(question: str) -> str | None:
     if "计科" in question:
         return "计算机科学与技术"
     match = re.search(r"([\u4e00-\u9fffA-Za-z（）()]{2,32})专业", compact)
-    return match.group(1) if match else None
+    if not match:
+        return None
+    candidate = match.group(1)
+    if candidate in {"其中", "这个", "那个", "当前", "所学", "上述"}:
+        return None
+    return candidate
 
 
 def _completed_segment(question: str) -> list[str]:

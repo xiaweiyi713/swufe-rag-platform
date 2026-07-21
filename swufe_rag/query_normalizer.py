@@ -91,6 +91,10 @@ def _canonical_major(
     question: str,
     cohort: int | None,
 ) -> str | None:
+    if mention:
+        resolved = database.resolve_major(str(mention), cohort)
+        if resolved:
+            return resolved
     target = " ".join(value for value in (mention, question) if value)
     resolved = database.resolve_major(target, cohort)
     if resolved:
@@ -118,9 +122,19 @@ def normalize_query(
 ) -> NormalizedQuery:
     warnings: list[str] = []
     cohort = _canonical_cohort(draft.cohort_mention) or inherited_cohort
+    major_mention = draft.major_mention
+    if major_mention and str(major_mention).strip() in {
+        "其中",
+        "这个",
+        "那个",
+        "当前",
+        "所学",
+        "上述",
+    }:
+        major_mention = None
     major = _canonical_major(
         database,
-        draft.major_mention or inherited_major,
+        major_mention or inherited_major,
         question,
         cohort,
     )

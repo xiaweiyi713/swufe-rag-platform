@@ -217,6 +217,44 @@ def test_whole_program_credit_follow_up_clears_prior_module_filter() -> None:
     assert merged.course_natures == []
 
 
+def test_module_credit_follow_up_preserves_inherited_program_scope() -> None:
+    database = AcademicDatabase("data/academic_v2.sqlite3")
+    first = "毕业需要修满多少学分？"
+    prior = normalize_query(
+        deterministic_understanding(
+            first,
+            college="计算机与人工智能学院",
+            cohort="2024",
+            major="网络空间安全专业",
+        ),
+        first,
+        database=database,
+    )
+    second = "其中专业选修课最低需要多少学分？"
+    draft = deterministic_understanding(
+        second,
+        college=prior.college,
+        cohort=prior.cohort,
+        major=prior.major,
+    )
+    reply = normalize_query(
+        draft,
+        second,
+        database=database,
+        inherited_major=prior.major,
+        inherited_cohort=prior.cohort,
+    )
+
+    merged = _merge_school_follow_up(prior, reply)
+
+    assert draft.major_mention == "网络空间安全专业"
+    assert merged.major == "网络空间安全专业"
+    assert merged.cohort == 2024
+    assert merged.primary_intent == "graduation_requirement"
+    assert merged.requested_outputs == ["credit_total", "module_breakdown"]
+    assert merged.course_modules == ["专业选修课"]
+
+
 def test_switching_major_reuses_prior_graduation_question() -> None:
     database = AcademicDatabase("data/academic_v2.sqlite3")
     first = "2023级经济统计学专业毕业需要多少学分？"
