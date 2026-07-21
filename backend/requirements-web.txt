@@ -3,5 +3,6 @@ numpy>=1.26,<3
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 httpx>=0.27,<1
+python-dotenv>=1,<2
 # Optional: session externalization + /ask answer cache (enabled via SWUFE_RAG_REDIS_URL)
 redis>=5,<7

@@ -96,6 +96,8 @@ python -m app.debug_server
 python -m app.server
 ```
 
+该入口会先读取当前目录的 `.env`，但不会覆盖终端、容器或部署平台已经设置的环境变量。本机使用 Clash/Fake-IP 时可在 `backend/.env` 设置 `SWUFE_RAG_ALLOW_FAKE_DNS=1`；该放行仅适用于白名单 HTTPS 服务商域名解析到 `198.18.0.0/15`，生产环境保持 `0`。
+
 - 浏览器打开 <http://127.0.0.1:8000> 可使用混合对话测试 Web。
 - `POST /ask` 与 `POST /ask/stream` 接收 `question`、可选 `college`、`cohort`、`major`、`session_id`；普通对话实时返回模型 `delta`，政策 RAG 在冻结证据后按完整声明验证并实时提交，结构化/缓存回答发送完整校验后的安全预览，最后都在 `final` 事件交付带来源链接的全文。
 - 普通知识、代码、写作和情绪交流为 `general_chat`，不会先检索或执行学校拒答门。
