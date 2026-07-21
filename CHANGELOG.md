@@ -18,4 +18,4 @@
 
 - chore: 初始化主仓骨架——目录结构(data/ingest/retrieval/generation/app/mock/eval)、.gitignore、config.yaml(契约5+模块D扩展键)、requirements.txt(按模块分节,由D统一维护)
 - docs: README 写入冻结的接口契约1~5、模块D对契约的具体化约定(D-1~D-6,待A/B/C确认)、运行方法、评分标准、协作规范与各模块并入指引
-- 遗留:主仓 ZorIgn/swufe-rag 为空仓库且 D 无 push 权限,骨架推送与保护分支设置待组长处理(见 README 并入指引)
+- 历史备注:当时的旧上游为空仓库且 D 无 push 权限；当前归属与克隆地址以 `REPOSITORY.md` 为准。
