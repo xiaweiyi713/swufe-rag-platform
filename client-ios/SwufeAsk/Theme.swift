@@ -43,8 +43,8 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 /// Dark-mode-first: colors are tuned to glow on a deep canvas while still
 /// adapting cleanly in Light mode through system materials and hierarchical
 /// styles. Targeting iOS 17, the glass look is built from `ultraThinMaterial`
-/// plus a highlight stroke and soft shadow (a faithful stand-in for the native
-/// iOS 26 `.glassEffect()`), so it compiles and runs on the project's target.
+/// plus a restrained highlight stroke, while iOS 26 uses native
+/// `.glassEffect()` where available.
 enum Theme {
     enum Spacing {
         static let xxs: CGFloat = 4
@@ -74,6 +74,8 @@ enum Theme {
         })
         static let accentSoft = accent.opacity(0.72)
         static let onAccent = SwiftUI.Color(.systemBackground)
+        static let actionBlue = SwiftUI.Color(red: 0.0, green: 0.36, blue: 0.68)
+        static let actionBlueGlass = actionBlue.opacity(0.70)
 
         // Surfaces (names kept for backwards compatibility with existing views)
         static let cardBackground = SwiftUI.Color(.secondarySystemBackground)
@@ -82,15 +84,12 @@ enum Theme {
 
         // Glass detailing
         static let glassHighlight = SwiftUI.Color.white.opacity(0.18)
+        static let glassStroke = SwiftUI.Color.white.opacity(0.20)
 
-        static let darkCanvasTop = SwiftUI.Color(red: 0.115, green: 0.12, blue: 0.12)
-        static let darkCanvasMid = SwiftUI.Color(red: 0.12, green: 0.13, blue: 0.13)
-        static let darkCanvasBottom = SwiftUI.Color(red: 0.02, green: 0.025, blue: 0.03)
-        // Light canvas leans into the badge blue: near-white with a cold cast
-        // at the top, settling into a soft blue wash at the bottom.
-        static let lightCanvasTop = SwiftUI.Color(red: 0.94, green: 0.96, blue: 0.99)
-        static let lightCanvasMid = SwiftUI.Color(red: 0.86, green: 0.91, blue: 0.97)
-        static let lightCanvasBottom = SwiftUI.Color(red: 0.71, green: 0.80, blue: 0.91)
+        // App canvases are deliberately flat colors. Light mode is a nearly
+        // white cool blue; dark mode is true black.
+        static let lightCanvas = SwiftUI.Color(red: 0.965, green: 0.978, blue: 0.995)
+        static let darkCanvas = SwiftUI.Color.black
     }
 
     enum Motion {
@@ -99,28 +98,6 @@ enum Theme {
         static let gentle = Animation.easeInOut(duration: 0.45)
     }
 
-    enum Gradient {
-        static var brand: LinearGradient {
-            LinearGradient(
-                colors: [Theme.Color.accent, Theme.Color.accentSoft],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-
-        /// Diagonal top-left highlight that reads as light catching a glass edge.
-        static var glassStroke: LinearGradient {
-            LinearGradient(
-                colors: [
-                    Theme.Color.glassHighlight,
-                    Theme.Color.glassHighlight.opacity(0.25),
-                    .clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
 }
 
 /// Circular SWUFE crest used as the assistant and app identity mark.
@@ -149,22 +126,145 @@ struct SwufeLogoMark: View {
 
 // MARK: - Liquid Glass surface
 
-/// A translucent, frosted "Liquid Glass" surface with a light-catching edge and
-/// depth shadow. `elevated` controls how much the card appears to float.
+/// A translucent, frosted "Liquid Glass" surface with a light-catching edge.
 struct LiquidGlass: ViewModifier {
     var radius: CGFloat = Theme.Radius.md
     var elevated: Bool = true
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
-            .overlay {
-                RoundedRectangle(cornerRadius: radius)
-                    .strokeBorder(Theme.Gradient.glassStroke, lineWidth: 1)
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: .rect(cornerRadius: radius))
+        } else {
+            content
+                .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius)
+                        .strokeBorder(Theme.Color.glassStroke, lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct CleanGlassCapsuleSurface: ViewModifier {
+    let interactive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if interactive {
+                content.glassEffect(.regular.interactive(), in: Capsule())
+            } else {
+                content.glassEffect(.regular, in: Capsule())
             }
-            .shadow(color: .black.opacity(elevated ? 0.32 : 0.16),
-                    radius: elevated ? 22 : 10,
-                    y: elevated ? 12 : 5)
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(Theme.Color.glassStroke, lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct CleanGlassCircleSurface: ViewModifier {
+    let interactive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if interactive {
+                content.glassEffect(.regular.interactive(), in: Circle())
+            } else {
+                content.glassEffect(.regular, in: Circle())
+            }
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay {
+                    Circle().strokeBorder(Theme.Color.glassStroke, lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct CleanGlassRoundedSurface: ViewModifier {
+    let radius: CGFloat
+    let interactive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if interactive {
+                content.glassEffect(
+                    .regular.interactive(),
+                    in: .rect(cornerRadius: radius)
+                )
+            } else {
+                content.glassEffect(.regular, in: .rect(cornerRadius: radius))
+            }
+        } else {
+            content
+                .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius)
+                        .strokeBorder(Theme.Color.glassStroke, lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct ActionBlueCapsuleSurface: ViewModifier {
+    let isActive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isActive {
+            if #available(iOS 26.0, *) {
+                content
+                    .glassEffect(
+                        .regular.tint(Theme.Color.actionBlue).interactive(),
+                        in: Capsule()
+                    )
+            } else {
+                content
+                    .background(Theme.Color.actionBlueGlass, in: Capsule())
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.34), lineWidth: 1)
+                    }
+            }
+        } else {
+            content.modifier(CleanGlassCapsuleSurface(interactive: true))
+        }
+    }
+}
+
+struct ActionBlueBubbleSurface: ViewModifier {
+    let radius: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(
+                    .regular.tint(Theme.Color.actionBlue),
+                    in: .rect(cornerRadius: radius)
+                )
+        } else {
+            content
+                .background(
+                    Theme.Color.actionBlueGlass,
+                    in: .rect(cornerRadius: radius)
+                )
+                .background(.ultraThinMaterial, in: .rect(cornerRadius: radius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius)
+                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+                }
+        }
     }
 }
 
@@ -179,6 +279,29 @@ extension View {
     func cardSurface(radius: CGFloat = Theme.Radius.lg) -> some View {
         liquidGlass(radius: radius, elevated: true)
     }
+
+    func actionBlueGlassCapsule(isActive: Bool = true) -> some View {
+        modifier(ActionBlueCapsuleSurface(isActive: isActive))
+    }
+
+    func actionBlueGlassBubble(radius: CGFloat = 20) -> some View {
+        modifier(ActionBlueBubbleSurface(radius: radius))
+    }
+
+    func cleanGlassCapsule(interactive: Bool = false) -> some View {
+        modifier(CleanGlassCapsuleSurface(interactive: interactive))
+    }
+
+    func cleanGlassCircle(interactive: Bool = false) -> some View {
+        modifier(CleanGlassCircleSurface(interactive: interactive))
+    }
+
+    func cleanGlassRounded(
+        radius: CGFloat,
+        interactive: Bool = false
+    ) -> some View {
+        modifier(CleanGlassRoundedSurface(radius: radius, interactive: interactive))
+    }
 }
 
 // MARK: - Deep canvas background
@@ -191,50 +314,8 @@ struct LiquidBackdrop: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: canvasColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            LinearGradient(
-                colors: [
-                    .white.opacity(colorScheme == .dark ? 0.18 : 0.40),
-                    .white.opacity(colorScheme == .dark ? 0.04 : 0.16),
-                    .clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .center
-            )
-
-            LinearGradient(
-                colors: [
-                    .clear,
-                    .black.opacity(colorScheme == .dark ? 0.28 : 0.10)
-                ],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-        .drawingGroup(opaque: true, colorMode: .linear)
-    }
-
-    private var canvasColors: [Color] {
-        if colorScheme == .dark {
-            [
-                Theme.Color.darkCanvasTop,
-                Theme.Color.darkCanvasMid,
-                Theme.Color.darkCanvasBottom
-            ]
-        } else {
-            [
-                Theme.Color.lightCanvasTop,
-                Theme.Color.lightCanvasMid,
-                Theme.Color.lightCanvasBottom
-            ]
-        }
+        (colorScheme == .dark ? Theme.Color.darkCanvas : Theme.Color.lightCanvas)
+            .ignoresSafeArea()
     }
 }
 
@@ -255,7 +336,7 @@ struct GlassTag: View {
             .padding(.vertical, Theme.Spacing.xxs + 2)
             .background {
                 if prominent {
-                    Capsule().fill(tint.gradient)
+                    Capsule().fill(tint)
                 } else {
                     Capsule().fill(.ultraThinMaterial)
                     Capsule().fill(tint.opacity(0.16))

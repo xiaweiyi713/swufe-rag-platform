@@ -177,7 +177,7 @@ struct ScheduleView: View {
                     .frame(minWidth: 210)
                     .padding(.horizontal, Theme.Spacing.md)
                     .padding(.vertical, 11)
-                    .background(Theme.Gradient.brand, in: .capsule)
+                    .background(Theme.Color.accent, in: .capsule)
                     .overlay {
                         Capsule()
                             .strokeBorder(Theme.Color.glassHighlight, lineWidth: 1)

@@ -492,7 +492,6 @@ private struct ProviderBrandIcon: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.black.opacity(0.08), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
         .accessibilityHidden(true)
     }
 }

@@ -360,37 +360,13 @@ private struct TopBarPressStyle: ButtonStyle {
 }
 
 struct TopCircleButtonSurface: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
     func body(content: Content) -> some View {
-        content
-            .background(.ultraThinMaterial, in: .circle)
-            .background(
-                Circle()
-                    .fill(colorScheme == .light ? Color.clear : Color.white.opacity(0.12))
-            )
-            .overlay {
-                Circle()
-                    .strokeBorder(Theme.Gradient.glassStroke, lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 5)
+        content.cleanGlassCircle(interactive: true)
     }
 }
 
 struct TopCapsuleButtonSurface: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
     func body(content: Content) -> some View {
-        content
-            .background(.ultraThinMaterial, in: .capsule)
-            .background(
-                Capsule()
-                    .fill(colorScheme == .light ? Color.clear : Color.white.opacity(0.12))
-            )
-            .overlay {
-                Capsule()
-                    .strokeBorder(Theme.Gradient.glassStroke, lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 5)
+        content.cleanGlassCapsule(interactive: true)
     }
 }

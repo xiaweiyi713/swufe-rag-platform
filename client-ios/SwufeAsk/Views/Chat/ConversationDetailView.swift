@@ -90,10 +90,10 @@ private struct ArchivedBubble: View {
                 Spacer(minLength: 48)
                 Text(message.text)
                     .font(.callout)
-                    .foregroundStyle(Theme.Color.onAccent)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 15)
                     .padding(.vertical, 11)
-                    .background(Theme.Color.accent, in: .rect(cornerRadius: 20))
+                    .actionBlueGlassBubble(radius: 20)
             } else {
                 AnswerMarkdownView(source: message.text)
                     .foregroundStyle(.primary)

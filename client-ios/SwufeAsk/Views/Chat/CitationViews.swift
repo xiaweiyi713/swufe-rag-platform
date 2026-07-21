@@ -268,12 +268,20 @@ struct SourceDetailSheet: View {
     let chunkID: String
     var quote: String?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack {
             SourceChunkContent(chunkID: chunkID, quote: quote)
                 .navigationTitle("条款原文")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(
+                    colorScheme == .dark
+                        ? Theme.Color.darkCanvas
+                        : Theme.Color.lightCanvas,
+                    for: .navigationBar
+                )
+                .toolbarBackground(.visible, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("完成") { dismiss() }

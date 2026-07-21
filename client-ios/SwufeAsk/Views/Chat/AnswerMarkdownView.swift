@@ -414,15 +414,10 @@ private struct SourceFileReference: View {
             Link(destination: fileURL) {
                 Label("下载原文件", systemImage: "arrow.down.circle.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.Color.onAccent)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .frame(height: 40)
-                    .background(Theme.Gradient.brand, in: .capsule)
-                    .overlay {
-                        Capsule()
-                            .strokeBorder(Theme.Color.glassHighlight, lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.18), radius: 7, y: 3)
+                    .actionBlueGlassCapsule()
             }
             .buttonStyle(.plain)
             .frame(minHeight: 44, alignment: .leading)

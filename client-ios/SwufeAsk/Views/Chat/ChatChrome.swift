@@ -93,10 +93,8 @@ struct QuickPromptBar: View {
                             .frame(maxWidth: 220, alignment: .leading)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .background(.ultraThinMaterial, in: .capsule)
-                            .overlay(Capsule().strokeBorder(Theme.Color.cardStroke, lineWidth: 1))
-                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-                            .frame(minHeight: 44)
+                            .cleanGlassCapsule(interactive: true)
+                            .frame(minHeight: 44, alignment: .bottom)
                             .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
@@ -105,6 +103,7 @@ struct QuickPromptBar: View {
             .padding(.horizontal, 12)
         }
         .scrollIndicators(.hidden)
+        .scrollClipDisabled()
     }
 }
 
@@ -197,15 +196,7 @@ struct ComposerModeBar: View {
         .foregroundStyle(.primary)
         .padding(.horizontal, 11)
         .frame(minHeight: 38)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay {
-            Capsule().strokeBorder(
-                isConfigured
-                    ? Theme.Color.accent.opacity(0.32)
-                    : Theme.Color.cardStroke,
-                lineWidth: 1
-            )
-        }
+        .cleanGlassCapsule(interactive: true)
         .contentShape(Capsule())
     }
 
@@ -243,23 +234,10 @@ struct ComposerModeBar: View {
         } label: {
             Label(title, systemImage: icon)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isOn.wrappedValue ? Theme.Color.onAccent : .primary)
+                .foregroundStyle(isOn.wrappedValue ? Color.white : .primary)
                 .padding(.horizontal, 13)
                 .frame(minHeight: 38)
-                .background(
-                    isOn.wrappedValue
-                        ? AnyShapeStyle(Theme.Gradient.brand)
-                        : AnyShapeStyle(.ultraThinMaterial),
-                    in: Capsule()
-                )
-                .overlay(
-                    Capsule().strokeBorder(
-                        isOn.wrappedValue
-                            ? Theme.Color.glassHighlight
-                            : Theme.Color.cardStroke,
-                        lineWidth: 1
-                    )
-                )
+                .actionBlueGlassCapsule(isActive: isOn.wrappedValue)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -286,11 +264,7 @@ struct ComposerView: View {
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 11)
-                .background(.ultraThinMaterial, in: .rect(cornerRadius: 18))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(Theme.Color.cardStroke, lineWidth: 1)
-                )
+                .cleanGlassRounded(radius: 18)
                 .accessibilityLabel("教务问题输入框")
                 .accessibilityIdentifier("chat.composer.text")
 
@@ -318,11 +292,7 @@ struct ComposerView: View {
             .accessibilityLabel("发送")
         }
         .padding(10)
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 28))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
-                .strokeBorder(Theme.Color.cardStroke, lineWidth: 1)
-        )
+        .cleanGlassRounded(radius: 28)
     }
 
     /// Monochrome glass icon button face used for the mic control.
@@ -332,8 +302,7 @@ struct ComposerView: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(.primary)
             .frame(width: 38, height: 38)
-            .background(.ultraThinMaterial, in: .circle)
-            .overlay(Circle().strokeBorder(Theme.Color.cardStroke, lineWidth: 1))
+            .cleanGlassCircle(interactive: true)
             .frame(width: 44, height: 44)
             .contentShape(.rect)
     }
@@ -347,7 +316,7 @@ struct ComposerView: View {
     }
 
     private var sendBackground: some ShapeStyle {
-        canSend ? AnyShapeStyle(Theme.Gradient.brand) : AnyShapeStyle(.ultraThinMaterial)
+        canSend ? AnyShapeStyle(Theme.Color.accent) : AnyShapeStyle(.ultraThinMaterial)
     }
 
     private var sendStroke: Color {

@@ -91,7 +91,6 @@ struct ChatView: View {
                                 .frame(width: 1, height: drawerHeight)
                                 .offset(y: drawerYOffset)
                         }
-                        .shadow(color: .black.opacity(showsSidebar ? 0.2 : 0), radius: 24, x: 8, y: 0)
                         .offset(x: showsSidebar ? 0 : -drawerWidth)
 
                         if showsSidebar {
