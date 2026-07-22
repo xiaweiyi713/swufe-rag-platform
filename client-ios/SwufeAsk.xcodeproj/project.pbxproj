@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F0A10A000000000000000001 /* SwiftMath in Frameworks */ = {isa = PBXBuildFile; productRef = F0A10A000000000000000004 /* SwiftMath */; };
 		04CBCFF7E2083A00BB787035 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50E0FDE457EF0721F51AD51 /* KeychainStore.swift */; };
 		04E946F41D143DF3976BBD16 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF4C7A3106A327059C6DB1C /* MessageRow.swift */; };
 		0D3F52E97AE5EDE271B5D8EA /* ScheduleImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CACC9470638607123DE870 /* ScheduleImportReviewView.swift */; };
@@ -93,6 +94,17 @@
 		ED7AA037B6763D75404B68F0 /* SpeechInputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechInputController.swift; sourceTree = "<group>"; };
 		F52146D969D652889196CD55 /* LLMProviderPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProviderPreset.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F0A10A000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0A10A000000000000000001 /* SwiftMath in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0ACD37C4F18A2C71ADF30455 /* Products */ = {
@@ -239,6 +251,7 @@
 			buildConfigurationList = FD3DD1504670C9B6B04E76D6 /* Build configuration list for PBXNativeTarget "SwufeAsk" */;
 			buildPhases = (
 				734BA6BE668F9DD2EC7A861E /* Sources */,
+				F0A10A000000000000000002 /* Frameworks */,
 				25D63D115B2BBCC418F6C21D /* Resources */,
 			);
 			buildRules = (
@@ -247,6 +260,7 @@
 			);
 			name = SwufeAsk;
 			packageProductDependencies = (
+				F0A10A000000000000000004 /* SwiftMath */,
 			);
 			productName = SwufeAsk;
 			productReference = 38163907E987C7395B0A378C /* SwufeAsk.app */;
@@ -273,6 +287,9 @@
 			);
 			mainGroup = CBEEC39056AC1A2C9D2B3D65;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F0A10A000000000000000003 /* XCRemoteSwiftPackageReference "SwiftMath" */,
+			);
 			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
@@ -524,6 +541,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F0A10A000000000000000003 /* XCRemoteSwiftPackageReference "SwiftMath" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mgriebling/SwiftMath.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.7.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F0A10A000000000000000004 /* SwiftMath */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A10A000000000000000003 /* XCRemoteSwiftPackageReference "SwiftMath" */;
+			productName = SwiftMath;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CCDA54D77C50FFE90972EABB /* Project object */;
 }

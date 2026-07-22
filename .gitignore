@@ -45,6 +45,7 @@ backend/repro/tier1/runtime/
 # Xcode and Swift build output
 client-ios/build*/
 client-ios/DerivedData/
+client-ios/SourcePackages/
 *.xcarchive/
 xcuserdata/
 *.xcuserdatad/
