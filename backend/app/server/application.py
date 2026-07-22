@@ -648,6 +648,8 @@ def create_app(
             "provider_model_not_found": 404,
             "provider_rate_limited": 429,
             "provider_timeout": 504,
+            "provider_content_filtered": 400,
+            "provider_bad_request": 400,
         }.get(code, 502)
         return HTTPException(
             status_code=status,

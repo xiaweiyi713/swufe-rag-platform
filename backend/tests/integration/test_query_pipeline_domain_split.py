@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from academic_audit.database import AcademicDatabase
-from contracts import RETRIEVED_CHUNK_FIELDS
+from contracts import GenerationUnavailableError, RETRIEVED_CHUNK_FIELDS
 from generation.answer_presenter import AnswerPresenter
 from generation.general_chat import GeneralChatService
 from retrieval.index import load_chunks
@@ -24,6 +24,18 @@ class RecordingGeneralClient:
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         self.calls.append((system_prompt, user_prompt))
         return "这是通用大模型的回答。"
+
+
+class ContentFilteredStreamingClient:
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        raise AssertionError("streaming path expected")
+
+    def stream_generate(self, system_prompt: str, user_prompt: str):
+        yield "不应保留的半截回答"
+        raise GenerationUnavailableError(
+            "当前模型服务因内容安全策略拒绝处理这条问题。",
+            code="provider_content_filtered",
+        )
 
 
 class RecordingRetriever:
@@ -139,6 +151,44 @@ def test_sync_general_client_emits_only_a_final_event() -> None:
     assert events[-1]["type"] == "final"
     assert events[-1]["response"]["answer_md"] == "这是通用大模型的回答。"
     assert len(client.calls) == 1
+
+
+def test_general_content_filter_replaces_partial_stream_with_safe_refusal() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(general_llm=True, model="test-chat"),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=RecordingRetriever(),
+        school_answer=lambda *_: (_ for _ in ()).throw(
+            AssertionError("school answer called")
+        ),
+        general_chat=GeneralChatService(ContentFilteredStreamingClient()),
+        metadata_db=metadata,
+        runtime_mode="content-filter-stream-test",
+    )
+    try:
+        events = list(
+            runtime.stream_general_question(
+                "介绍一个历史事件",
+                session_id="content-filter-session",
+            )
+        )
+        history = runtime.sessions.get("content-filter-session").general_history
+    finally:
+        metadata.close()
+
+    reset = next(event for event in events if event["type"] == "reset")
+    final = events[-1]["response"]
+    assert "不是网络或教务后端故障" in reset["text"]
+    assert final["answer_md"] == reset["text"]
+    assert final["refused"] is False
+    assert final["fallback_reason"] == "provider_content_filtered"
+    assert final["final_output_source"] == "provider_policy_refusal"
+    assert history == []
 
 
 def test_school_fact_never_falls_back_to_general_model() -> None:

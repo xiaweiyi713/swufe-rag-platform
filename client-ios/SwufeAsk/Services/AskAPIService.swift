@@ -55,7 +55,7 @@ struct RecoverableAPIError: LocalizedError {
     }
 }
 
-private struct StreamProtocolError: LocalizedError {
+struct StreamProtocolError: LocalizedError {
     let message: String
     let code: String?
 

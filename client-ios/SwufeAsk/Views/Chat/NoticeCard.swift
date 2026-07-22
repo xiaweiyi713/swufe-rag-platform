@@ -17,6 +17,12 @@ struct NoticeCard: View {
             "server.rack"
         case "request_failed":
             "exclamationmark.bubble"
+        case "model_content_restricted":
+            "hand.raised.fill"
+        case "model_request_rejected", "model_configuration_failed":
+            "exclamationmark.bubble"
+        case "model_rate_limited", "model_timeout":
+            "clock.badge.exclamationmark"
         default:
             "arrow.triangle.2.circlepath"
         }

@@ -51,6 +51,12 @@ SCHOOL_OVERVIEW_RE = re.compile(
 )
 
 
+PROVIDER_CONTENT_FILTER_MESSAGE = (
+    "当前模型服务因内容安全策略拒绝处理这条问题。"
+    "这不是网络或教务后端故障；请切换其他支持该内容的模型，或调整问题后重试。"
+)
+
+
 EVIDENCE_TOPIC_GATES = (
     (re.compile(r"奖学金"), re.compile(r"奖学金|奖助"), re.compile(r"奖学金"), "奖学金"),
     (re.compile(r"助学金"), re.compile(r"助学金|奖助"), re.compile(r"助学金"), "助学金"),
@@ -684,33 +690,47 @@ class QueryPipelineRuntime(HybridRuntime):
             "stage": "generating",
             "message": "正在生成回复",
         }
-        if answer_streaming:
-            fragments: list[str] = []
-            if web_context:
-                stream = self.general_chat.stream_answer(
+        provider_refusal_code: str | None = None
+        try:
+            if answer_streaming:
+                fragments: list[str] = []
+                if web_context:
+                    stream = self.general_chat.stream_answer(
+                        question, state.general_history, web_context=web_context
+                    )
+                else:
+                    stream = self.general_chat.stream_answer(
+                        question, state.general_history
+                    )
+                for fragment in stream:
+                    if not isinstance(fragment, str) or not fragment:
+                        continue
+                    fragments.append(fragment)
+                    yield {"type": "delta", "text": fragment}
+                answer = "".join(fragments).strip()
+            elif web_context:
+                answer = self.general_chat.answer(
                     question, state.general_history, web_context=web_context
                 )
             else:
-                stream = self.general_chat.stream_answer(question, state.general_history)
-            for fragment in stream:
-                if not isinstance(fragment, str) or not fragment:
-                    continue
-                fragments.append(fragment)
-                yield {"type": "delta", "text": fragment}
-            answer = "".join(fragments).strip()
-        elif web_context:
-            answer = self.general_chat.answer(
-                question, state.general_history, web_context=web_context
-            )
-        else:
-            answer = self.general_chat.answer(question, state.general_history)
+                answer = self.general_chat.answer(question, state.general_history)
+        except GenerationUnavailableError as exc:
+            if exc.code != "provider_content_filtered":
+                raise
+            provider_refusal_code = exc.code
+            answer = PROVIDER_CONTENT_FILTER_MESSAGE
+            # Replace any partial provider output with a single safe explanation.
+            yield {"type": "reset", "text": answer}
         if not answer:
             raise GenerationUnavailableError("general model returned an empty response")
 
-        state.general_history.extend(
-            [("user", question), ("assistant", answer)]
-        )
-        del state.general_history[:-24]
+        # A provider-rejected prompt must not poison later turns by being sent
+        # back to the same moderation layer as conversation history.
+        if provider_refusal_code is None:
+            state.general_history.extend(
+                [("user", question), ("assistant", answer)]
+            )
+            del state.general_history[:-24]
         if session_id:
             preserve_school_context = bool(
                 prior is not None
@@ -735,6 +755,8 @@ class QueryPipelineRuntime(HybridRuntime):
             "retrieved": [],
             "official_links": [],
             "web_sources": list(web_sources or []),
+            # ``refused`` is reserved for insufficient school evidence. The
+            # provider policy outcome is carried by fallback_reason instead.
             "refused": False,
             "latency_ms": total_ms,
             "execution_path": "general_llm",
@@ -748,10 +770,27 @@ class QueryPipelineRuntime(HybridRuntime):
                 "warnings": normalized.normalization_warnings,
                 "latency_ms": normalization_ms,
             },
-            "validation": {"passed": True, "checks": ["domain_boundary"]},
+            "validation": {
+                "passed": True,
+                "checks": [
+                    "domain_boundary",
+                    *(
+                        ["provider_content_policy"]
+                        if provider_refusal_code is not None
+                        else []
+                    ),
+                ],
+            },
             "final_output_source": (
-                "llm" if self.capabilities.general_llm else "deterministic_formatter"
+                "provider_policy_refusal"
+                if provider_refusal_code is not None
+                else (
+                    "llm"
+                    if self.capabilities.general_llm
+                    else "deterministic_formatter"
+                )
             ),
+            "fallback_reason": provider_refusal_code,
             "llm_called": self.capabilities.general_llm,
             "llm_stages": {
                 "question_understanding": False,

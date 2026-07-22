@@ -58,6 +58,55 @@ class LLMAdapterTests(unittest.TestCase):
         self.assertIn("API Key", str(raised.exception))
         self.assertNotIn("secret provider response", str(raised.exception))
 
+    def test_content_policy_bad_request_has_safe_specific_code(self) -> None:
+        BadRequestError = type("BadRequestError", (RuntimeError,), {})
+        provider_error = BadRequestError("secret provider response")
+        provider_error.code = "data_inspection_failed"
+        provider_error.body = {
+            "message": "Input data may contain inappropriate content.",
+            "private": "do-not-leak",
+        }
+
+        class Completions:
+            @staticmethod
+            def create(**_kwargs):
+                raise provider_error
+
+        client = OpenAICompatibleClient("qwen3.5-plus", api_key="test")
+        client._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=Completions())
+        )
+
+        with self.assertRaises(GenerationUnavailableError) as raised:
+            list(client.stream_generate("system", "user"))
+
+        self.assertEqual(raised.exception.code, "provider_content_filtered")
+        self.assertIn("内容安全策略", str(raised.exception))
+        self.assertNotIn("do-not-leak", str(raised.exception))
+        self.assertNotIn("secret provider response", str(raised.exception))
+
+    def test_generic_bad_request_has_safe_specific_code(self) -> None:
+        BadRequestError = type("BadRequestError", (RuntimeError,), {})
+        provider_error = BadRequestError("secret invalid parameter")
+        provider_error.code = "invalid_parameter"
+
+        class Completions:
+            @staticmethod
+            def create(**_kwargs):
+                raise provider_error
+
+        client = OpenAICompatibleClient("qwen3.5-plus", api_key="test")
+        client._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=Completions())
+        )
+
+        with self.assertRaises(GenerationUnavailableError) as raised:
+            client.generate("system", "user")
+
+        self.assertEqual(raised.exception.code, "provider_bad_request")
+        self.assertIn("不接受该输入或请求参数", str(raised.exception))
+        self.assertNotIn("secret invalid parameter", str(raised.exception))
+
     def test_model_listing_returns_sorted_unique_ids(self) -> None:
         client = OpenAICompatibleClient("qwen-plus", api_key="test")
         client._client = SimpleNamespace(

@@ -9,6 +9,17 @@ from typing import Protocol
 from contracts import GenerationUnavailableError
 
 
+def _provider_error_fingerprint(exc: Exception) -> str:
+    """Collect provider metadata for classification without exposing it to clients."""
+
+    values: list[object] = [type(exc).__name__, str(exc)]
+    for attribute in ("code", "message", "body"):
+        value = getattr(exc, attribute, None)
+        if value is not None:
+            values.append(value)
+    return " ".join(str(value) for value in values).lower()
+
+
 def _provider_error(operation: str, exc: Exception) -> GenerationUnavailableError:
     error_type = type(exc).__name__
     if error_type == "AuthenticationError":
@@ -35,6 +46,28 @@ def _provider_error(operation: str, exc: Exception) -> GenerationUnavailableErro
         return GenerationUnavailableError(
             "模型服务连接超时，请检查网络或稍后重试。",
             code="provider_timeout",
+        )
+    if error_type == "BadRequestError":
+        fingerprint = _provider_error_fingerprint(exc)
+        content_policy_markers = (
+            "data_inspection_failed",
+            "content_filter",
+            "content filtered",
+            "inappropriate content",
+            "sensitive content",
+            "content safety",
+            "safety policy",
+            "moderation",
+            "risk control",
+        )
+        if any(marker in fingerprint for marker in content_policy_markers):
+            return GenerationUnavailableError(
+                "当前模型服务因内容安全策略拒绝处理这条问题。这不是网络或教务后端故障；请切换其他支持该内容的模型，或调整问题后重试。",
+                code="provider_content_filtered",
+            )
+        return GenerationUnavailableError(
+            "模型服务拒绝了这次请求：当前模型不接受该输入或请求参数。请检查模型兼容性后重试。",
+            code="provider_bad_request",
         )
     return GenerationUnavailableError(
         f"LLM provider {operation} failed: {error_type}",

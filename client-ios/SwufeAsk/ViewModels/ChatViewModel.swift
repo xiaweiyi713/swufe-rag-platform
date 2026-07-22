@@ -693,6 +693,58 @@ final class ChatViewModel {
 
 extension FallbackNotice {
     static func from(_ error: Error, retrying question: String) -> FallbackNotice {
+        if let streamError = error as? StreamProtocolError {
+            switch streamError.code {
+            case "provider_content_filtered":
+                return FallbackNotice(
+                    code: "model_content_restricted",
+                    title: "当前模型无法处理这个问题",
+                    message: streamError.message,
+                    actions: [],
+                    severity: "warning"
+                )
+            case "provider_bad_request":
+                return FallbackNotice(
+                    code: "model_request_rejected",
+                    title: "模型请求被拒绝",
+                    message: streamError.message,
+                    actions: [RecoveryAction(label: "再试一次", prompt: question)],
+                    severity: "warning"
+                )
+            case "provider_authentication_failed", "provider_permission_denied", "provider_model_not_found":
+                return FallbackNotice(
+                    code: "model_configuration_failed",
+                    title: "模型配置不可用",
+                    message: streamError.message,
+                    actions: [],
+                    severity: "warning"
+                )
+            case "provider_rate_limited":
+                return FallbackNotice(
+                    code: "model_rate_limited",
+                    title: "模型服务繁忙",
+                    message: streamError.message,
+                    actions: [RecoveryAction(label: "稍后重试", prompt: question)],
+                    severity: "warning"
+                )
+            case "provider_timeout":
+                return FallbackNotice(
+                    code: "model_timeout",
+                    title: "模型响应超时",
+                    message: streamError.message,
+                    actions: [RecoveryAction(label: "再试一次", prompt: question)],
+                    severity: "warning"
+                )
+            default:
+                return FallbackNotice(
+                    code: "service_unavailable",
+                    title: "回答服务暂时不可用",
+                    message: streamError.message,
+                    actions: [RecoveryAction(label: "再试一次", prompt: question)],
+                    severity: "warning"
+                )
+            }
+        }
         if let apiError = error as? RecoverableAPIError {
             if apiError.statusCode == 503 {
                 return FallbackNotice(
@@ -718,14 +770,23 @@ extension FallbackNotice {
                 severity: "warning"
             )
         }
+        if let urlError = error as? URLError {
+            return FallbackNotice(
+                code: "network_failed",
+                title: "网络连接失败",
+                message: "没有连上教务问答后端：\(urlError.localizedDescription)",
+                actions: [RecoveryAction(label: "重试提问", prompt: question)],
+                severity: "error"
+            )
+        }
         return FallbackNotice(
-            code: "network_failed",
-            title: "网络连接失败",
-            message: "没有连上教务问答后端：\(error.localizedDescription)",
+            code: "request_failed",
+            title: "这次提问没有成功",
+            message: error.localizedDescription,
             actions: [
-                RecoveryAction(label: "重试提问", prompt: question)
+                RecoveryAction(label: "再试一次", prompt: question)
             ],
-            severity: "error"
+            severity: "warning"
         )
     }
 }
