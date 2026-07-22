@@ -105,6 +105,16 @@ GENERAL_TASK_RE = re.compile(
 GENERAL_SWITCH_RE = re.compile(
     r"换个话题|不说这个了|别说这个了|给我写代码|讲个笑话|帮我翻译|帮我润色"
 )
+PROGRAMMING_PROBLEM_RE = re.compile(
+    r"leetcode|力扣|hot\s*100|codeforces|洛谷|算法题|编程题|"
+    r"(?:第\s*\d+\s*题).{0,32}(?:题解|解答|代码|实现)|"
+    r"(?:题解|解答|代码|实现).{0,32}(?:第\s*\d+\s*题)",
+    re.I,
+)
+SCHOOL_DECISION_RE = re.compile(
+    r"推免|保研|学分|选修|必修|课程|哪门课|什么课|培养方案|学籍|"
+    r"学校规定|学校要求|教务|西财|西南财经大学"
+)
 
 INTENT_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"推免|保研|推荐免试|竞赛.*加分|比赛.*加分"), "promotion"),
@@ -191,6 +201,8 @@ class HybridRouter:
     def _explicit_general(question: str) -> bool:
         if GENERAL_SWITCH_RE.search(question):
             return True
+        if PROGRAMMING_PROBLEM_RE.search(question):
+            return not SCHOOL_DECISION_RE.search(question)
         if GENERAL_TASK_RE.search(question):
             if SCHOOL_POLICY_RE.search(question):
                 return False

@@ -131,6 +131,9 @@ def test_explicit_program_scope_does_not_change_general_question_route() -> None
 
 def test_general_tasks_with_school_words_still_route_to_llm() -> None:
     questions = (
+        "给我了leetcode的hot100的第52题的解答代码",
+        "请给出力扣第52题的Python题解",
+        "HOT100是什么？",
         "帮我写一篇关于校园生活的作文",
         "帮我写一个Python选课系统",
         "翻译：学校食堂很好吃",
@@ -152,6 +155,15 @@ def test_general_tasks_with_school_words_still_route_to_llm() -> None:
         _, draft, _, plan = pipeline(question)
         assert draft.domain == "general", question
         assert plan.execution_path == "general_llm", question
+
+
+def test_programming_platform_school_policy_question_still_uses_rag() -> None:
+    question = "LeetCode竞赛成绩能算保研加分吗？"
+
+    _, draft, _, plan = pipeline(question)
+
+    assert draft.domain == "school"
+    assert plan.execution_path != "general_llm"
 
 
 def test_explicit_swufe_facts_never_route_to_general_llm() -> None:

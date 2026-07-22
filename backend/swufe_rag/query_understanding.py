@@ -80,12 +80,24 @@ GENERAL_SCHOOL_CONCEPT_RE = re.compile(
     r"^\s*(?:什么是|解释一下|介绍一下)\s*(?:推免|保研|学分制|缓考|重修|辅修|专业分流)"
     r"\s*[？?。.！!]*\s*$"
 )
+PROGRAMMING_PROBLEM_RE = re.compile(
+    r"leetcode|力扣|hot\s*100|codeforces|洛谷|算法题|编程题|"
+    r"(?:第\s*\d+\s*题).{0,32}(?:题解|解答|代码|实现)|"
+    r"(?:题解|解答|代码|实现).{0,32}(?:第\s*\d+\s*题)",
+    re.I,
+)
+SCHOOL_DECISION_RE = re.compile(
+    r"推免|保研|学分|选修|必修|课程|哪门课|什么课|培养方案|学籍|"
+    r"学校规定|学校要求|教务|西财|西南财经大学"
+)
 INSTITUTION_FACT_RE = re.compile(
     r"西财|西南财经大学|我校|本校|学校规定|学校要求|教务系统|培养方案|柳林|光华"
 )
 
 
 def _explicit_general_task(question: str) -> bool:
+    if PROGRAMMING_PROBLEM_RE.search(question):
+        return not SCHOOL_DECISION_RE.search(question)
     return bool(
         (GENERAL_TASK_RE.search(question) or GENERAL_SCHOOL_CONCEPT_RE.fullmatch(question))
         and not INSTITUTION_FACT_RE.search(question)

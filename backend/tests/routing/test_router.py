@@ -40,12 +40,20 @@ class HybridRouterTests(unittest.TestCase):
         for question in (
             "什么是注意力机制",
             "帮我写快速排序",
+            "给我了leetcode的hot100的第52题的解答代码",
+            "HOT100是什么？",
             "我最近学习压力很大",
             "帮我润色一封邮件",
             "大学课程应该怎么学习",
         ):
             with self.subTest(question=question):
                 self.assertEqual(self.router.route(question).mode, "general_chat")
+
+    def test_programming_platform_school_policy_question_stays_in_rag(self) -> None:
+        self.assertEqual(
+            self.router.route("LeetCode竞赛成绩能算保研加分吗？").mode,
+            "school_rag",
+        )
 
     def test_school_facts_always_use_school_rag(self) -> None:
         for question in (
