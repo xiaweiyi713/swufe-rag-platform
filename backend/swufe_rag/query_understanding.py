@@ -47,6 +47,11 @@ POLICY_QUESTION_RE = re.compile(
     r"(?:艺术|数字课程|数字学分).{0,12}认定"
 )
 PROMOTION_RE = re.compile(r"推免|保研|推荐免试")
+COURSE_LIST_REQUEST_RE = re.compile(
+    r"课程|哪些课|什么课|"
+    r"(?:都?有)(?:什么|啥|哪些|哪几门).{0,8}课|"
+    r"(?:课|课程).{0,6}(?:有哪些|有哪|包括|包含|清单|列表)"
+)
 COURSE_CODE_RE = re.compile(
     r"(?<![A-Z0-9])([A-Z]{2,5}\d{3})(?![A-Z0-9])",
     re.I,
@@ -344,17 +349,17 @@ def deterministic_understanding(question: str, **scope: Any) -> UnderstandingDra
         intent = "policy"
     elif graduation:
         intent = "graduation_requirement"
-    elif re.search(
-        r"课程|哪些课|什么课|选修|必修|学分|学时|代码|"
-        r"(?:课|课程).{0,6}(?:有哪些|有哪|包括|包含|清单|列表)",
-        question,
+    elif COURSE_LIST_REQUEST_RE.search(question) or re.search(
+        r"选修|必修|学分|学时|代码", question
     ):
         intent = "course_query"
     else:
         intent = "school_requirement"
 
     outputs: list[str] = []
-    if re.search(r"哪些|什么课|课程|选修|必修|安排", question):
+    if COURSE_LIST_REQUEST_RE.search(question) or re.search(
+        r"哪些|选修|必修|安排", question
+    ):
         outputs.append("course_list")
     if re.search(r"多少学分|总学分|学分毕业", question):
         outputs.append("credit_total")

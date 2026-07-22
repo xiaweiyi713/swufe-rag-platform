@@ -238,6 +238,14 @@ def _repair_draft_conflicts(draft: UnderstandingDraft, question: str) -> Underst
     deterministic = deterministic_understanding(question)
     if deterministic.domain == "general":
         return deterministic.model_copy(update={"parser": draft.parser})
+    if (
+        deterministic.primary_intent == "course_query"
+        and "course_list" in deterministic.requested_outputs
+        and draft.primary_intent == "school_requirement"
+    ):
+        # A concrete course-list request must use the structured curriculum
+        # database even when the semantic model returns the broader policy label.
+        return deterministic.model_copy(update={"parser": draft.parser})
     if deterministic.primary_intent in {"policy", "promotion", "school_requirement"}:
         # Policy and campus-service questions must never become curriculum SQL
         # merely because the user has a stored program scope. The deterministic

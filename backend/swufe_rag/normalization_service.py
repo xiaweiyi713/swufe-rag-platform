@@ -46,6 +46,9 @@ MODULE_PATTERNS = (
     (re.compile(r"通识教育核心"), "通识教育核心课"),
     (re.compile(r"自由选修|自选课"), "自由选修课"),
     (re.compile(r"实践环节|实践课程"), "实践环节课"),
+    # “专业课”是学生对专业必修课与专业方向课的合称。
+    (re.compile(r"专业课"), "专业必修课"),
+    (re.compile(r"专业课"), "专业方向课"),
 )
 COURSE_CODE_ALIASES = (
     (re.compile(r"C\s*\u8bed\u8a00\u7a0b\u5e8f\u8bbe\u8ba1", re.I), "CST117"),

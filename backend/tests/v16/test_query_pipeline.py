@@ -647,6 +647,49 @@ def test_semester_answer_separates_fixed_courses_from_flexible_windows() -> None
     assert "CST131" not in exact_section
 
 
+def test_colloquial_professional_course_list_uses_structured_curriculum() -> None:
+    question = "23级人工智能大三下有什么专业课"
+    database, draft, normalized, plan = pipeline(question)
+    metadata = MetadataDB("data/metadata.sqlite3")
+    try:
+        packet = execute_plan(plan, database=database, metadata=metadata)
+    finally:
+        metadata.close()
+        database.close()
+
+    assert draft.primary_intent == "course_query"
+    assert draft.requested_outputs == ["course_list"]
+    assert normalized.major == "人工智能专业"
+    assert normalized.cohort == 2023
+    assert normalized.target_semesters == [6]
+    assert normalized.course_modules == ["专业必修课", "专业方向课"]
+    assert plan.execution_path == "sql"
+    assert {course.name for course in packet.courses} == {
+        "数字图像处理",
+        "算法交易",
+        "机器视觉",
+        "知识图谱与应用",
+        "数据可视化",
+    }
+
+
+def test_llm_cannot_downgrade_explicit_course_list_to_policy_rag() -> None:
+    question = "23级人工智能大三下有什么专业课"
+    wrong = deterministic_understanding(question).model_copy(
+        update={
+            "primary_intent": "school_requirement",
+            "requested_outputs": [],
+            "parser": "llm",
+        }
+    )
+
+    repaired = _repair_draft_conflicts(wrong, question)
+
+    assert repaired.primary_intent == "course_query"
+    assert repaired.requested_outputs == ["course_list"]
+    assert repaired.parser == "llm"
+
+
 def test_programming_subject_excludes_data_structure() -> None:
     database, _, _, plan = pipeline(
         "\u8ba1\u7b97\u673a\u79d1\u5b66\u4e0e\u6280\u672f\u4e13\u4e1a2023\u7ea7\u5927\u4e00\u9700\u8981\u4fee\u54ea\u4e9b\u7a0b\u5e8f\u8bbe\u8ba1\u8bfe\u7a0b\uff1f"
