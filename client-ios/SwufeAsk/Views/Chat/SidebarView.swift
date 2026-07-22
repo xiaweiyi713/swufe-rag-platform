@@ -298,6 +298,10 @@ struct SidebarSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.dark.rawValue
 
+    private var appearance: AppearanceMode {
+        AppearanceMode(rawValue: appearanceRaw) ?? .system
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -355,6 +359,7 @@ struct SidebarSettingsView: View {
                 model.loadOptionsIfNeeded()
             }
         }
+        .preferredColorScheme(appearance.colorScheme)
     }
 }
 
