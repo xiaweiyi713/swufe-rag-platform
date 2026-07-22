@@ -20,6 +20,7 @@ from generation.prompts import REFUSAL_TEXT
 from swufe_rag.orchestration import (
     HybridRuntime,
     SessionState,
+    _link,
     _source_appendix,
     _summary,
 )
@@ -49,6 +50,30 @@ SCHOOL_OVERVIEW_RE = re.compile(
     r"(?:西南财经大学|西财).{0,12}(?:简介|概况|是什么学校|怎么样)"
     r"(?:\s*[吧呗吗呢呀啊？。！]*)$"
 )
+
+
+HISTORICAL_PROMOTION_LINK_RE = re.compile(
+    r"(?:历年|往年|各年|历史).{0,80}(?:推免|保研|推荐免试)|"
+    r"(?:推免|保研|推荐免试).{0,80}(?:历年|往年|各年|历史)"
+)
+PROMOTION_LINK_RE = re.compile(r"链接|原文|下载|文件地址|访问地址")
+
+
+def _historical_promotion_link_scope(question: str) -> tuple[str, str] | None:
+    if not (
+        HISTORICAL_PROMOTION_LINK_RE.search(question)
+        and PROMOTION_LINK_RE.search(question)
+        and re.search(r"实施细则|工作细则", question)
+    ):
+        return None
+    if "经济信息工程学院" in question:
+        # Source ownership uses the current canonical college, while the title
+        # constraint preserves the institution name explicitly requested by
+        # the user instead of silently merging successor-college documents.
+        return ("计算机与人工智能学院", "经济信息工程学院")
+    if re.search(r"计算机与人工智能学院|计算机学院", question):
+        return ("计算机与人工智能学院", "计算机与人工智能学院")
+    return None
 
 
 PROVIDER_CONTENT_FILTER_MESSAGE = (
@@ -1161,6 +1186,51 @@ class QueryPipelineRuntime(HybridRuntime):
                     "retrieved": [], "official_links": [], "refused": False}
         return None
 
+    def _historical_promotion_links_answer(
+        self, query: NormalizedQuery
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        scope = _historical_promotion_link_scope(query.original_question)
+        if scope is None:
+            return None
+        college, title_college = scope
+        started = time.perf_counter()
+        links = self.metadata_db.promotion_implementation_links(
+            college=college,
+            title_college=title_college,
+            limit=20,
+        )
+        retrieval_ms = round((time.perf_counter() - started) * 1000, 2)
+        if not links:
+            return None
+        items = "\n".join(
+            f"- [{link.title}]({link.file_url or link.page_url})"
+            for link in links
+        )
+        payload = {
+            "mode": "school_rag",
+            "answer_md": (
+                f"校内知识库中以“{title_college}”名义登记的"
+                f"相关细则目前有 {len(links)} 份："
+                f"\n\n{items}"
+                f"\n\n未混入其他学院名义下的文件。"
+            ),
+            "citations": [],
+            "retrieved": [],
+            "official_links": [_link(link) for link in links],
+            "refused": False,
+        }
+        telemetry = {
+            "called": False,
+            "retrieved_count": len(links),
+            "retrieval_ms": retrieval_ms,
+            "retrieval_source": "trusted_source_registry",
+            "generation_attempted": False,
+            "generation_accepted": True,
+            "fallback_used": False,
+            "direct_answer": True,
+        }
+        return payload, telemetry
+
     def _policy(
         self,
         query: NormalizedQuery,
@@ -1170,6 +1240,9 @@ class QueryPipelineRuntime(HybridRuntime):
         claim_sink: Callable[[dict[str, Any]], None] | None = None,
         stream_cancelled: Callable[[], bool] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        historical_links = self._historical_promotion_links_answer(query)
+        if historical_links is not None:
+            return historical_links
         contextual_question = contextual_question or query.original_question
         topic = next((value for pattern, value in TOPICS if pattern.search(contextual_question)), None)
         if query.major and re.search(
@@ -1489,6 +1562,8 @@ class QueryPipelineRuntime(HybridRuntime):
             )
             if not rag_telemetry.get("generation_accepted"):
                 final_source = "insufficient"
+            elif rag_telemetry.get("direct_answer"):
+                final_source = "deterministic_formatter"
             elif self.capabilities.policy_llm and not rag_telemetry.get("fallback_used"):
                 final_source = "llm"
             else:
@@ -1612,6 +1687,7 @@ class QueryPipelineRuntime(HybridRuntime):
                     )
                     or (
                         rag_telemetry.get("generation_accepted")
+                        and not rag_telemetry.get("direct_answer")
                         and self.capabilities.policy_llm
                         and not rag_telemetry.get("fallback_used")
                     )

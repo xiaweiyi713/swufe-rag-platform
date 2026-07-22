@@ -585,6 +585,60 @@ class MetadataDB:
             for row in rows
         ]
 
+    def promotion_implementation_links(
+        self,
+        *,
+        college: str,
+        title_college: str | None = None,
+        limit: int = 20,
+    ) -> list[OfficialLink]:
+        """Return every trusted annual promotion implementation rule.
+
+        Unlike :meth:`official_links`, this source-registry lookup intentionally
+        includes historical rows.  It is reserved for explicit requests for
+        annual/previous versions, so normal policy answers still prefer the
+        current effective document.
+        """
+
+        if not isinstance(college, str) or not college.strip():
+            raise ValueError("college must be a non-empty string")
+        if title_college not in {
+            None,
+            "经济信息工程学院",
+            "计算机与人工智能学院",
+        }:
+            raise ValueError("unsupported promotion title college")
+        if not 1 <= limit <= 20:
+            raise ValueError("limit must be between 1 and 20")
+        with self._lock:
+            rows = self.connection.execute(
+                """
+                SELECT source_id, doc_title, page_url, file_url
+                FROM sources
+                WHERE enabled = 1 AND trusted = 1
+                  AND level = '院级'
+                  AND college = ?
+                  AND topic = 'promotion'
+                  AND (
+                    doc_title LIKE '%推荐免试%实施细则%'
+                    OR doc_title LIKE '%推免%实施细则%'
+                  )
+                  AND (? IS NULL OR doc_title LIKE '%' || ? || '%')
+                ORDER BY year DESC, doc_title
+                LIMIT ?
+                """,
+                (college.strip(), title_college, title_college, limit),
+            ).fetchall()
+        return [
+            OfficialLink(
+                source_id=row["source_id"],
+                title=row["doc_title"],
+                page_url=row["page_url"],
+                file_url=row["file_url"],
+            )
+            for row in rows
+        ]
+
     def known_colleges(self) -> tuple[str, ...]:
         with self._lock:
             rows = self.connection.execute(

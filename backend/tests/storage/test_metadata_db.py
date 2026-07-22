@@ -89,6 +89,48 @@ class MetadataDBTests(unittest.TestCase):
         ids = {self.chunks[index]["chunk_id"] for index in rows}
         self.assertEqual(ids, {"fixture_it_recommend_old_014"})
 
+    def test_promotion_implementation_links_include_historical_versions(self) -> None:
+        links = self.db.promotion_implementation_links(
+            college="计算机与人工智能学院"
+        )
+
+        self.assertEqual(
+            [link.source_id for link in links],
+            [
+                self.db.chunk("fixture_it_recommend_013").source_id,
+                self.db.chunk("fixture_it_recommend_old_014").source_id,
+            ],
+        )
+        self.assertTrue(all("it.swufe.edu.cn" in link.file_url for link in links))
+
+    def test_promotion_links_preserve_explicit_former_college_name(self) -> None:
+        template = next(
+            chunk
+            for chunk in self.chunks
+            if chunk["chunk_id"] == "fixture_it_recommend_old_014"
+        )
+        former_college = {
+            **template,
+            "chunk_id": "fixture_eie_recommend_2021",
+            "doc_title": "经济信息工程学院推荐免试研究生工作实施细则",
+            "text": "经济信息工程学院2021年推荐免试研究生工作实施细则。",
+            "year": 2021,
+            "page_url": "https://it.swufe.edu.cn/fixture/eie2021",
+            "file_url": "https://it.swufe.edu.cn/fixture/eie2021.docx",
+        }
+        database = MetadataDB.from_chunks(
+            [*self.chunks, former_college], trusted_by_default=True
+        )
+        try:
+            links = database.promotion_implementation_links(
+                college="计算机与人工智能学院",
+                title_college="经济信息工程学院",
+            )
+        finally:
+            database.close()
+
+        self.assertEqual([link.title for link in links], [former_college["doc_title"]])
+
     def test_disabled_or_untrusted_source_never_enters_candidate_set(self) -> None:
         stored = self.db.chunk("fixture_it_recommend_013")
         self.assertIsNotNone(stored)

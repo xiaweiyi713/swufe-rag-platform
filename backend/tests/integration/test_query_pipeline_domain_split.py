@@ -89,6 +89,63 @@ def test_authoritative_metadata_chunks_keep_the_full_retrieval_contract() -> Non
     assert isinstance(values[0]["is_table"], bool)
 
 
+def test_historical_college_promotion_link_request_uses_trusted_registry() -> None:
+    chunks = load_chunks(FIXTURE_PATH)
+    template = next(
+        chunk
+        for chunk in chunks
+        if chunk["chunk_id"] == "fixture_it_recommend_old_014"
+    )
+    former_college = {
+        **template,
+        "chunk_id": "fixture_eie_recommend_2021",
+        "doc_title": "经济信息工程学院推荐免试研究生工作实施细则",
+        "text": "经济信息工程学院2021年推荐免试研究生工作实施细则。",
+        "year": 2021,
+        "page_url": "https://it.swufe.edu.cn/fixture/eie2021",
+        "file_url": "https://it.swufe.edu.cn/fixture/eie2021.docx",
+    }
+    metadata = MetadataDB.from_chunks(
+        [*chunks, former_college], trusted_by_default=True
+    )
+    retriever = RecordingRetriever()
+    runtime = QueryPipelineRuntime(
+        understanding=QuestionUnderstandingService(),
+        presenter=AnswerPresenter(),
+        academic_db=AcademicDatabase("data/academic_v2.sqlite3"),
+        capabilities=PipelineCapabilities(
+            policy_llm=True,
+            general_llm=True,
+            model="test-chat",
+        ),
+        router=HybridRouter(known_colleges=metadata.known_colleges()),
+        school_retrieve=retriever,
+        school_answer=lambda *_: (_ for _ in ()).throw(
+            AssertionError("policy model must not be called for registered links")
+        ),
+        general_chat=GeneralChatService(RecordingGeneralClient()),
+        metadata_db=metadata,
+        runtime_mode="historical-promotion-links-test",
+    )
+    try:
+        result = runtime.handle_question(
+            "给我历年西南财经大学经济信息工程学院推荐免试研究生工作实施细则链接"
+        )
+    finally:
+        runtime.academic_db.close()
+        metadata.close()
+
+    assert result["refused"] is False
+    assert result["final_output_source"] == "deterministic_formatter"
+    assert result["rag"]["retrieval_source"] == "trusted_source_registry"
+    assert result["llm_called"] is False
+    assert result["llm_stages"]["answer_generation"] is False
+    assert retriever.calls == []
+    assert len(result["official_links"]) == 1
+    assert "经济信息工程学院推荐免试研究生工作实施细则" in result["answer_md"]
+    assert "计算机与人工智能学院" not in result["answer_md"]
+
+
 def test_general_task_calls_general_model_once_and_never_retrieves() -> None:
     chunks = load_chunks(FIXTURE_PATH)
     metadata = MetadataDB.from_chunks(chunks, trusted_by_default=True)
